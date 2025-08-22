@@ -77,7 +77,44 @@
       <div class="content-wrap col-12 col-md-12">
         <h1 class="mbr-section-title mbr-fonts-style mbr-white mb-4 display-4"></h1>
         
-        <p class="mbr-fonts-style mbr-text mbr-white mb-4 display-1"><strong>TAYULABS</strong><br></p>
+        <p class="mbr-fonts-style mbr-text mbr-white mb-4 display-1">
+    <strong id="typed-text" style="border-right: 3px solid white; padding-right: 5px;"></strong>
+</p>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const text = "TAYULABS";
+    const typedTextElement = document.getElementById("typed-text");
+    let i = 0;
+    let isDeleting = false;
+    let typingSpeed = 150; // Velocidad de escritura (ms)
+    
+    function typeWriter() {
+        if (i < text.length && !isDeleting) {
+            typedTextElement.innerHTML = text.substring(0, i + 1);
+            i++;
+            setTimeout(typeWriter, typingSpeed);
+        } else if (i === text.length && !isDeleting) {
+            // Espera un momento al terminar
+            setTimeout(() => {
+                isDeleting = true;
+                typeWriter();
+            }, 2000); // 2 segundos de pausa
+        } else if (isDeleting && i > 0) {
+            typedTextElement.innerHTML = text.substring(0, i - 1);
+            i--;
+            setTimeout(typeWriter, typingSpeed / 2);
+        } else {
+            // Reinicia la animación
+            isDeleting = false;
+            setTimeout(typeWriter, 500);
+        }
+    }
+    
+    // Inicia la animación
+    typeWriter();
+});
+</script>
         
       </div>
     </div>
