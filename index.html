@@ -79,14 +79,23 @@
         
         <p class="mbr-fonts-style mbr-text mbr-white mb-4 display-1">
     <!-- Versión Escritorio (una línea) -->
-    <strong id="typed-text-desktop" class="d-none d-md-block" style="border-right: 3px solid white; padding-right: 5px;"></strong>
+    <strong id="typed-text-desktop" class="d-none d-md-block"></strong>
+    <span id="cursor-desktop" class="d-none d-md-block" style="border-right: 3px solid white; animation: blink 1s infinite;"></span>
     
     <!-- Versión Móvil (dos líneas) -->
     <span class="d-block d-md-none">
-        <strong id="typed-text-mobile1" style="border-right: 3px solid white; padding-right: 5px;"></strong><br>
-        <strong id="typed-text-mobile2" style="border-right: 3px solid white; padding-right: 5px;"></strong>
+        <strong id="typed-text-mobile1"></strong><br>
+        <strong id="typed-text-mobile2"></strong>
+        <span id="cursor-mobile" style="border-right: 3px solid white; animation: blink 1s infinite;"></span>
     </span>
 </p>
+
+<style>
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+    }
+</style>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -94,7 +103,9 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // 1. ANIMACIÓN PARA ESCRITORIO (una línea)
     const desktopElement = document.getElementById("typed-text-desktop");
-    if (desktopElement) {
+    const cursorDesktop = document.getElementById("cursor-desktop");
+    
+    if (desktopElement && cursorDesktop) {
         let i = 0;
         let isDeletingDesktop = false;
         let typingSpeed = 150;
@@ -121,11 +132,12 @@ document.addEventListener("DOMContentLoaded", function() {
         typeWriterDesktop();
     }
     
-    // 2. ANIMACIÓN PARA MÓVIL (dos líneas)
+    // 2. ANIMACIÓN PARA MÓVIL (dos líneas - UN SOLO CURSOR)
     const mobile1 = document.getElementById("typed-text-mobile1");
     const mobile2 = document.getElementById("typed-text-mobile2");
+    const cursorMobile = document.getElementById("cursor-mobile");
     
-    if (mobile1 && mobile2) {
+    if (mobile1 && mobile2 && cursorMobile) {
         const part1 = "TAYU";
         const part2 = "LABS";
         let j = 0;
@@ -133,7 +145,24 @@ document.addEventListener("DOMContentLoaded", function() {
         let isDeletingMobile = false;
         let currentPart = 1; // 1 = escribiendo TAYU, 2 = escribiendo LABS
         
+        // Posiciona el cursor inicialmente
+        cursorMobile.style.position = 'absolute';
+        
+        function updateCursorPosition() {
+            if (currentPart === 1) {
+                // Cursor en primera línea (TAYU)
+                cursorMobile.style.top = '0';
+                cursorMobile.style.left = (j * 20) + 'px'; // Ajusta según tamaño de letra
+            } else {
+                // Cursor en segunda línea (LABS)
+                cursorMobile.style.top = '1.2em'; // Ajusta según interlineado
+                cursorMobile.style.left = (k * 20) + 'px';
+            }
+        }
+        
         function typeWriterMobile() {
+            updateCursorPosition();
+            
             if (!isDeletingMobile) {
                 // MODO ESCRITURA
                 if (currentPart === 1 && j < part1.length) {
@@ -141,7 +170,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     j++;
                     setTimeout(typeWriterMobile, 150);
                 } else if (currentPart === 1 && j === part1.length) {
-                    // Terminó TAYU, pasa a LABS
                     currentPart = 2;
                     setTimeout(typeWriterMobile, 500);
                 } else if (currentPart === 2 && k < part2.length) {
@@ -149,7 +177,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     k++;
                     setTimeout(typeWriterMobile, 150);
                 } else if (currentPart === 2 && k === part2.length) {
-                    // Terminó ambas partes, espera y empieza a borrar
                     setTimeout(() => {
                         isDeletingMobile = true;
                         typeWriterMobile();
@@ -169,7 +196,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     j--;
                     setTimeout(typeWriterMobile, 75);
                 } else if (currentPart === 1 && j === 0) {
-                    // Reinicia ciclo
                     isDeletingMobile = false;
                     setTimeout(typeWriterMobile, 500);
                 }
