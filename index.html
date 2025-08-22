@@ -78,41 +78,105 @@
         <h1 class="mbr-section-title mbr-fonts-style mbr-white mb-4 display-4"></h1>
         
         <p class="mbr-fonts-style mbr-text mbr-white mb-4 display-1">
-    <strong id="typed-text" style="border-right: 3px solid white; padding-right: 5px;"></strong>
+    <!-- Versión Escritorio (una línea) -->
+    <strong id="typed-text-desktop" class="d-none d-md-block" style="border-right: 3px solid white; padding-right: 5px;"></strong>
+    
+    <!-- Versión Móvil (dos líneas) -->
+    <span class="d-block d-md-none">
+        <strong id="typed-text-mobile1" style="border-right: 3px solid white; padding-right: 5px;"></strong><br>
+        <strong id="typed-text-mobile2" style="border-right: 3px solid white; padding-right: 5px;"></strong>
+    </span>
 </p>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     const text = "TAYULABS";
-    const typedTextElement = document.getElementById("typed-text");
-    let i = 0;
-    let isDeleting = false;
-    let typingSpeed = 150; // Velocidad de escritura (ms)
     
-    function typeWriter() {
-        if (i < text.length && !isDeleting) {
-            typedTextElement.innerHTML = text.substring(0, i + 1);
-            i++;
-            setTimeout(typeWriter, typingSpeed);
-        } else if (i === text.length && !isDeleting) {
-            // Espera un momento al terminar
-            setTimeout(() => {
-                isDeleting = true;
-                typeWriter();
-            }, 2000); // 2 segundos de pausa
-        } else if (isDeleting && i > 0) {
-            typedTextElement.innerHTML = text.substring(0, i - 1);
-            i--;
-            setTimeout(typeWriter, typingSpeed / 2);
-        } else {
-            // Reinicia la animación
-            isDeleting = false;
-            setTimeout(typeWriter, 500);
+    // 1. ANIMACIÓN PARA ESCRITORIO (una línea)
+    const desktopElement = document.getElementById("typed-text-desktop");
+    if (desktopElement) {
+        let i = 0;
+        let isDeletingDesktop = false;
+        let typingSpeed = 150;
+        
+        function typeWriterDesktop() {
+            if (i < text.length && !isDeletingDesktop) {
+                desktopElement.innerHTML = text.substring(0, i + 1);
+                i++;
+                setTimeout(typeWriterDesktop, typingSpeed);
+            } else if (i === text.length && !isDeletingDesktop) {
+                setTimeout(() => {
+                    isDeletingDesktop = true;
+                    typeWriterDesktop();
+                }, 2000);
+            } else if (isDeletingDesktop && i > 0) {
+                desktopElement.innerHTML = text.substring(0, i - 1);
+                i--;
+                setTimeout(typeWriterDesktop, typingSpeed / 2);
+            } else {
+                isDeletingDesktop = false;
+                setTimeout(typeWriterDesktop, 500);
+            }
         }
+        typeWriterDesktop();
     }
     
-    // Inicia la animación
-    typeWriter();
+    // 2. ANIMACIÓN PARA MÓVIL (dos líneas)
+    const mobile1 = document.getElementById("typed-text-mobile1");
+    const mobile2 = document.getElementById("typed-text-mobile2");
+    
+    if (mobile1 && mobile2) {
+        const part1 = "TAYU";
+        const part2 = "LABS";
+        let j = 0;
+        let k = 0;
+        let isDeletingMobile = false;
+        let currentPart = 1; // 1 = escribiendo TAYU, 2 = escribiendo LABS
+        
+        function typeWriterMobile() {
+            if (!isDeletingMobile) {
+                // MODO ESCRITURA
+                if (currentPart === 1 && j < part1.length) {
+                    mobile1.innerHTML = part1.substring(0, j + 1);
+                    j++;
+                    setTimeout(typeWriterMobile, 150);
+                } else if (currentPart === 1 && j === part1.length) {
+                    // Terminó TAYU, pasa a LABS
+                    currentPart = 2;
+                    setTimeout(typeWriterMobile, 500);
+                } else if (currentPart === 2 && k < part2.length) {
+                    mobile2.innerHTML = part2.substring(0, k + 1);
+                    k++;
+                    setTimeout(typeWriterMobile, 150);
+                } else if (currentPart === 2 && k === part2.length) {
+                    // Terminó ambas partes, espera y empieza a borrar
+                    setTimeout(() => {
+                        isDeletingMobile = true;
+                        typeWriterMobile();
+                    }, 2000);
+                }
+            } else {
+                // MODO BORRADO
+                if (currentPart === 2 && k > 0) {
+                    mobile2.innerHTML = part2.substring(0, k - 1);
+                    k--;
+                    setTimeout(typeWriterMobile, 75);
+                } else if (currentPart === 2 && k === 0) {
+                    currentPart = 1;
+                    setTimeout(typeWriterMobile, 500);
+                } else if (currentPart === 1 && j > 0) {
+                    mobile1.innerHTML = part1.substring(0, j - 1);
+                    j--;
+                    setTimeout(typeWriterMobile, 75);
+                } else if (currentPart === 1 && j === 0) {
+                    // Reinicia ciclo
+                    isDeletingMobile = false;
+                    setTimeout(typeWriterMobile, 500);
+                }
+            }
+        }
+        typeWriterMobile();
+    }
 });
 </script>
         
