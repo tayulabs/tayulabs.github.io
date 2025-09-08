@@ -52,7 +52,7 @@
 					<span></span>
 				</div>
 			</button>
-			<div class="collapse navbar-collapse" id="navbarSupportedContent">
+		 <div class="collapse navbar-collapse" id="navbarSupportedContent">
 				<ul class="navbar-nav nav-dropdown" data-app-modern-menu="true"><li class="nav-item">
 						<a class="nav-link link text-black text-primary display-7" href="index.html#pricing04-0">Servicios</a>
 					</li>
@@ -484,7 +484,8 @@ document.addEventListener("DOMContentLoaded", function() {
         </div>
         <div class="row justify-content-center">
             <div class="col-lg-8 mx-auto mbr-form" data-form-type="formoid">
-                <form action="https://mobirise.eu/" method="POST" class="mbr-form form-with-styler" data-form-title="Form Name"><input type="hidden" name="email" data-form-email="true" value="7Ki73A7PP8sr5898/W0jXpsdEI1MHUDbwxbpcLN9sKqn8oPZFHhb4DvDF/uLnOBpIAWOhC/i1jfgif8LiuWoXhjw4zrtVpAthXk6eZFZ5hjNKME4I5kYVyIy4ZFtQsNj">
+                <form action="https://formspree.io/f/YOUR_FORM_ID" method="POST" class="mbr-form form-with-styler" data-form-title="Form Name">
+                    <input type="hidden" name="email" data-form-email="true" value="YOUR_EMAIL_VALUE">
                     <div class="row">
                         <div hidden="hidden" data-form-alert="" class="alert alert-success col-12">Hemos recibido tu solicitud.</div>
                         <div hidden="hidden" data-form-alert-danger="" class="alert alert-danger col-12">
@@ -493,18 +494,59 @@ document.addEventListener("DOMContentLoaded", function() {
                     </div>
                     <div class="dragArea row">
                         <div class="col-md col-sm-12 form-group mb-3" data-for="name">
-                            <input type="text" name="name" placeholder="Nombre y Apellido" data-form-field="name" class="form-control" value="" id="name-contact-form-3-uUvM84qTGd">
+                            <input type="text" name="name" placeholder="Nombre y Apellido" data-form-field="name" class="form-control" value="" id="name-contact-form-3-uUvM84qTGd" required>
                         </div>
                         <div class="col-md col-sm-12 form-group mb-3" data-for="email">
-                            <input type="email" name="email" placeholder="Correo" data-form-field="email" class="form-control" value="" id="email-contact-form-3-uUvM84qTGd">
+                            <input type="email" name="email" placeholder="Correo" data-form-field="email" class="form-control" value="" id="email-contact-form-3-uUvM84qTGd" required>
                         </div>
                         
-                        <div class="col-12 form-group mb-3" data-for="textarea">
-                            <textarea name="textarea" placeholder="Mensaje" data-form-field="textarea" class="form-control" id="textarea-contact-form-3-uUvM84qTGd"></textarea>
+                        <div class="col-md col-sm-12 form-group mb-3" data-for="product-service">
+                            <select name="product-service" data-form-field="product-service" class="form-control" id="product-service-contact-form-3-uUvM84qTGd" required>
+                                <option value="">Seleccione un Producto o Servicio</option>
+                                <optgroup label="Productos">
+                                    <option value="Collar Inteligente para Animales">Collar Inteligente para Animales</option>
+                                    <option value="Smart PLC">Smart PLC</option>
+                                    <option value="Gateway de comunicaciones">Gateway de comunicaciones</option>
+                                </optgroup>
+                                <optgroup label="Servicios">
+                                    <option value="Plan Colaborativo">Plan Colaborativo</option>
+                                    <option value="Plan Corporativo">Plan Corporativo</option>
+                                </optgroup>
+                            </select>
                         </div>
-                        <div class="col-lg-12 col-md-12 col-sm-12 align-center mbr-section-btn"><button type="submit" class="btn btn-primary display-7">Enviar Mensaje</button></div>
+                        
+                        <div class="col-12 form-group mb-3" data-for="message">
+                            <textarea name="message" placeholder="Mensaje" data-form-field="message" class="form-control" id="message-contact-form-3-uUvM84qTGd" required></textarea>
+                        </div>
+                        
+                        <!-- Campo oculto para el producto/servicio seleccionado -->
+                        <input type="hidden" id="selected-product" name="selected-product">
+                        
+                        <div class="col-lg-12 col-md-12 col-sm-12 align-center mbr-section-btn">
+                            <button type="submit" class="btn btn-primary display-7">Enviar Mensaje</button>
+                        </div>
                     </div>
                 </form>
+                
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const productSelect = document.getElementById('product-service-contact-form-3-uUvM84qTGd');
+                        const hiddenProductField = document.getElementById('selected-product');
+                        
+                        // Actualizar el campo oculto cuando se selecciona una opción
+                        productSelect.addEventListener('change', function() {
+                            hiddenProductField.value = this.value;
+                        });
+                        
+                        // También actualizar al enviar el formulario por si acaso
+                        const form = document.querySelector('form');
+                        form.addEventListener('submit', function() {
+                            if (!hiddenProductField.value && productSelect.value) {
+                                hiddenProductField.value = productSelect.value;
+                            }
+                        });
+                    });
+                </script>
             </div>
         </div>
     </div>
