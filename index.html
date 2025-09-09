@@ -15,7 +15,6 @@
   <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
   <link rel="stylesheet" href="assets/bootstrap/css/bootstrap-grid.min.css">
   <link rel="stylesheet" href="assets/bootstrap/css/bootstrap-reboot.min.css">
-  <link rel="stylesheet" href="assets/parallax/jarallax.css">
   <link rel="stylesheet" href="assets/dropdown/css/style.css">
   <link rel="stylesheet" href="assets/socicon/css/styles.css">
   <link rel="stylesheet" href="assets/theme/css/style.css">
@@ -23,10 +22,35 @@
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Anton:400&display=swap"></noscript>
   <link rel="preload" href="https://fonts.googleapis.com/css?family=Big+Shoulders:100,200,300,400,500,600,700,800,900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Big+Shoulders:100,200,300,400,500,600,700,800,900&display=swap"></noscript>
-  <link rel="preload" as="style" href="assets/mobirise/css/mbr-additional.css?v=lepIJO"><link rel="stylesheet" href="assets/mobirise/css/mbr-additional.css?v=lepIJO" type="text/css">
+  <link rel="preload" as="style" href="assets/mobirise/css/mbr-additional.css?v=tz1HFp"><link rel="stylesheet" href="assets/mobirise/css/mbr-additional.css?v=tz1HFp" type="text/css">
 
-  
-  
+  <style>
+    /* Estilos para la animación de escritura */
+    .typewriter {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .typewriter-text {
+      display: inline-block;
+      overflow: hidden;
+      white-space: nowrap;
+      border-right: 3px solid white; /* Cursor */
+      animation: typing 4s steps(8, end) infinite, blink-caret 0.75s step-end infinite;
+    }
+    
+    @keyframes typing {
+      0% { width: 0; }
+      50% { width: 100%; }
+      80% { width: 100%; }
+      100% { width: 0; }
+    }
+    
+    @keyframes blink-caret {
+      from, to { border-color: transparent; }
+      50% { border-color: white; }
+    }
+  </style>
   
 </head>
 <body>
@@ -52,11 +76,11 @@
 					<span></span>
 				</div>
 			</button>
-		 <div class="collapse navbar-collapse" id="navbarSupportedContent">
+			<div class="collapse navbar-collapse" id="navbarSupportedContent">
 				<ul class="navbar-nav nav-dropdown" data-app-modern-menu="true"><li class="nav-item">
 						<a class="nav-link link text-black text-primary display-7" href="index.html#pricing04-0">Servicios</a>
 					</li>
-					<li class="nav-item">
+					<li class="nav-item"><a class="nav-link link text-black text-primary display-7" href="monitoreo-inteligente-gps.html">Productos</a></li><li class="nav-item">
 						<a class="nav-link link text-black text-primary display-7" href="index.html#about-us-12-uUvM84oNoO" aria-expanded="false">Nosotros</a>
 					</li>
 					<li class="nav-item">
@@ -78,133 +102,11 @@
         <h1 class="mbr-section-title mbr-fonts-style mbr-white mb-4 display-4"></h1>
         
         <p class="mbr-fonts-style mbr-text mbr-white mb-4 display-1">
-    <!-- Versión Escritorio (una línea) -->
-    <strong id="typed-text-desktop" class="d-none d-md-block"></strong>
-    <span id="cursor-desktop" class="d-none d-md-block" style="border-right: 3px solid white; animation: blink 1s infinite;"></span>
-    
-    <!-- Versión Móvil (dos líneas) -->
-    <span class="d-block d-md-none">
-        <strong id="typed-text-mobile1"></strong><br>
-        <strong id="typed-text-mobile2"></strong>
-        <span id="cursor-mobile" style="border-right: 3px solid white; animation: blink 1s infinite;"></span>
-    </span>
-</p>
-
-<style>
-    @keyframes blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0; }
-    }
-</style>
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const text = "TAYULABS";
-    
-    // 1. ANIMACIÓN PARA ESCRITORIO (una línea)
-    const desktopElement = document.getElementById("typed-text-desktop");
-    const cursorDesktop = document.getElementById("cursor-desktop");
-    
-    if (desktopElement && cursorDesktop) {
-        let i = 0;
-        let isDeletingDesktop = false;
-        let typingSpeed = 150;
-        
-        function typeWriterDesktop() {
-            if (i < text.length && !isDeletingDesktop) {
-                desktopElement.innerHTML = text.substring(0, i + 1);
-                i++;
-                setTimeout(typeWriterDesktop, typingSpeed);
-            } else if (i === text.length && !isDeletingDesktop) {
-                setTimeout(() => {
-                    isDeletingDesktop = true;
-                    typeWriterDesktop();
-                }, 2000);
-            } else if (isDeletingDesktop && i > 0) {
-                desktopElement.innerHTML = text.substring(0, i - 1);
-                i--;
-                setTimeout(typeWriterDesktop, typingSpeed / 2);
-            } else {
-                isDeletingDesktop = false;
-                setTimeout(typeWriterDesktop, 500);
-            }
-        }
-        typeWriterDesktop();
-    }
-    
-    // 2. ANIMACIÓN PARA MÓVIL (dos líneas - UN SOLO CURSOR)
-    const mobile1 = document.getElementById("typed-text-mobile1");
-    const mobile2 = document.getElementById("typed-text-mobile2");
-    const cursorMobile = document.getElementById("cursor-mobile");
-    
-    if (mobile1 && mobile2 && cursorMobile) {
-        const part1 = "TAYU";
-        const part2 = "LABS";
-        let j = 0;
-        let k = 0;
-        let isDeletingMobile = false;
-        let currentPart = 1; // 1 = escribiendo TAYU, 2 = escribiendo LABS
-        
-        // Posiciona el cursor inicialmente
-        cursorMobile.style.position = 'absolute';
-        
-        function updateCursorPosition() {
-            if (currentPart === 1) {
-                // Cursor en primera línea (TAYU)
-                cursorMobile.style.top = '0';
-                cursorMobile.style.left = (j * 20) + 'px'; // Ajusta según tamaño de letra
-            } else {
-                // Cursor en segunda línea (LABS)
-                cursorMobile.style.top = '1.2em'; // Ajusta según interlineado
-                cursorMobile.style.left = (k * 20) + 'px';
-            }
-        }
-        
-        function typeWriterMobile() {
-            updateCursorPosition();
-            
-            if (!isDeletingMobile) {
-                // MODO ESCRITURA
-                if (currentPart === 1 && j < part1.length) {
-                    mobile1.innerHTML = part1.substring(0, j + 1);
-                    j++;
-                    setTimeout(typeWriterMobile, 150);
-                } else if (currentPart === 1 && j === part1.length) {
-                    currentPart = 2;
-                    setTimeout(typeWriterMobile, 500);
-                } else if (currentPart === 2 && k < part2.length) {
-                    mobile2.innerHTML = part2.substring(0, k + 1);
-                    k++;
-                    setTimeout(typeWriterMobile, 150);
-                } else if (currentPart === 2 && k === part2.length) {
-                    setTimeout(() => {
-                        isDeletingMobile = true;
-                        typeWriterMobile();
-                    }, 2000);
-                }
-            } else {
-                // MODO BORRADO
-                if (currentPart === 2 && k > 0) {
-                    mobile2.innerHTML = part2.substring(0, k - 1);
-                    k--;
-                    setTimeout(typeWriterMobile, 75);
-                } else if (currentPart === 2 && k === 0) {
-                    currentPart = 1;
-                    setTimeout(typeWriterMobile, 500);
-                } else if (currentPart === 1 && j > 0) {
-                    mobile1.innerHTML = part1.substring(0, j - 1);
-                    j--;
-                    setTimeout(typeWriterMobile, 75);
-                } else if (currentPart === 1 && j === 0) {
-                    isDeletingMobile = false;
-                    setTimeout(typeWriterMobile, 500);
-                }
-            }
-        }
-        typeWriterMobile();
-    }
-});
-</script>
+          <span class="typewriter">
+            <span class="typewriter-text">TAYULABS</span>
+          </span>
+          <br>
+        </p>
         
       </div>
     </div>
@@ -255,7 +157,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     <h1 class="mbr-section-title mbr-fonts-style mb-4 display-2"><strong>MISIÓN
 </strong><div><strong><br></strong></div></h1>
                     <p class="mbr-text align-left mbr-fonts-style mb-4 display-7">En Taylabs AQ, damos vida a ideas tecnológicas ofreciendo servicios de diseño electrónico, desarrollo de hardware, creación de PCBs y programación de sistemas embebidos.
-<br>Creamos soluciones accesibles, duraderas y fáciles de usar, integrando tecnologías como IoT, automatización industrial y diseño 3D.
+<br>Creamos soluciones accesibles, duraderas y fáciles de usar, integrando tecnologías como IoT, automatización industrial và diseño 3D.
 <br>Nuestro compromiso es acercar la innovación a estudiantes, educadores, hobbistas y profesionales, brindando herramientas reales para aprender, crear y transformar.&nbsp;<br></p>
                     
                 </div>
@@ -268,11 +170,10 @@ document.addEventListener("DOMContentLoaded", function() {
     </div>
 </section>
 
-<section data-bs-version="5.1" class="gallery10 cid-uUvM84m5cx mbr-parallax-background" id="features-69-uUvM84m5cx">
+<section data-bs-version="5.1" class="gallery10 cid-uUvM84m5cx" id="features-69-uUvM84m5cx">
   
 
-<div class="mbr-overlay" style="opacity: 0.8; background-color: rgb(247, 247, 247);">
-</div>
+
   <div class="container-fluid">
 
       <div class="loop-container">
@@ -484,8 +385,7 @@ document.addEventListener("DOMContentLoaded", function() {
         </div>
         <div class="row justify-content-center">
             <div class="col-lg-8 mx-auto mbr-form" data-form-type="formoid">
-                <form action="https://formspree.io/f/YOUR_FORM_ID" method="POST" class="mbr-form form-with-styler" data-form-title="Form Name">
-                    <input type="hidden" name="email" data-form-email="true" value="YOUR_EMAIL_VALUE">
+                <form action="https://mobirise.eu/" method="POST" class="mbr-form form-with-styler" data-form-title="Form Name"><input type="hidden" name="email" data-form-email="true" value="IyORjMW4SvjkmQNq9ULAxinV+WSrRynmAOL1tpQjv5/adp0n4oLx4DvO4js/6yUz77TnC5i92UWVA0nhv3PTOxsZuCmUHYCytJGDmURwwE6l7KQ1WVyxX+gj6sHoMXHj">
                     <div class="row">
                         <div hidden="hidden" data-form-alert="" class="alert alert-success col-12">Hemos recibido tu solicitud.</div>
                         <div hidden="hidden" data-form-alert-danger="" class="alert alert-danger col-12">
@@ -494,59 +394,20 @@ document.addEventListener("DOMContentLoaded", function() {
                     </div>
                     <div class="dragArea row">
                         <div class="col-md col-sm-12 form-group mb-3" data-for="name">
-                            <input type="text" name="name" placeholder="Nombre y Apellido" data-form-field="name" class="form-control" value="" id="name-contact-form-3-uUvM84qTGd" required>
+                            <input type="text" name="name" placeholder="Nombre y Apellido" data-form-field="name" class="form-control" value="" id="name-contact-form-3-uUvM84qTGd">
                         </div>
                         <div class="col-md col-sm-12 form-group mb-3" data-for="email">
-                            <input type="email" name="email" placeholder="Correo" data-form-field="email" class="form-control" value="" id="email-contact-form-3-uUvM84qTGd" required>
+                            <input type="email" name="email" placeholder="Correo" data-form-field="email" class="form-control" value="" id="email-contact-form-3-uUvM84qTGd">
                         </div>
-                        
-						<div class="col-md col-sm-12 form-group mb-3" data-for="product-service">
-						    <select name="product-service" data-form-field="product-service" class="form-control" id="product-service-contact-form-3-uUvM84qTGd" required style="font-size: 0.9em; padding: 15px; height: 70px;">
-						        <option value="" selected disabled>Seleccione un Producto o Servicio</option>
-						        <optgroup label="Productos">
-						            <option value="Collar Inteligente para Animales">Collar Inteligente para Animales</option>
-						            <option value="Smart PLC">Smart PLC</option>
-						            <option value="Gateway de comunicaciones">Gateway de comunicaciones</option>
-						        </optgroup>
-						        <optgroup label="Servicios">
-						            <option value="Plan Colaborativo">Plan Colaborativo</option>
-						            <option value="Plan Corporativo">Plan Corporativo</option>
-						        </optgroup>
-						    </select>
-						</div>
-                        
-                        <div class="col-12 form-group mb-3" data-for="message">
-                            <textarea name="message" placeholder="Mensaje" data-form-field="message" class="form-control" id="message-contact-form-3-uUvM84qTGd" required></textarea>
+                        <div class="col-12 form-group mb-3 mb-3" data-for="url">
+                            <input type="url" name="url" placeholder="Producto o Servicio" data-form-field="url" class="form-control" value="" id="url-contact-form-3-uUvM84qTGd">
                         </div>
-                        
-                        <!-- Campo oculto para el producto/servicio seleccionado -->
-                        <input type="hidden" id="selected-product" name="selected-product">
-                        
-                        <div class="col-lg-12 col-md-12 col-sm-12 align-center mbr-section-btn">
-                            <button type="submit" class="btn btn-primary display-7">Enviar Mensaje</button>
+                        <div class="col-12 form-group mb-3" data-for="textarea">
+                            <textarea name="textarea" placeholder="Mensaje" data-form-field="textarea" class="form-control" id="textarea-contact-form-3-uUvM84qTGd"></textarea>
                         </div>
+                        <div class="col-lg-12 col-md-12 col-sm-12 align-center mbr-section-btn"><button type="submit" class="btn btn-primary display-7">Enviar Mensaje</button></div>
                     </div>
                 </form>
-                
-                <script>
-                    document.addEventListener('DOMContentLoaded', function() {
-                        const productSelect = document.getElementById('product-service-contact-form-3-uUvM84qTGd');
-                        const hiddenProductField = document.getElementById('selected-product');
-                        
-                        // Actualizar el campo oculto cuando se selecciona una opción
-                        productSelect.addEventListener('change', function() {
-                            hiddenProductField.value = this.value;
-                        });
-                        
-                        // También actualizar al enviar el formulario por si acaso
-                        const form = document.querySelector('form');
-                        form.addEventListener('submit', function() {
-                            if (!hiddenProductField.value && productSelect.value) {
-                                hiddenProductField.value = productSelect.value;
-                            }
-                        });
-                    });
-                </script>
             </div>
         </div>
     </div>
@@ -569,15 +430,15 @@ document.addEventListener("DOMContentLoaded", function() {
                             </div>
                         </div>
                     </div>
-                    <div id="bootstrap-accordion_9" class="panel-group accordionStyles accordion" role="tablist" aria-multiselectable="true">
+                    <div id="bootstrap-accordion_14" class="panel-group accordionStyles accordion" role="tablist" aria-multiselectable="true">
                         <div class="card">
                             <div class="card-header" role="tab" id="headingOne">
-                                <a role="button" class="panel-title collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse1_9" aria-expanded="false" aria-controls="collapse1">
+                                <a role="button" class="panel-title collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse1_14" aria-expanded="false" aria-controls="collapse1">
                                     <h6 class="panel-title-edit mbr-semibold mbr-fonts-style mb-0 display-5">¿Qué servicios ofrece Tayulabs?</h6>
                                     <span class="sign mbr-iconfont mobi-mbri-arrow-down"></span>
                                 </a>
                             </div>
-                            <div id="collapse1_9" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingOne" data-parent="#accordion" data-bs-parent="#bootstrap-accordion_9">
+                            <div id="collapse1_14" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingOne" data-parent="#accordion" data-bs-parent="#bootstrap-accordion_14">
                                 <div class="panel-body">
                                     <p class="mbr-fonts-style panel-text display-7">Ofrecemos una amplia gama de servicios que incluyen desarrollo de software a medida, diseño y fabricación de hardware, consultoría tecnológica y soluciones de inteligencia artificial.</p>
                                 </div>
@@ -585,12 +446,12 @@ document.addEventListener("DOMContentLoaded", function() {
                         </div>
                         <div class="card">
                             <div class="card-header" role="tab" id="headingOne">
-                                <a role="button" class="panel-title collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse2_9" aria-expanded="false" aria-controls="collapse2">
+                                <a role="button" class="panel-title collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse2_14" aria-expanded="false" aria-controls="collapse2">
                                     <h6 class="panel-title-edit mbr-semibold mbr-fonts-style mb-0 display-5">¿Ofrecen consultoría tecnológica?</h6>
                                     <span class="sign mbr-iconfont mobi-mbri-arrow-down"></span>
                                 </a>
                             </div>
-                            <div id="collapse2_9" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingOne" data-parent="#accordion" data-bs-parent="#bootstrap-accordion_9">
+                            <div id="collapse2_14" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingOne" data-parent="#accordion" data-bs-parent="#bootstrap-accordion_14">
                                 <div class="panel-body">
                                     <p class="mbr-fonts-style panel-text display-7">Sí, contamos con un equipo de expertos listos para asesorarte en cada etapa de tu proyecto tecnológico, garantizando resultados óptimos.</p>
                                 </div>
@@ -598,12 +459,12 @@ document.addEventListener("DOMContentLoaded", function() {
                         </div>
                         <div class="card">
                             <div class="card-header" role="tab" id="headingOne">
-                                <a role="button" class="panel-title collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse3_9" aria-expanded="false" aria-controls="collapse3">
+                                <a role="button" class="panel-title collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse3_14" aria-expanded="false" aria-controls="collapse3">
                                     <h6 class="panel-title-edit mbr-semibold mbr-fonts-style mb-0 display-5">¿Cómo es su proceso de desarrollo?</h6>
                                     <span class="sign mbr-iconfont mobi-mbri-arrow-down"></span>
                                 </a>
                             </div>
-                            <div id="collapse3_9" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingOne" data-parent="#accordion" data-bs-parent="#bootstrap-accordion_9">
+                            <div id="collapse3_14" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingOne" data-parent="#accordion" data-bs-parent="#bootstrap-accordion_14">
                                 <div class="panel-body">
                                     <p class="mbr-fonts-style panel-text display-7">Nuestro proceso de desarrollo se centra en la colaboración estrecha con el cliente, la agilidad y la entrega de productos de alta calidad que superan las expectativas.</p>
                                 </div>
@@ -611,12 +472,12 @@ document.addEventListener("DOMContentLoaded", function() {
                         </div>
                         <div class="card">
                             <div class="card-header" role="tab" id="headingOne">
-                                <a role="button" class="panel-title collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse4_9" aria-expanded="false" aria-controls="collapse4">
+                                <a role="button" class="panel-title collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse4_14" aria-expanded="false" aria-controls="collapse4">
                                     <h6 class="panel-title-edit mbr-semibold mbr-fonts-style mb-0 display-5">¿Se mantienen actualizados?</h6>
                                     <span class="sign mbr-iconfont mobi-mbri-arrow-down"></span>
                                 </a>
                             </div>
-                            <div id="collapse4_9" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingOne" data-parent="#accordion" data-bs-parent="#bootstrap-accordion_9">
+                            <div id="collapse4_14" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingOne" data-parent="#accordion" data-bs-parent="#bootstrap-accordion_14">
                                 <div class="panel-body">
                                     <p class="mbr-fonts-style panel-text display-7">Estamos constantemente investigando y aplicando las últimas tendencias tecnológicas para mantener nuestros servicios a la vanguardia del sector.</p>
                                 </div>
@@ -624,12 +485,12 @@ document.addEventListener("DOMContentLoaded", function() {
                         </div>
                         <div class="card">
                             <div class="card-header" role="tab" id="headingOne">
-                                <a role="button" class="panel-title collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse5_9" aria-expanded="false" aria-controls="collapse5">
+                                <a role="button" class="panel-title collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse5_14" aria-expanded="false" aria-controls="collapse5">
                                     <h6 class="panel-title-edit mbr-semibold mbr-fonts-style mb-0 display-5">¿Cómo puedo contactarlos?</h6>
                                     <span class="sign mbr-iconfont mobi-mbri-arrow-down"></span>
                                 </a>
                             </div>
-                            <div id="collapse5_9" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingOne" data-parent="#accordion" data-bs-parent="#bootstrap-accordion_9">
+                            <div id="collapse5_14" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingOne" data-parent="#accordion" data-bs-parent="#bootstrap-accordion_14">
                                 <div class="panel-body">
                                     <p class="mbr-fonts-style panel-text display-7">Puedes contactarnos a través de nuestro formulario web o directamente por correo electrónico para solicitar una cotización o discutir tu proyecto.</p>
                                 </div>
@@ -682,7 +543,18 @@ document.addEventListener("DOMContentLoaded", function() {
                 <p class="mbr-fonts-style copyright display-7"><strong>proyectos@tayulabs.com<br></strong><br>© 2025 Tayulabs. Todos los derechos reservados.</p>
             </div>
         </div>
-    </div>  
-</section><script src="assets/bootstrap/js/bootstrap.bundle.min.js"></script>  <script src="assets/parallax/jarallax.js"></script>  <script src="assets/smoothscroll/smooth-scroll.js"></script>  <script src="assets/ytplayer/index.js"></script>  <script src="assets/dropdown/js/navbar-dropdown.js"></script>  <script src="assets/vimeoplayer/player.js"></script>  <script src="assets/mbr-switch-arrow/mbr-switch-arrow.js"></script>  <script src="assets/theme/js/script.js"></script>  <script src="assets/formoid/formoid.min.js"></script>  
+    </div>
+</section>
+
+<script src="assets/bootstrap/js/bootstrap.bundle.min.js"></script>  
+<script src="assets/smoothscroll/smooth-scroll.js"></script>  
+<script src="assets/ytplayer/index.js"></script>  
+<script src="assets/dropdown/js/navbar-dropdown.js"></script>  
+<script src="assets/vimeoplayer/player.js"></script>  
+<script src="assets/mbr-switch-arrow/mbr-switch-arrow.js"></script>  
+<script src="assets/theme/js/script.js"></script>  
+<script src="assets/formoid/formoid.min.js"></script>  
+  
+  
 </body>
 </html>
