@@ -21,7 +21,15 @@
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Anton:400&display=swap"></noscript>
   <link rel="preload" href="https://fonts.googleapis.com/css?family=Big+Shoulders:100,200,300,400,500,600,700,800,900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Big+Shoulders:100,200,300,400,500,600,700,800,900&display=swap"></noscript>
-  <link rel="preload" as="style" href="assets/mobirise/css/mbr-additional.css?v=Ut9DEW"><link rel="stylesheet" href="assets/mobirise/css/mbr-additional.css?v=Ut9DEW" type="text/css">
+  <link rel="preload" as="style" href="assets/mobirise/css/mbr-additional.css?v=NX1N24"><link rel="stylesheet" href="assets/mobirise/css/mbr-additional.css?v=NX1N24" type="text/css">
+
+  
+  
+  
+
+<!-- Agrega este estilo para el menú desplegable -->
+
+
 <!-- Agrega este estilo para el menú desplegable -->
 <style>
 .dropdown-menu {
@@ -89,7 +97,7 @@
 			</div>
 			<div class="col-12 col-lg col-md-12">
 				<div class="text-wrapper align-left">
-					<h1 class="mbr-section-title mbr-fonts-style mb-4 display-2"><strong>Rastrea, Protege y Conecta.</strong><br><strong>Monitoreo Inteligente para tus <span id="animal-text" style="border-right: 3px solid #000; padding-right: 5px; color: rgb(130, 202, 85);"></span></strong></h1>
+					<h1 class="mbr-section-title mbr-fonts-style mb-4 display-2"><strong>Rastrea, Protege y Conecta. </strong><br><strong>Monitoreo Inteligente para tus Vacas.</strong></h1>
 					<p class="mbr-text mbr-fonts-style mb-4 display-7">
 						Solución diseñada y ensamblada en Ecuador para el control de animales en zonas rurales sin cobertura celular.
 					</p>
@@ -317,53 +325,5 @@
   
   
   <input name="animation" type="hidden">
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const animals = ["Vacas", "Caballos", "Ovejas", "Cabras"];
-    const animalElement = document.getElementById("animal-text");
-    let currentAnimalIndex = 0;
-    let currentCharIndex = 0;
-    let isDeleting = false;
-    let typingSpeed = 150;
-    
-    function typeAnimal() {
-        const currentAnimal = animals[currentAnimalIndex];
-        
-        if (!isDeleting && currentCharIndex < currentAnimal.length) {
-            // Escribiendo
-            animalElement.innerHTML = currentAnimal.substring(0, currentCharIndex + 1);
-            currentCharIndex++;
-            setTimeout(typeAnimal, typingSpeed);
-        } else if (!isDeleting && currentCharIndex === currentAnimal.length) {
-            // Pausa después de escribir
-            setTimeout(() => {
-                isDeleting = true;
-                typeAnimal();
-            }, 2000);
-        } else if (isDeleting && currentCharIndex > 0) {
-            // Borrando
-            animalElement.innerHTML = currentAnimal.substring(0, currentCharIndex - 1);
-            currentCharIndex--;
-            setTimeout(typeAnimal, typingSpeed / 2);
-        } else if (isDeleting && currentCharIndex === 0) {
-            // Cambiar al siguiente animal
-            isDeleting = false;
-            currentAnimalIndex = (currentAnimalIndex + 1) % animals.length;
-            setTimeout(typeAnimal, 500);
-        }
-    }
-    
-    // Iniciar la animación
-    typeAnimal();
-});
-</script>
-
-<script src="assets/vimeoplayer/player.js"></script>
-<script src="assets/mbr-switch-arrow/mbr-switch-arrow.js"></script>
-<script src="assets/formoid/formoid.min.js"></script>    
-  
-<input name="animation" type="hidden">
-
   </body>
 </html>
