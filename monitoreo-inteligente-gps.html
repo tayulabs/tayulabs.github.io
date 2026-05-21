@@ -1,514 +1,485 @@
 <!DOCTYPE html>
-<html  >
-<head>
-  <!-- Site made with Mobirise Website Builder v6.1.9, https://mobirise.com -->
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="generator" content="Mobirise v6.1.9, mobirise.com">
-  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
-  <link rel="shortcut icon" href="assets/images/tayu20labs-206x206.png" type="image/x-icon">
-  <meta name="description" content="Monitorea la ubicación de tu ganado en tiempo real y visualiza los datos desde la plataforma IoT, mejorando la gestión y control del rebaño de manera eficiente y segura.">
-  
-  
-  <title>Monitoreo Inteligente para tus Vacas.</title>
-  <link rel="stylesheet" href="assets/web/assets/mobirise-icons2/mobirise2.css">
-  <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
-  <link rel="stylesheet" href="assets/animatecss/animate.css">
-  <link rel="stylesheet" href="assets/dropdown/css/style.css">
-  <link rel="stylesheet" href="assets/socicon/css/styles.css">
-  <link rel="stylesheet" href="assets/theme/css/style.css">
-  <link rel="preload" href="https://fonts.googleapis.com/css?family=Anton:400&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Anton:400&display=swap"></noscript>
-  <link rel="preload" href="https://fonts.googleapis.com/css?family=Big+Shoulders:100,200,300,400,500,600,700,800,900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Big+Shoulders:100,200,300,400,500,600,700,800,900&display=swap"></noscript>
-  <link rel="preload" as="style" href="assets/mobirise/css/mbr-additional.css?v=izBeZg"><link rel="stylesheet" href="assets/mobirise/css/mbr-additional.css?v=izBeZg" type="text/css">
 
-  
-  
-  
+<html>
+<head>
+<!-- Site made with Mobirise Website Builder v6.1.9, https://mobirise.com -->
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="Mobirise v6.1.9, mobirise.com" name="generator"/>
+<meta content="width=device-width, initial-scale=1, minimum-scale=1" name="viewport"/>
+<link href="assets/images/tayu20labs-206x206.png" rel="shortcut icon" type="image/x-icon"/>
+<meta content="Monitorea la ubicación de tu ganado en tiempo real y visualiza los datos desde la plataforma IoT, mejorando la gestión y control del rebaño de manera eficiente y segura." name="description"/>
+<title>Monitoreo Inteligente para tus Vacas.</title>
+<link href="assets/web/assets/mobirise-icons2/mobirise2.css" rel="stylesheet"/>
+<link href="assets/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
+<link href="assets/animatecss/animate.css" rel="stylesheet"/>
+<link href="assets/dropdown/css/style.css" rel="stylesheet"/>
+<link href="assets/socicon/css/styles.css" rel="stylesheet"/>
+<link href="assets/theme/css/style.css" rel="stylesheet"/>
+<link as="style" href="https://fonts.googleapis.com/css?family=Anton:400&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'" rel="preload"/>
+<noscript><link href="https://fonts.googleapis.com/css?family=Anton:400&amp;display=swap" rel="stylesheet"/></noscript>
+<link as="style" href="https://fonts.googleapis.com/css?family=Big+Shoulders:100,200,300,400,500,600,700,800,900&amp;display=swap" onload="this.onload=null;this.rel='stylesheet'" rel="preload"/>
+<noscript><link href="https://fonts.googleapis.com/css?family=Big+Shoulders:100,200,300,400,500,600,700,800,900&amp;display=swap" rel="stylesheet"/></noscript>
+<link as="style" href="assets/mobirise/css/mbr-additional.css?v=izBeZg" rel="preload"/><link href="assets/mobirise/css/mbr-additional.css?v=izBeZg" rel="stylesheet" type="text/css"/>
+
+<style>
+/* Corrección móvil para textos pequeños en los planes */
+#pricing03-43 .item-content,
+#pricing03-43 .mbr-text,
+#pricing03-43 .counter-container,
+#pricing03-43 .counter-container ul,
+#pricing03-43 .counter-container li {
+  font-size: 1.05rem !important;
+  line-height: 1.45 !important;
+}
+
+#pricing03-43 .item-title {
+  font-size: 1.45rem !important;
+  line-height: 1.15 !important;
+}
+
+#pricing03-43 .item-subtitle {
+  font-size: 1.1rem !important;
+  line-height: 1.25 !important;
+}
+
+@media (max-width: 767px) {
+  #pricing03-43 .item-wrapper {
+    border-radius: 22px;
+    overflow: hidden;
+  }
+
+  #pricing03-43 .item-head {
+    padding: 28px 22px !important;
+  }
+
+  #pricing03-43 .item-content {
+    padding: 28px 22px !important;
+  }
+
+  #pricing03-43 .mbr-text,
+  #pricing03-43 .counter-container,
+  #pricing03-43 .counter-container li {
+    font-size: 1.08rem !important;
+    line-height: 1.45 !important;
+  }
+
+  #pricing03-43 .counter-container li {
+    margin-bottom: 12px !important;
+  }
+
+  #pricing03-43 .item-title {
+    font-size: 1.5rem !important;
+  }
+
+  #pricing03-43 .item-subtitle {
+    font-size: 1.15rem !important;
+  }
+}
+</style>
 </head>
 <body>
-  
-  <section data-bs-version="5.1" class="menu menu2 cid-uUvM84lxjn" once="menu" id="menu02-i">
-	
-
-	<nav class="navbar navbar-dropdown navbar-fixed-top navbar-expand-lg">
-		<div class="container">
-			<div class="navbar-brand">
-				<span class="navbar-logo">
-					<a href="index.html#hero-17-uUvM84l9o0">
-						<img src="assets/images/tayu20labs-206x206.png" alt="" style="height: 4.3rem;">
-					</a>
-				</span>
-				
-			</div>
-			<button class="navbar-toggler" type="button" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbarSupportedContent" data-bs-target="#navbarSupportedContent" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-				<div class="hamburger">
-					<span></span>
-					<span></span>
-					<span></span>
-					<span></span>
-				</div>
-			</button>
-			<div class="collapse navbar-collapse" id="navbarSupportedContent">
-				<ul class="navbar-nav nav-dropdown" data-app-modern-menu="true"><li class="nav-item">
-						<a class="nav-link link text-black display-7" href="desarrollo-hardware-software.html">Servicios</a>
-					</li>
-					<li class="nav-item dropdown"><a class="nav-link link dropdown-toggle text-black display-7" href="monitoreo-inteligente-gps.html" data-toggle="dropdown-submenu" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="true">Productos</a><div class="dropdown-menu" aria-labelledby="dropdown-778"><a class="dropdown-item text-black display-7" href="gateway-lorawan.html">GATEWAY LORAWAN</a><a class="show dropdown-item text-black display-7" href="alimentador-automatico.html">ALIMENTADOR AUTOMÁTICO&nbsp;</a><a class="dropdown-item text-black text-primary display-7" href="orion-gps.html">ORIÓN GPS PARA BANANERAS</a><a class="dropdown-item text-black display-7" href="monitoreo-inteligente-gps.html">MONITOREO GPS PARA GANADO</a></div></li><li class="nav-item">
-						<a class="nav-link link text-black display-7" href="nosotros.html" aria-expanded="false">Nosotros</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link link text-black display-7" href="nosotros.html#form02-1g">Contacto</a>
-					</li><li class="nav-item"><a class="nav-link link text-black display-7" href="blog-corp.html">Blog</a></li></ul>
-				
-				<div class="navbar-buttons mbr-section-btn"><a class="btn btn-info display-7" href="https://www.youtube.com/@elingetayu">Youtube</a></div>
-			</div>
-		</div>
-	</nav>
+<section class="menu menu2 cid-uUvM84lxjn" data-bs-version="5.1" id="menu02-i" once="menu">
+<nav class="navbar navbar-dropdown navbar-fixed-top navbar-expand-lg">
+<div class="container">
+<div class="navbar-brand">
+<span class="navbar-logo">
+<a href="index.html#hero-17-uUvM84l9o0">
+<img alt="" src="assets/images/tayu20labs-206x206.png" style="height: 4.3rem;"/>
+</a>
+</span>
+</div>
+<button aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler" data-bs-target="#navbarSupportedContent" data-bs-toggle="collapse" data-target="#navbarSupportedContent" data-toggle="collapse" type="button">
+<div class="hamburger">
+<span></span>
+<span></span>
+<span></span>
+<span></span>
+</div>
+</button>
+<div class="collapse navbar-collapse" id="navbarSupportedContent">
+<ul class="navbar-nav nav-dropdown" data-app-modern-menu="true"><li class="nav-item">
+<a class="nav-link link text-black display-7" href="desarrollo-hardware-software.html">Servicios</a>
+</li>
+<li class="nav-item dropdown"><a aria-expanded="true" class="nav-link link dropdown-toggle text-black display-7" data-bs-auto-close="outside" data-bs-toggle="dropdown" data-toggle="dropdown-submenu" href="monitoreo-inteligente-gps.html">Productos</a><div aria-labelledby="dropdown-778" class="dropdown-menu"><a class="dropdown-item text-black display-7" href="gateway-lorawan.html">GATEWAY LORAWAN</a><a class="show dropdown-item text-black display-7" href="alimentador-automatico.html">ALIMENTADOR AUTOMÁTICO </a><a class="dropdown-item text-black text-primary display-7" href="orion-gps.html">ORIÓN GPS PARA BANANERAS</a><a class="dropdown-item text-black display-7" href="monitoreo-inteligente-gps.html">MONITOREO GPS PARA GANADO</a></div></li><li class="nav-item">
+<a aria-expanded="false" class="nav-link link text-black display-7" href="nosotros.html">Nosotros</a>
+</li>
+<li class="nav-item">
+<a class="nav-link link text-black display-7" href="nosotros.html#form02-1g">Contacto</a>
+</li><li class="nav-item"><a class="nav-link link text-black display-7" href="blog-corp.html">Blog</a></li></ul>
+<div class="navbar-buttons mbr-section-btn"><a class="btn btn-info display-7" href="https://www.youtube.com/@elingetayu">Youtube</a></div>
+</div>
+</div>
+</nav>
 </section>
-
-<section data-bs-version="5.1" class="header1 cid-uWer8wxvyW" id="header01-r">
-	
-
-	
-	
-
-	<div class="container-fluid">
-		<div class="row justify-content-center">
-			<div class="col-12 col-md-12 col-lg-6 image-wrapper">
-				<img class="w-100" src="assets/images/datos20en20la20nube-1101x619.png" alt="Mobirise Website Builder">
-			</div>
-			<div class="col-12 col-lg col-md-12">
-				<div class="text-wrapper align-left">
-					<h1 class="mbr-section-title mbr-fonts-style mb-4 display-2"><strong>Rastrea, Protege y Conecta. </strong><br><strong>Monitoreo Inteligente para tus Vacas.</strong></h1>
-					<p class="mbr-text mbr-fonts-style mb-4 display-7">
+<section class="header1 cid-uWer8wxvyW" data-bs-version="5.1" id="header01-r">
+<div class="container-fluid">
+<div class="row justify-content-center">
+<div class="col-12 col-md-12 col-lg-6 image-wrapper">
+<img alt="Mobirise Website Builder" class="w-100" src="assets/images/datos20en20la20nube-1101x619.png"/>
+</div>
+<div class="col-12 col-lg col-md-12">
+<div class="text-wrapper align-left">
+<h1 class="mbr-section-title mbr-fonts-style mb-4 display-2"><strong>Rastrea, Protege y Conecta. </strong><br/><strong>Monitoreo Inteligente para tus Vacas.</strong></h1>
+<p class="mbr-text mbr-fonts-style mb-4 display-7">
 						Solución diseñada y ensamblada en Ecuador para el control de animales en zonas rurales sin cobertura celular.
 					</p>
-					
-				</div>
-			</div>
-		</div>
-	</div>
+</div>
+</div>
+</div>
+</div>
 </section>
-
-<section data-bs-version="5.1" class="header12 cid-uWvV44yGWD" id="header12-12">
-  
-  
-
-  <div class="text-center container">
-    
-    <div class="row justify-content-center">
-      <div class="col-md-12 content-head">
-        <h1 class="mbr-section-title mbr-fonts-style mb-4 display-2"><strong>Tecnología de precisión para el control de tus animales.</strong></h1>
-        <p class="mbr-text mbr-fonts-style mb-4 display-7">Nuestro sistema funciona mediante collares GPS inteligentes instalados en el ganado. Cada collar envía la ubicación y datos del animal a una antena central llamada Gateway LoRaWAN, la cual se encarga de recibir toda la información en campo.<br><br>El Gateway debe contar con conexión a internet, ya sea mediante red doméstica o internet satelital como Starlink. Una vez conectado, la información es enviada automáticamente a la plataforma de monitoreo, donde el cliente puede visualizar en tiempo real la ubicación y movimiento del ganado desde cualquier lugar.</p>
-        
-      </div>
-    </div>
-  </div>
+<section class="header12 cid-uWvV44yGWD" data-bs-version="5.1" id="header12-12">
+<div class="text-center container">
+<div class="row justify-content-center">
+<div class="col-md-12 content-head">
+<h1 class="mbr-section-title mbr-fonts-style mb-4 display-2"><strong>Tecnología de precisión para el control de tus animales.</strong></h1>
+<p class="mbr-text mbr-fonts-style mb-4 display-7">Nuestro sistema funciona mediante collares GPS inteligentes instalados en el ganado. Cada collar envía la ubicación y datos del animal a una antena central llamada Gateway LoRaWAN, la cual se encarga de recibir toda la información en campo.<br/><br/>El Gateway debe contar con conexión a internet, ya sea mediante red doméstica o internet satelital como Starlink. Una vez conectado, la información es enviada automáticamente a la plataforma de monitoreo, donde el cliente puede visualizar en tiempo real la ubicación y movimiento del ganado desde cualquier lugar.</p>
+</div>
+</div>
+</div>
 </section>
-
-<section data-bs-version="5.1" class="image02 cid-uWqmvnudsx" id="image02-u">
-  
-  
-  
-  <div class="container">
-    <div class="row">
-      <div class="col-12 col-lg-10">
-        <div class="row">
-          <div class="col-12 col-lg-5">
-            <div class="img-item">
-              <img class="w-100 mb-4" src="assets/images/whatsapp20image202026-04-2320at207.34.4920pm209-745x993.jpg" alt="Mobirise Website Builder">
-              
-              
-            </div>
-          </div>
-          <div class="col-12 col-lg">
-            <div class="img-item">
-              <img class="w-100 mb-4" src="assets/images/screenshot202026-05-2120123323-855x922.png" alt="Mobirise Website Builder">
-              
-              
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+<section class="image02 cid-uWqmvnudsx" data-bs-version="5.1" id="image02-u">
+<div class="container">
+<div class="row">
+<div class="col-12 col-lg-10">
+<div class="row">
+<div class="col-12 col-lg-5">
+<div class="img-item">
+<img alt="Mobirise Website Builder" class="w-100 mb-4" src="assets/images/whatsapp20image202026-04-2320at207.34.4920pm209-745x993.jpg"/>
+</div>
+</div>
+<div class="col-12 col-lg">
+<div class="img-item">
+<img alt="Mobirise Website Builder" class="w-100 mb-4" src="assets/images/screenshot202026-05-2120123323-855x922.png"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
 </section>
-
-<section data-bs-version="5.1" class="header1 cid-uWqBg0SKfu" id="header01-w">
-	
-
-	
-	
-
-	<div class="container-fluid">
-		<div class="row justify-content-center">
-			<div class="col-12 col-md-12 col-lg-6 image-wrapper">
-				<img class="w-100" src="assets/images/ganado-gps-1101x734.png" alt="Mobirise Website Builder">
-			</div>
-			<div class="col-12 col-lg col-md-12">
-				<div class="text-wrapper align-left">
-					<h1 class="mbr-section-title mbr-fonts-style mb-4 display-2"><strong>Controla cada movimiento.</strong></h1>
-					<p class="mbr-text mbr-fonts-style mb-4 display-7">
+<section class="header1 cid-uWqBg0SKfu" data-bs-version="5.1" id="header01-w">
+<div class="container-fluid">
+<div class="row justify-content-center">
+<div class="col-12 col-md-12 col-lg-6 image-wrapper">
+<img alt="Mobirise Website Builder" class="w-100" src="assets/images/ganado-gps-1101x734.png"/>
+</div>
+<div class="col-12 col-lg col-md-12">
+<div class="text-wrapper align-left">
+<h1 class="mbr-section-title mbr-fonts-style mb-4 display-2"><strong>Controla cada movimiento.</strong></h1>
+<p class="mbr-text mbr-fonts-style mb-4 display-7">
 						Un collar de monitoreo avanzado para ganado que combina tecnología GPS, LoRaWAN y sensores multi-eje para proporcionar datos detallados sobre la ubicación, el comportamiento y la salud de los animales. Cuenta con una batería de larga duración y está diseñado para una gestión ganadera eficiente y proactiva
 					</p>
-					
-				</div>
-			</div>
-		</div>
-	</div>
+</div>
+</div>
+</div>
+</div>
 </section>
-
-<section data-bs-version="5.1" class="features033 cid-uWerzxKmRJ" id="features033-s">
-	
-
-	
-	
-	<div class="container">
-		<div class="row justify-content-center">
-			<div class="col-12 content-head">
-				<div class="mbr-section-head mb-5">
-					<h4 class="mbr-section-title mbr-fonts-style align-center mb-0 display-2"><strong>Beneficios principales</strong></h4>
-					
-				</div>
-			</div>
-		</div>
-		<div class="row justify-content-center">
-			<div class="item features-without-image col-12 col-lg-4 active">
-				<div class="item-wrapper">
-					
-					<div class="card-box">
-						<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Cobertura de largo alcance</strong></h4>
-						<h5 class="card-text mbr-fonts-style mt-3 display-5">
-							<div><strong>Hasta 20 km en zonas abiertas gracias a LoRaWAN.</strong></div>
-						</h5>
-					</div>
-				</div>
-			</div>
-			<div class="item features-without-image col-12 col-lg-4">
-				<div class="item-wrapper">
-					
-					<div class="card-box">
-						<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Bajo consumo de energía</strong></h4>
-						<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Batería de litio con autonomía de 1 año dependiendo de la frecuencia de reporte.</strong></h5>
-					</div>
-				</div>
-			</div>
-			<div class="item features-without-image col-12 col-lg-4">
-				<div class="item-wrapper">
-					
-					<div class="card-box">
-						<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Geo-cercas inteligentes</strong></h4>
-						<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Define áreas de pastoreo y recibe alertas si un animal sale del perímetro.</strong></h5>
-					</div>
-				</div>
-			</div>
-			<div class="item features-without-image col-12 col-lg-4">
-				<div class="item-wrapper">
-					
-					<div class="card-box">
-						<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Precisión GPS confiable</strong></h4>
-						<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Ubicación con 1–2 m de precisión.</strong></h5>
-					</div>
-				</div>
-			</div>
-			
-			<div class="item features-without-image col-12 col-lg-4">
-				<div class="item-wrapper">
-					
-					<div class="card-box">
-						<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Aplicación web y móvil</strong></h4>
-						<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Visualiza la ubicación de tu ganado en tiempo real desde cualquier lugar.</strong></h5>
-					</div>
-				</div>
-			</div><div class="item features-without-image col-12 col-lg-4">
-				<div class="item-wrapper">
-					
-					<div class="card-box">
-						<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Fácil instalación</strong></h4>
-						<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Dispositivo plug and play, en 3 minutos tendrás todo configurado.</strong></h5>
-					</div>
-				</div>
-			</div><div class="item features-without-image col-12 col-lg-4">
-				<div class="item-wrapper">
-					
-					<div class="card-box">
-						<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Diseño robusto</strong></h4>
-						<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Listo para trabajo en campo: humedad, polvo y condiciones rurales.</strong></h5>
-					</div>
-				</div>
-			</div>
-
-			
-			<div class="item features-without-image col-12 col-lg-4">
-				<div class="item-wrapper">
-					
-					<div class="card-box">
-						<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Alertas de movimiento</strong></h4>
-						<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Sensores detectan actividad inusual (ej. robo o fuga) y envían notificaciones inmediatas.</strong></h5>
-					</div>
-				</div>
-			</div>
-			<div class="item features-without-image col-12 col-lg-4">
-				<div class="item-wrapper">
-					
-					<div class="card-box">
-						<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Historial de recorridos</strong></h4>
-						<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Consulta la trayectoria de cada animal para optimizar el manejo de potreros.</strong></h5>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
+<section class="features033 cid-uWerzxKmRJ" data-bs-version="5.1" id="features033-s">
+<div class="container">
+<div class="row justify-content-center">
+<div class="col-12 content-head">
+<div class="mbr-section-head mb-5">
+<h4 class="mbr-section-title mbr-fonts-style align-center mb-0 display-2"><strong>Beneficios principales</strong></h4>
+</div>
+</div>
+</div>
+<div class="row justify-content-center">
+<div class="item features-without-image col-12 col-lg-4 active">
+<div class="item-wrapper">
+<div class="card-box">
+<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Cobertura de largo alcance</strong></h4>
+<h5 class="card-text mbr-fonts-style mt-3 display-5">
+<div><strong>Hasta 20 km en zonas abiertas gracias a LoRaWAN.</strong></div>
+</h5>
+</div>
+</div>
+</div>
+<div class="item features-without-image col-12 col-lg-4">
+<div class="item-wrapper">
+<div class="card-box">
+<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Bajo consumo de energía</strong></h4>
+<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Batería de litio con autonomía de 1 año dependiendo de la frecuencia de reporte.</strong></h5>
+</div>
+</div>
+</div>
+<div class="item features-without-image col-12 col-lg-4">
+<div class="item-wrapper">
+<div class="card-box">
+<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Geo-cercas inteligentes</strong></h4>
+<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Define áreas de pastoreo y recibe alertas si un animal sale del perímetro.</strong></h5>
+</div>
+</div>
+</div>
+<div class="item features-without-image col-12 col-lg-4">
+<div class="item-wrapper">
+<div class="card-box">
+<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Precisión GPS confiable</strong></h4>
+<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Ubicación con 1–2 m de precisión.</strong></h5>
+</div>
+</div>
+</div>
+<div class="item features-without-image col-12 col-lg-4">
+<div class="item-wrapper">
+<div class="card-box">
+<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Aplicación web y móvil</strong></h4>
+<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Visualiza la ubicación de tu ganado en tiempo real desde cualquier lugar.</strong></h5>
+</div>
+</div>
+</div><div class="item features-without-image col-12 col-lg-4">
+<div class="item-wrapper">
+<div class="card-box">
+<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Fácil instalación</strong></h4>
+<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Dispositivo plug and play, en 3 minutos tendrás todo configurado.</strong></h5>
+</div>
+</div>
+</div><div class="item features-without-image col-12 col-lg-4">
+<div class="item-wrapper">
+<div class="card-box">
+<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Diseño robusto</strong></h4>
+<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Listo para trabajo en campo: humedad, polvo y condiciones rurales.</strong></h5>
+</div>
+</div>
+</div>
+<div class="item features-without-image col-12 col-lg-4">
+<div class="item-wrapper">
+<div class="card-box">
+<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Alertas de movimiento</strong></h4>
+<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Sensores detectan actividad inusual (ej. robo o fuga) y envían notificaciones inmediatas.</strong></h5>
+</div>
+</div>
+</div>
+<div class="item features-without-image col-12 col-lg-4">
+<div class="item-wrapper">
+<div class="card-box">
+<h4 class="card-title mbr-fonts-style mb-0 display-7"><strong>Historial de recorridos</strong></h4>
+<h5 class="card-text mbr-fonts-style mt-3 display-5"><strong>Consulta la trayectoria de cada animal para optimizar el manejo de potreros.</strong></h5>
+</div>
+</div>
+</div>
+</div>
+</div>
 </section>
-
-<section data-bs-version="5.1" class="pricing03 cid-vkh91ssGkr" id="pricing03-43">
-  
-
-  
-  <div class="container">
-    <div class="row justify-content-center">
-      <div class="col-12 content-head">
-        <div class="mbr-section-head mb-5">
-          <h4 class="mbr-section-title mbr-fonts-style align-center mb-0 display-2"><strong>Soluciones de seguridad para el campo moderno</strong></h4>
-          <h5 class="mbr-section-subtitle mbr-fonts-style align-center mt-4 mb-0 display-7">Los planes se adaptan a la infraestructura disponible en cada finca.<div>Las versiones sin sistema solar están diseñadas para fincas que ya cuentan con energía eléctrica e internet en el punto de instalación.</div><div><br></div><div>Las versiones autónomas incluyen sistema solar completo para operar en zonas remotas sin necesidad de red eléctrica, permitiendo un funcionamiento continuo del sistema GPS y la red LoRaWAN en campo.</div></h5>
-        </div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb active">
-        <div class="item-wrapper">
-          <div class="item-head">
-            <h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>PLAN STARTER 10</strong></h5>
-            <h6 class="item-subtitle mbr-fonts-style mb-0 display-7">
-              <strong>$3600</strong></h6>
-          </div>
-          <div class="item-content">
-            <p class="mbr-text mbr-fonts-style display-7">
+<section class="pricing03 cid-vkh91ssGkr" data-bs-version="5.1" id="pricing03-43">
+<div class="container">
+<div class="row justify-content-center">
+<div class="col-12 content-head">
+<div class="mbr-section-head mb-5">
+<h4 class="mbr-section-title mbr-fonts-style align-center mb-0 display-2"><strong>Soluciones de seguridad para el campo moderno</strong></h4>
+<h5 class="mbr-section-subtitle mbr-fonts-style align-center mt-4 mb-0 display-7">Los planes se adaptan a la infraestructura disponible en cada finca.<div>Las versiones sin sistema solar están diseñadas para fincas que ya cuentan con energía eléctrica e internet en el punto de instalación.</div><div><br/></div><div>Las versiones autónomas incluyen sistema solar completo para operar en zonas remotas sin necesidad de red eléctrica, permitiendo un funcionamiento continuo del sistema GPS y la red LoRaWAN en campo.</div></h5>
+</div>
+</div>
+</div>
+<div class="row">
+<div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb active">
+<div class="item-wrapper">
+<div class="item-head">
+<h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>PLAN STARTER 10</strong></h5>
+<h6 class="item-subtitle mbr-fonts-style mb-0 display-7">
+<strong>$3600</strong></h6>
+</div>
+<div class="item-content">
+<p class="mbr-text mbr-fonts-style display-7">
               Ideal para pequeñas operaciones ganaderas que ya cuentan con energía eléctrica e internet en finca. Permite monitoreo GPS básico del ganado mediante red LoRaWAN.
             </p>
-            <div class="mb-4">
-            </div>
-            <div class="counter-container mbr-text mbr-fonts-style display-7">
-              <ul>
-                <li>10x Collares GPS</li><li>1x Antena Lorawan 15km</li><li>1x Estructura Metálica</li><li>Instalación <strong>GRATIS</strong></li>
-              </ul>
-            </div>
-          </div>
-          <div class="mbr-section-btn item-footer"><a href="https://wa.me/593995546906" class="btn item-btn btn-info display-7">COMPRAR</a></div>
-        </div>
-      </div><div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb">
-        <div class="item-wrapper">
-          <div class="item-head">
-            <h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>PLAN STARTER 20</strong></h5>
-            <h6 class="item-subtitle mbr-fonts-style mb-0 display-7">
-              <strong>$5600</strong></h6>
-          </div>
-          <div class="item-content">
-            <p class="mbr-text mbr-fonts-style display-7">
+<div class="mb-4">
+</div>
+<div class="counter-container mbr-text mbr-fonts-style display-7">
+<ul>
+<li>10x Collares GPS</li><li>1x Antena Lorawan 15km</li><li>1x Estructura Metálica</li><li>Instalación <strong>GRATIS</strong></li>
+</ul>
+</div>
+</div>
+<div class="mbr-section-btn item-footer"><a class="btn item-btn btn-info display-7" href="https://wa.me/593995546906">COMPRAR</a></div>
+</div>
+</div><div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb">
+<div class="item-wrapper">
+<div class="item-head">
+<h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>PLAN STARTER 20</strong></h5>
+<h6 class="item-subtitle mbr-fonts-style mb-0 display-7">
+<strong>$5600</strong></h6>
+</div>
+<div class="item-content">
+<p class="mbr-text mbr-fonts-style display-7">
               Diseñado para haciendas medianas que requieren mayor cobertura y control de trazabilidad del ganado en tiempo real usando infraestructura existente.
             </p>
-            <div class="mb-4">
-            </div>
-            <div class="counter-container mbr-text mbr-fonts-style display-7">
-              <ul>
-                <li>20x Collares GPS</li><li>1x Antena Lorawan 15km</li><li>1x Estructura Metálica</li><li>Instalación <strong>GRATIS</strong></li>
-              </ul>
-            </div>
-          </div>
-          <div class="mbr-section-btn item-footer"><a href="https://wa.me/593995546906" class="btn item-btn btn-info display-7">COMPRAR</a></div>
-        </div>
-      </div><div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb">
-        <div class="item-wrapper">
-          <div class="item-head">
-            <h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>PLAN SOLAR TRACK 10</strong></h5>
-            <h6 class="item-subtitle mbr-fonts-style mb-0 display-7">
-              <strong>$5500</strong></h6>
-          </div>
-          <div class="item-content">
-            <p class="mbr-text mbr-fonts-style display-7">
+<div class="mb-4">
+</div>
+<div class="counter-container mbr-text mbr-fonts-style display-7">
+<ul>
+<li>20x Collares GPS</li><li>1x Antena Lorawan 15km</li><li>1x Estructura Metálica</li><li>Instalación <strong>GRATIS</strong></li>
+</ul>
+</div>
+</div>
+<div class="mbr-section-btn item-footer"><a class="btn item-btn btn-info display-7" href="https://wa.me/593995546906">COMPRAR</a></div>
+</div>
+</div><div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb">
+<div class="item-wrapper">
+<div class="item-head">
+<h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>PLAN SOLAR TRACK 10</strong></h5>
+<h6 class="item-subtitle mbr-fonts-style mb-0 display-7">
+<strong>$5500</strong></h6>
+</div>
+<div class="item-content">
+<p class="mbr-text mbr-fonts-style display-7">
               Solución autónoma para zonas remotas sin energía eléctrica. Incluye sistema solar completo para operación continua del monitoreo GPS.
             </p>
-            <div class="mb-4">
-            </div>
-            <div class="counter-container mbr-text mbr-fonts-style display-7">
-              <ul>
-                <li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">10x Collares GPS</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">
-</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">1x Antena Lorawan 15km
-</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">1x Internet Satelital Starlink</span><br></li><li>1x Bateria 24V 100A</li><li>1x Panel Solar 556W</li><li>1x Controlador 30A</li><li>1x Gabinete Plástico IP67&nbsp;</li><li>1x conectores MC4 para sistema Solar</li><li>2x Estructura Metálica&nbsp;</li><li>Instalación <strong>GRATIS</strong></li>
-              </ul>
-            </div>
-          </div>
-          <div class="mbr-section-btn item-footer"><a href="https://wa.me/593995546906" class="btn item-btn btn-info display-7">COMPRAR</a></div>
-        </div>
-      </div><div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb">
-        <div class="item-wrapper">
-          <div class="item-head">
-            <h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>PLAN SOLAR TRACK 20</strong></h5>
-            <h6 class="item-subtitle mbr-fonts-style mb-0 display-7">
-              <strong>$7400</strong></h6>
-          </div>
-          <div class="item-content">
-            <p class="mbr-text mbr-fonts-style display-7">
+<div class="mb-4">
+</div>
+<div class="counter-container mbr-text mbr-fonts-style display-7">
+<ul>
+<li>10x Collares GPS</li><li>1x Antena Lorawan 15km
+</li><li>1x Internet Satelital Starlink<br/></li><li>1x Bateria 24V 100A</li><li>1x Panel Solar 556W</li><li>1x Controlador 30A</li><li>1x Gabinete Plástico IP67 </li><li>1x conectores MC4 para sistema Solar</li><li>2x Estructura Metálica </li><li>Instalación <strong>GRATIS</strong></li>
+</ul>
+</div>
+</div>
+<div class="mbr-section-btn item-footer"><a class="btn item-btn btn-info display-7" href="https://wa.me/593995546906">COMPRAR</a></div>
+</div>
+</div><div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb">
+<div class="item-wrapper">
+<div class="item-head">
+<h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>PLAN SOLAR TRACK 20</strong></h5>
+<h6 class="item-subtitle mbr-fonts-style mb-0 display-7">
+<strong>$7400</strong></h6>
+</div>
+<div class="item-content">
+<p class="mbr-text mbr-fonts-style display-7">
               Ideal para operaciones ganaderas medianas en campo abierto. Sistema totalmente autónomo con energía solar y conectividad LoRaWAN de largo alcance.
             </p>
-            <div class="mb-4">
-            </div>
-            <div class="counter-container mbr-text mbr-fonts-style display-7">
-              <ul>
-                <li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">20x Collares GPS</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">
-</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">1x Antena Lorawan 15km
-</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">1x Internet Satelital Starlink</span><br></li><li>1x Bateria 24V 100A</li><li>1x Panel Solar 556W</li><li>1x Controlador 30A</li><li>1x Gabinete Plástico IP67&nbsp;</li><li>1x conectores MC4 para sistema Solar</li><li>2x Estructura Metálica&nbsp;</li><li>Instalación <strong>GRATIS</strong></li>
-              </ul>
-            </div>
-          </div>
-          <div class="mbr-section-btn item-footer"><a href="https://wa.me/593995546906" class="btn item-btn btn-info display-7">COMPRAR</a></div>
-        </div>
-      </div><div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb">
-        <div class="item-wrapper">
-          <div class="item-head">
-            <h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>PLAN SOLAR TRACK 50</strong></h5>
-            <h6 class="item-subtitle mbr-fonts-style mb-0 display-7">
-              <strong>$12300</strong></h6>
-          </div>
-          <div class="item-content">
-            <p class="mbr-text mbr-fonts-style display-7">
+<div class="mb-4">
+</div>
+<div class="counter-container mbr-text mbr-fonts-style display-7">
+<ul>
+<li>20x Collares GPS</li><li>1x Antena Lorawan 15km
+</li><li>1x Internet Satelital Starlink<br/></li><li>1x Bateria 24V 100A</li><li>1x Panel Solar 556W</li><li>1x Controlador 30A</li><li>1x Gabinete Plástico IP67 </li><li>1x conectores MC4 para sistema Solar</li><li>2x Estructura Metálica </li><li>Instalación <strong>GRATIS</strong></li>
+</ul>
+</div>
+</div>
+<div class="mbr-section-btn item-footer"><a class="btn item-btn btn-info display-7" href="https://wa.me/593995546906">COMPRAR</a></div>
+</div>
+</div><div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb">
+<div class="item-wrapper">
+<div class="item-head">
+<h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>PLAN SOLAR TRACK 50</strong></h5>
+<h6 class="item-subtitle mbr-fonts-style mb-0 display-7">
+<strong>$12300</strong></h6>
+</div>
+<div class="item-content">
+<p class="mbr-text mbr-fonts-style display-7">
               Plan avanzado para grandes haciendas ganaderas. Permite monitoreo simultáneo de múltiples animales con infraestructura solar industrial y cobertura extendida.
             </p>
-            <div class="mb-4">
-            </div>
-            <div class="counter-container mbr-text mbr-fonts-style display-7">
-              <ul>
-                <li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">50x Collares GPS</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">
-</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">1x Antena Lorawan 15km
-</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">1x Internet Satelital Starlink</span><br></li><li>1x Bateria 24V 100A</li><li>1x Panel Solar 556W</li><li>1x Controlador 30A</li><li>1x Gabinete Plástico IP67&nbsp;</li><li>1x conectores MC4 para sistema Solar</li><li>2x Estructura Metálica&nbsp;</li><li>Instalación <strong>GRATIS</strong></li>
-              </ul>
-            </div>
-          </div>
-          <div class="mbr-section-btn item-footer"><a href="https://wa.me/593995546906" class="btn item-btn btn-info display-7">COMPRAR</a></div>
-        </div>
-      </div><div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb">
-        <div class="item-wrapper">
-          <div class="item-head">
-            <h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>Plan Patrimonio</strong></h5>
-            <h6 class="item-subtitle mbr-fonts-style mb-0 display-7"><strong>Consultar precio Especial</strong></h6>
-          </div>
-          <div class="item-content">
-            <p class="mbr-text mbr-fonts-style display-7">
+<div class="mb-4">
+</div>
+<div class="counter-container mbr-text mbr-fonts-style display-7">
+<ul>
+<li>50x Collares GPS</li><li>1x Antena Lorawan 15km
+</li><li>1x Internet Satelital Starlink<br/></li><li>1x Bateria 24V 100A</li><li>1x Panel Solar 556W</li><li>1x Controlador 30A</li><li>1x Gabinete Plástico IP67 </li><li>1x conectores MC4 para sistema Solar</li><li>2x Estructura Metálica </li><li>Instalación <strong>GRATIS</strong></li>
+</ul>
+</div>
+</div>
+<div class="mbr-section-btn item-footer"><a class="btn item-btn btn-info display-7" href="https://wa.me/593995546906">COMPRAR</a></div>
+</div>
+</div><div class="item features-without-image col-12 col-md-6 col-lg-6 item-mb">
+<div class="item-wrapper">
+<div class="item-head">
+<h5 class="item-title mbr-fonts-style mb-0 display-5"><strong>Plan Patrimonio</strong></h5>
+<h6 class="item-subtitle mbr-fonts-style mb-0 display-7"><strong>Consultar precio Especial</strong></h6>
+</div>
+<div class="item-content">
+<p class="mbr-text mbr-fonts-style display-7">
               Diseñado para grandes operaciones ganaderas y proyectos de trazabilidad a gran escala. Permite monitorear más de 500 animales en tiempo real mediante una infraestructura LoRaWAN y solar preparada para expansión futura.
             </p>
-            <div class="mb-4">
-            </div>
-            <div class="counter-container mbr-text mbr-fonts-style display-7">
-              <ul>
-                <li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">500x Collares GPS</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">
-</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">1x Antena Lorawan 15km
-</span></li><li><span style="font-size: calc(1.21rem + 0.39 * ((100vw - 62rem) / 25));">1x Internet Satelital Starlink</span><br></li><li>1x Bateria 24V 100A</li><li>1x Panel Solar 556W</li><li>1x Controlador 30A</li><li>1x Gabinete Plástico IP67&nbsp;</li><li>1x conectores MC4 para sistema Solar</li><li>2x Estructura Metálica&nbsp;</li><li>Instalación <strong>GRATIS</strong></li>
-              </ul>
-            </div>
-          </div>
-          <div class="mbr-section-btn item-footer"><a href="https://wa.me/593995546906" class="btn item-btn btn-info display-7">COMPRAR</a></div>
-        </div>
-      </div>
-      
-      
-    </div>
-  </div>
+<div class="mb-4">
+</div>
+<div class="counter-container mbr-text mbr-fonts-style display-7">
+<ul>
+<li>500x Collares GPS</li><li>1x Antena Lorawan 15km
+</li><li>1x Internet Satelital Starlink<br/></li><li>1x Bateria 24V 100A</li><li>1x Panel Solar 556W</li><li>1x Controlador 30A</li><li>1x Gabinete Plástico IP67 </li><li>1x conectores MC4 para sistema Solar</li><li>2x Estructura Metálica </li><li>Instalación <strong>GRATIS</strong></li>
+</ul>
+</div>
+</div>
+<div class="mbr-section-btn item-footer"><a class="btn item-btn btn-info display-7" href="https://wa.me/593995546906">COMPRAR</a></div>
+</div>
+</div>
+</div>
+</div>
 </section>
-
-<section data-bs-version="5.1" class="gallery3 cid-vhVWvT7ocS" id="gallery03-3h">
-    
-    
-    <div class="container-fluid">
-      <div class="row justify-content-center">
-        <div class="col-12 content-head">
-          <div class="mbr-section-head mb-5">
-            <h4 class="mbr-section-title mbr-fonts-style align-center mb-0 display-2">
-              <strong>Galeria</strong></h4>
-            
-          </div>
-        </div>
-      </div>
-      <div class="row">
-        <div class="item features-image col-12 col-md-6 col-lg-3">
-          <div class="item-wrapper">
-            <div class="item-img">
-              <img src="assets/images/gemini-generated-image-licygmlicygmlicy-518x690.png" alt="Mobirise Website Builder" title="" data-slide-to="0" data-bs-slide-to="0">
-            </div>
-            
-          </div>
-        </div>
-        <div class="item features-image col-12 col-md-6 col-lg-3">
-          <div class="item-wrapper">
-            <div class="item-img">
-              <img src="assets/images/whatsapp20image202026-04-2320at207.37.0820pm-518x691.jpg" alt="Mobirise Website Builder" title="" data-slide-to="1" data-bs-slide-to="1">
-            </div>
-            
-          </div>
-        </div>
-        <div class="item features-image col-12 col-md-6 col-lg-3">
-          <div class="item-wrapper">
-            <div class="item-img">
-              <img src="assets/images/whatsapp20image202026-04-2320at207.34.4920pm204-518x691.jpeg" alt="Mobirise Website Builder" title="" data-slide-to="2" data-bs-slide-to="2">
-            </div>
-            
-          </div>
-        </div>
-        <div class="item features-image col-12 col-md-6 col-lg-3">
-          <div class="item-wrapper">
-            <div class="item-img">
-              <img src="assets/images/whatsapp20image202026-04-2320at207.34.4920pm203-518x691.jpg" alt="Mobirise Website Builder" title="" data-slide-to="3" data-bs-slide-to="3">
-            </div>
-            
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-<section data-bs-version="5.1" class="footer3 cid-uUvM84rd9B" once="footers" id="footer03-j">
-
-        
-
-    
-
-    <div class="container">
-        <div class="row">
-            
-
-            <div class="col-12 mt-4">
-                <div class="social-row">
-                    <div class="soc-item">
-                        <a href="https://wa.me/593995546906">
-                            <span class="mbr-iconfont display-7 socicon-whatsapp socicon"></span>
-                        </a>
-                    </div>
-                    <div class="soc-item">
-                        <a href="https://www.youtube.com/@elingetayu" target="_blank">
-                            <span class="mbr-iconfont socicon-youtube socicon"></span>
-                        </a>
-                    </div>
-                    <div class="soc-item">
-                        <a href="https://www.instagram.com/tayulabs" target="_blank">
-                            <span class="mbr-iconfont socicon-instagram socicon"></span>
-                        </a>
-                    </div>
-                    <div class="soc-item">
-                        <a href="https://www.linkedin.com/company/tayulabs/?viewAsMember=true" target="_blank">
-                            <span class="mbr-iconfont socicon-linkedin socicon"></span>
-                        </a>
-                    </div>
-                    
-                </div>
-            </div>
-            <div class="col-12 mt-5">
-                <p class="mbr-fonts-style copyright display-7"><strong>proyectos@tayulabs.com<br></strong><br>© 2025 Tayulabs. Todos los derechos reservados.</p>
-            </div>
-        </div>
-    </div>
-</section><section class="display-7" style="padding: 0;align-items: center;justify-content: center;flex-wrap: wrap;    align-content: center;display: flex;position: relative;height: 4rem;"><a href="https://mobiri.se/" style="flex: 1 1;height: 4rem;position: absolute;width: 100%;z-index: 1;"><img alt="" style="height: 4rem;" src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=="></a><p style="margin: 0;text-align: center;" class="display-7">&#8204;</p><a style="z-index:1" href="https://mobirise.com/builder/ai-website-maker.html">Free AI Website Maker</a></section><script src="assets/bootstrap/js/bootstrap.bundle.min.js"></script>  <script src="assets/smoothscroll/smooth-scroll.js"></script>  <script src="assets/ytplayer/index.js"></script>  <script src="assets/dropdown/js/navbar-dropdown.js"></script>  <script src="assets/theme/js/script.js"></script>  
-  
-  
-  <input name="animation" type="hidden">
-  </body>
+<section class="gallery3 cid-vhVWvT7ocS" data-bs-version="5.1" id="gallery03-3h">
+<div class="container-fluid">
+<div class="row justify-content-center">
+<div class="col-12 content-head">
+<div class="mbr-section-head mb-5">
+<h4 class="mbr-section-title mbr-fonts-style align-center mb-0 display-2">
+<strong>Galeria</strong></h4>
+</div>
+</div>
+</div>
+<div class="row">
+<div class="item features-image col-12 col-md-6 col-lg-3">
+<div class="item-wrapper">
+<div class="item-img">
+<img alt="Mobirise Website Builder" data-bs-slide-to="0" data-slide-to="0" src="assets/images/gemini-generated-image-licygmlicygmlicy-518x690.png" title=""/>
+</div>
+</div>
+</div>
+<div class="item features-image col-12 col-md-6 col-lg-3">
+<div class="item-wrapper">
+<div class="item-img">
+<img alt="Mobirise Website Builder" data-bs-slide-to="1" data-slide-to="1" src="assets/images/whatsapp20image202026-04-2320at207.37.0820pm-518x691.jpg" title=""/>
+</div>
+</div>
+</div>
+<div class="item features-image col-12 col-md-6 col-lg-3">
+<div class="item-wrapper">
+<div class="item-img">
+<img alt="Mobirise Website Builder" data-bs-slide-to="2" data-slide-to="2" src="assets/images/whatsapp20image202026-04-2320at207.34.4920pm204-518x691.jpeg" title=""/>
+</div>
+</div>
+</div>
+<div class="item features-image col-12 col-md-6 col-lg-3">
+<div class="item-wrapper">
+<div class="item-img">
+<img alt="Mobirise Website Builder" data-bs-slide-to="3" data-slide-to="3" src="assets/images/whatsapp20image202026-04-2320at207.34.4920pm203-518x691.jpg" title=""/>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="footer3 cid-uUvM84rd9B" data-bs-version="5.1" id="footer03-j" once="footers">
+<div class="container">
+<div class="row">
+<div class="col-12 mt-4">
+<div class="social-row">
+<div class="soc-item">
+<a href="https://wa.me/593995546906">
+<span class="mbr-iconfont display-7 socicon-whatsapp socicon"></span>
+</a>
+</div>
+<div class="soc-item">
+<a href="https://www.youtube.com/@elingetayu" target="_blank">
+<span class="mbr-iconfont socicon-youtube socicon"></span>
+</a>
+</div>
+<div class="soc-item">
+<a href="https://www.instagram.com/tayulabs" target="_blank">
+<span class="mbr-iconfont socicon-instagram socicon"></span>
+</a>
+</div>
+<div class="soc-item">
+<a href="https://www.linkedin.com/company/tayulabs/?viewAsMember=true" target="_blank">
+<span class="mbr-iconfont socicon-linkedin socicon"></span>
+</a>
+</div>
+</div>
+</div>
+<div class="col-12 mt-5">
+<p class="mbr-fonts-style copyright display-7"><strong>proyectos@tayulabs.com<br/></strong><br/>© 2025 Tayulabs. Todos los derechos reservados.</p>
+</div>
+</div>
+</div>
+</section><section class="display-7" style="padding: 0;align-items: center;justify-content: center;flex-wrap: wrap;    align-content: center;display: flex;position: relative;height: 4rem;"><a href="https://mobiri.se/" style="flex: 1 1;height: 4rem;position: absolute;width: 100%;z-index: 1;"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" style="height: 4rem;"/></a><p class="display-7" style="margin: 0;text-align: center;">‌</p><a href="https://mobirise.com/builder/ai-website-maker.html" style="z-index:1">Free AI Website Maker</a></section><script src="assets/bootstrap/js/bootstrap.bundle.min.js"></script> <script src="assets/smoothscroll/smooth-scroll.js"></script> <script src="assets/ytplayer/index.js"></script> <script src="assets/dropdown/js/navbar-dropdown.js"></script> <script src="assets/theme/js/script.js"></script>
+<input name="animation" type="hidden"/>
+</body>
 </html>
