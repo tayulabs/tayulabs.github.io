@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TAYULABS IoT Platform</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--bg:#fff;--panel:#fff;--panel2:#f7f8f6;--text:#111;--muted:#667085;--border:#e7e9e4;--brand:#55c62b;--danger:#ef4444;--warning:#f59e0b;--blue:#2563eb;--shadow:0 18px 50px rgba(16,24,40,.08);--radius:24px}
+body.dark{--bg:#090b0a;--panel:#111411;--panel2:#181d18;--text:#f5f5f5;--muted:#a4aaa0;--border:#252b25;--shadow:0 18px 50px rgba(0,0,0,.35)}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}button,input,select{font-family:inherit}
+.login{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at top left,rgba(85,198,43,.16),transparent 35%),var(--bg)}
+.login-card{width:min(440px,100%);background:var(--panel);border:1px solid var(--border);border-radius:32px;padding:34px;box-shadow:var(--shadow)}
+.logo,.brand{display:flex;align-items:center;gap:14px}.login-logo-only{justify-content:center;margin-bottom:30px}.login-logo-only img{width:170px!important;max-width:75%;height:auto}.logo{margin-bottom:26px}.logo img{width:72px}.brand img{width:48px}.logo h1,.brand strong{margin:0;font-size:24px;font-weight:900}
+label{display:block;font-size:13px;font-weight:800;margin:14px 0 8px;color:var(--muted)}input,select{width:100%;padding:14px;border-radius:14px;border:1px solid var(--border);background:var(--panel2);color:var(--text);outline:none}
+.btn{border:0;border-radius:16px;padding:13px 16px;background:var(--brand);color:#fff;font-weight:850;cursor:pointer}.btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+.hint{font-size:13px;color:var(--muted);line-height:1.5}.error{display:none;color:var(--danger);font-size:13px;margin-top:10px;font-weight:800}
+.app{display:none}.sidebar{position:fixed;left:0;top:0;bottom:0;width:270px;background:var(--panel);border-right:1px solid var(--border);padding:22px;z-index:10}.brand{margin-bottom:24px}
+.nav button{width:100%;display:flex;margin:6px 0;padding:13px 14px;border:0;background:transparent;color:var(--muted);border-radius:16px;font-weight:800;text-align:left;cursor:pointer}
+.nav button.active,.nav button:hover{background:rgba(85,198,43,.12);color:var(--text)}
+.main{margin-left:270px;padding:24px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}.title h2{font-size:30px;margin:0}.title p{margin:6px 0 0;color:var(--muted)}.actions{display:flex;gap:10px;flex-wrap:wrap}
+.grid{display:grid;gap:18px}.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.filters{grid-template-columns:1fr 1fr 1fr auto;margin-bottom:18px;align-items:end}.kpis{grid-template-columns:repeat(4,1fr);margin-bottom:18px}.four-summary{grid-template-columns:repeat(4,1fr)}.kpi span{color:var(--muted);font-size:13px;font-weight:800}.kpi h3{font-size:30px;margin:10px 0 4px}.kpi small{color:var(--brand);font-weight:850}
+.dashboard-layout{grid-template-columns:2fr 1fr}.map-card{padding:12px}#map{height:430px;border-radius:20px;overflow:hidden;position:relative;z-index:0}.charts,.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:repeat(3,1fr)}.chart-box{height:300px}.mini-chart-box{height:220px}.vdf-charts-grid{grid-template-columns:repeat(2,1fr)}
+.device{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid var(--border)}.device:last-child{border-bottom:0}
+.status{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:850;background:rgba(85,198,43,.14);color:var(--brand)}.status.off{background:rgba(239,68,68,.12);color:var(--danger)}.status.warn{background:rgba(245,158,11,.14);color:var(--warning)}
+.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:13px;border-bottom:1px solid var(--border);text-align:left;font-size:14px;white-space:nowrap}.table th{color:var(--muted);background:var(--panel2)}
+.view{display:none}.view.active{display:block}.alarm{display:flex;gap:14px;padding:15px;border-radius:18px;background:var(--panel2);margin:10px 0}.dot{width:12px;height:12px;border-radius:50%;background:var(--brand);margin-top:4px}.dot.red{background:var(--danger)}.dot.yellow{background:var(--warning)}
+.form-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end}.compact-device-card{min-height:240px}
+.device-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.device-summary-grid div{background:var(--panel2);border:1px solid var(--border);border-radius:18px;padding:14px;text-align:center}
+.device-summary-grid span{display:block;color:var(--muted);font-size:12px;font-weight:850;margin-bottom:6px}
+.device-summary-grid b{font-size:24px}
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:99999!important;padding:24px;align-items:center;justify-content:center}
+.modal-backdrop.open{display:flex}
+.modal-card{width:min(760px,100%);max-height:82vh;overflow:hidden;background:var(--panel);border:1px solid var(--border);border-radius:28px;box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column}
+.modal-header{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:14px}
+.modal-list{max-height:62vh;overflow:auto;padding-right:6px;position:relative;z-index:100001;background:var(--panel)}
+.mobile-menu{display:none}
+.vdf-header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}.live-pill{display:inline-flex;gap:8px;align-items:center;padding:8px 12px;border-radius:999px;background:rgba(85,198,43,.12);color:var(--brand);font-weight:900}.pulse{width:9px;height:9px;border-radius:50%;background:var(--brand);animation:pulse 1.2s infinite}@keyframes pulse{0%{opacity:.25}50%{opacity:1}100%{opacity:.25}}
+.metric-grid{grid-template-columns:repeat(4,1fr)}.metric h3{font-size:28px;margin:8px 0;transition:.35s}.metric small{color:var(--muted);font-weight:800}.metric .unit{font-size:16px;color:var(--muted)}
+@media(max-width:960px){.sidebar{transform:translateX(-100%);transition:.25s}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.mobile-menu{display:inline-flex}.kpis,.dashboard-layout,.charts,.two,.three,.filters,.form-row,.metric-grid,.vdf-charts-grid,.four-summary,.device-summary-grid{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}}
+
+/* Corrección: el mapa Leaflet no debe quedar encima de la ventana modal */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom{z-index:1!important}
+.modal-backdrop{z-index:99999!important}
+.modal-card{position:relative;z-index:100000!important}
+
+
+.chart-config-panel{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:12px;align-items:end;margin-top:14px}
+.chart-config-panel input,.chart-config-panel select{padding:11px 12px}
+.chart-config-panel .mini-label{font-size:12px;color:var(--muted);font-weight:850;margin-bottom:6px;display:block}
+.chart-date-panel{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;margin:12px 0 18px}
+.chart-note{font-size:12px;color:var(--muted);line-height:1.4;margin-top:8px}
+@media(max-width:960px){.chart-config-panel,.chart-date-panel{grid-template-columns:1fr}}
+
+
+/* Ajustes móviles TAYULABS */
+@media(max-width:760px){
+  body{font-size:14px;overflow-x:hidden}
+  .main{padding:14px;width:100%;overflow-x:hidden}
+  .topbar{gap:10px;margin-bottom:14px}
+  .title h2{font-size:24px;line-height:1.1}
+  .title p{font-size:13px}
+  .actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .actions .btn,.mobile-menu{width:100%;padding:11px 12px}
+  .sidebar{width:82vw;max-width:310px;padding:18px}
+  .brand img{width:42px}
+  .brand strong{font-size:20px}
+  .nav button{padding:12px;font-size:14px}
+
+  .card{border-radius:18px;padding:14px}
+  .filters,.chart-date-panel,.chart-config-panel,.form-row{grid-template-columns:1fr!important;gap:10px}
+  .kpis,.four-summary,.metric-grid,.dashboard-layout,.charts,.two,.three,.vdf-charts-grid{grid-template-columns:1fr!important}
+  .kpi h3{font-size:26px}
+  .metric h3{font-size:25px}
+
+  #map{height:330px!important;border-radius:16px}
+  .map-card{padding:8px}
+
+  .device-summary-grid{grid-template-columns:repeat(3,1fr)!important;gap:8px}
+  .device-summary-grid div{padding:10px 6px;border-radius:14px}
+  .device-summary-grid b{font-size:20px}
+  .device-summary-grid span{font-size:11px}
+
+  .chart-box{height:260px!important}
+  .mini-chart-box{height:210px!important}
+  .vdf-header{display:block}
+  .vdf-header .live-pill{margin-top:12px}
+  #lastVdfReading{text-align:left!important}
+
+  .table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .table{min-width:620px}
+  .table th,.table td{padding:10px;font-size:12px}
+
+  .modal-backdrop{padding:12px;align-items:flex-start;padding-top:72px}
+  .modal-card{width:100%;max-height:78vh;border-radius:20px;padding:14px}
+  .modal-header{display:block}
+  .modal-header .btn{width:100%;margin-top:10px}
+  .modal-list{max-height:58vh}
+
+  input,select{padding:12px;font-size:14px}
+  label,.mini-label{font-size:12px}
+  .btn{padding:11px 13px;font-size:14px}
+}
+
+@media(max-width:420px){
+  .main{padding:10px}
+  .login{padding:14px}
+  .login-card{padding:24px;border-radius:24px}
+  .login-logo-only img{width:135px!important}
+  .actions{grid-template-columns:1fr}
+  #map{height:300px!important}
+  .chart-box{height:240px!important}
+  .mini-chart-box{height:190px!important}
+  .device-summary-grid{grid-template-columns:1fr!important}
+  .kpi h3,.metric h3{font-size:23px}
+  .title h2{font-size:22px}
+  .card{padding:12px}
+}
+
+</style>
+</head>
+<body>
+<section class="login" id="login">
+<div class="login-card">
+<div class="logo login-logo-only"><img src="imagenes/logo.png" alt="TAYULABS"></div>
+<h2 style="margin:0;font-size:28px;text-align:center">Iniciar sesión</h2>
+<p class="hint" style="text-align:center">Plataforma IoT para monitoreo de fincas, sensores, controladores y tableros industriales.</p>
+<label>Usuario</label><input id="email" placeholder="correo@tayulabs.com" autocomplete="username">
+<label>Contraseña</label><input id="pass" type="password" placeholder="Contraseña" autocomplete="current-password">
+<button class="btn" style="width:100%;margin-top:20px" onclick="doLogin()">Ingresar</button>
+<div class="error" id="loginError">Usuario o contraseña incorrectos.</div>
+</div>
+</section>
+
+<section class="app" id="app">
+<aside class="sidebar" id="sidebar">
+<div class="brand"><img src="imagenes/logo.png" alt="TAYULABS"><strong>TAYULABS</strong></div>
+<div class="nav">
+<button class="active" data-view="dashboard">Dashboard</button>
+<button data-view="fincas">Fincas</button>
+<button data-view="controladores">Controladores IoT</button>
+<button data-view="sensores">Sensores</button>
+<button data-view="reportes">Reportes</button>
+<button data-view="alarmas">Alarmas</button>
+<button data-view="configuracion">Configuración</button>
+<button data-view="usuarios">Usuarios</button>
+</div>
+</aside>
+
+<main class="main">
+<div class="topbar">
+<button class="btn ghost mobile-menu" onclick="toggleMenu()">☰ Menú</button>
+<div class="title"><h2 id="pageTitle">Dashboard</h2><p>Gestión de activos IoT por finca y zona.</p></div>
+<div class="actions"><button class="btn ghost" onclick="toggleDark()">Modo claro/oscuro</button><button class="btn ghost" onclick="logout()">Salir</button></div>
+</div>
+
+<section id="dashboard" class="view active">
+<div class="grid filters card">
+<div><label>Cliente</label><select id="clientFilter" onchange="updateFilters()"></select></div>
+<div><label>Finca</label><select id="farmFilter" onchange="updateFilters()"></select></div>
+<div><label>Zona</label><select id="zoneFilter" onchange="renderDashboard()"></select></div>
+<button class="btn" onclick="renderDashboard()">Actualizar</button>
+</div>
+<div class="grid four-summary" style="margin-bottom:18px">
+<div class="card kpi"><span>Finca Mariela</span><h3>22</h3><small>nodos + 1 gateway</small></div>
+<div class="card kpi"><span>Finca San Antonio</span><h3>16</h3><small>nodos + 1 gateway</small></div>
+<div class="card kpi"><span>Finca Guadalupe</span><h3>14</h3><small>nodos + 1 gateway</small></div>
+<div class="card kpi"><span>San Alberto</span><h3>8</h3><small>nodos enlazados</small></div>
+</div>
+<div class="grid kpis">
+<div class="card kpi"><span>Dispositivos conectados</span><h3 id="kpiDevices">0</h3><small>Según finca seleccionada</small></div>
+<div class="card kpi"><span>Gateways conectados</span><h3 id="kpiGateways">3</h3><small>Red LoRaWAN activa</small></div>
+<div class="card kpi"><span>Nodos instalados</span><h3 id="kpiNodes">60</h3><small>Repartidos por finca</small></div>
+<div class="card kpi"><span>Última actualización</span><h3 id="clock">--:--</h3><small>Lectura en línea</small></div>
+</div>
+<div class="grid dashboard-layout">
+<div class="card map-card"><div id="map"></div></div>
+<div class="card compact-device-card">
+<h3>Dispositivos conectados</h3>
+<p class="hint">Resumen de equipos activos en la finca seleccionada.</p>
+<div class="device-summary-grid">
+  <div><span>Gateways</span><b id="summaryGateways">0</b></div>
+  <div><span>Nodos</span><b id="summaryNodes">0</b></div>
+  <div><span>Alertas</span><b id="summaryAlerts">0</b></div>
+</div>
+<button class="btn" style="width:100%;margin-top:16px" onclick="openDevicesModal()">Ver nodos conectados</button>
+</div>
+</div>
+<div class="grid charts" style="margin-top:18px">
+<div class="card"><h3>Estado de dispositivos</h3><div class="chart-box"><canvas id="pieChart"></canvas></div></div>
+<div class="card"><h3>Lecturas por zona</h3><div class="chart-box"><canvas id="barChart"></canvas></div></div>
+</div>
+</section>
+
+<section id="fincas" class="view">
+<div class="card">
+<h3>Crear finca / zona</h3>
+<div class="form-row">
+<div><label>Cliente</label><input id="farmClient" placeholder="Ej: GODCORP"></div>
+<div><label>Finca</label><input id="farmName" placeholder="Ej: Finca La Victoria"></div>
+<div><label>Zona</label><input id="farmZone" placeholder="Ej: Sector 1"></div>
+<button class="btn" onclick="addFarm()">Agregar</button>
+</div>
+<p class="hint">Clasifica equipos por cliente, finca y zona para filtrar mapa, sensores, alarmas, reportes y tableros VDF.</p>
+</div>
+<br><div class="grid three" id="farmCards"></div>
+</section>
+
+<section id="controladores" class="view">
+<div class="card">
+<div class="vdf-header">
+<div>
+<h3 style="margin:0 0 8px">Tableros de Control</h3>
+<p class="hint" style="margin:0;font-weight:800">VDF</p>
+</div>
+<div>
+  <div class="live-pill"><span class="pulse"></span> Lectura en línea</div>
+  <div class="hint" id="lastVdfReading" style="margin-top:8px;text-align:right">Última lectura: --</div>
+</div>
+</div>
+<br>
+<div class="grid filters">
+<div><label>Cliente</label><select><option>GODCORP</option></select></div>
+<div><label>Finca</label><select><option>Finca La Victoria</option><option>Finca San José</option></select></div>
+<div><label>Tablero</label><select><option>Tablero Bombas 01</option><option>VDF Riego Norte</option></select></div>
+<button class="btn" onclick="randomizeVdf(true)">Actualizar lectura</button>
+</div>
+</div>
+<br>
+<div class="grid metric-grid">
+<div class="card metric"><small>Frecuencia motor</small><h3><span id="mFreq">57.90</span> <span class="unit">Hz</span></h3><span class="status">OK</span></div>
+<div class="card metric"><small>Corriente motor</small><h3><span id="mCurrent">290.3</span> <span class="unit">A</span></h3><span class="status">OK</span></div>
+<div class="card metric"><small>Voltaje línea</small><h3><span id="mVolt">448.6</span> <span class="unit">V</span></h3><span class="status">OK</span></div>
+<div class="card metric"><small>Presión PID</small><h3><span id="mPsi">57.0</span> <span class="unit">PSI</span></h3><span class="status">OK</span></div>
+</div>
+<br>
+<div class="grid two">
+<div class="card"><h3>Tendencia de frecuencia</h3><div class="chart-box"><canvas id="vdfLineChart"></canvas></div></div>
+<div class="card"><h3>Variables principales</h3><div class="chart-box"><canvas id="vdfBarChart"></canvas></div></div>
+</div>
+<br>
+<div class="card">
+<h3>Registros leídos</h3>
+<div class="table-wrap"><table class="table" id="vdfTable"></table></div>
+</div>
+<br>
+<div class="card">
+<h3>Gráficas de datos extraídos</h3>
+<p class="hint">Tendencias individuales de las variables leídas desde el tablero.</p>
+<div class="chart-date-panel">
+  <div><span class="mini-label">Fecha inicio</span><input type="date" id="vdfDateStart"></div>
+  <div><span class="mini-label">Fecha fin</span><input type="date" id="vdfDateEnd"></div>
+  <button class="btn" onclick="loadHistoricalVdfData()">Consultar histórico</button>
+</div>
+<p class="chart-note">Puedes ajustar el tiempo de muestreo y el rango vertical de cada gráfica. Para acercarte a una variable, reduce el mínimo y máximo del eje Y.</p>
+<div class="grid vdf-charts-grid" id="vdfChartsGrid"></div>
+</div>
+<br>
+<div class="card"><h3>Controladores IoT por finca</h3><table class="table"><tr><th>Equipo</th><th>Finca</th><th>Cantidad</th><th>Comunicación</th><th>Estado</th></tr><tr><td>Gateways LoRaWAN</td><td>Mariela / San Antonio / Guadalupe</td><td>3</td><td>Ethernet / Internet</td><td><span class="status">Online</span></td></tr><tr><td>Nodos LoRaWAN Modbus</td><td>Fincas registradas</td><td>60</td><td>RS485 / Modbus</td><td><span class="status">Online</span></td></tr></table></div>
+</section>
+<section id="sensores" class="view"><div class="card"><h3>Sensores</h3><table class="table" id="sensorTable"></table></div></section>
+<section id="reportes" class="view"><div class="grid two"><div class="card"><h3>Reportes por finca</h3><label>Finca</label><select id="reportFarm"></select><label>Fecha</label><input type="date"><br><br><button class="btn">Generar reporte</button></div><div class="card"><h3>Resumen mensual</h3><div class="chart-box"><canvas id="lineChart"></canvas></div></div></div></section>
+<section id="alarmas" class="view"><div class="card"><h3>Alarmas recientes</h3><div id="alarmList"></div></div></section>
+<section id="configuracion" class="view"><div class="grid two"><div class="card"><h3>Configuración general</h3><label>Nombre de plataforma</label><input value="TAYULABS IoT Platform"><label>Estructura de datos</label><input value="Cliente > Finca > Zona > Dispositivo"><br><br><button class="btn">Guardar cambios</button></div><div class="card"><h3>MQTT sugerido</h3><p class="hint">Los nodos pueden publicar en tópicos como tayulabs/devices/vdf001. La relación con finca, tablero y zona se administra en la base de datos.</p></div></div></section>
+<section id="usuarios" class="view"><div class="card"><h3>Usuarios</h3><div class="form-row"><div><label>Correo</label><input id="newUser" placeholder="usuario@empresa.com"></div><div><label>Contraseña</label><input id="newPass" placeholder="Contraseña"></div><div><label>Rol</label><select id="newRole"><option>Administrador</option><option>Supervisor de finca</option><option>Operador</option></select></div><button class="btn" onclick="addUser()">Agregar</button></div><br><table class="table" id="usersTable"></table></div></section>
+
+<div class="modal-backdrop" id="devicesModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <h3 style="margin:0">Nodos conectados</h3>
+        <p class="hint" style="margin:4px 0 0">Listado filtrado por finca y zona seleccionada.</p>
+      </div>
+      <button class="btn ghost" onclick="closeDevicesModal()">Cerrar</button>
+    </div>
+    <div class="modal-list" id="deviceList"></div>
+  </div>
+</div>
+
+</main>
+</section>
+
+<script>
+const baseUsers=[{email:"ctayupanta@tayulabs.com",pass:"12345678",role:"Administrador"}];
+let users=JSON.parse(localStorage.getItem("tayu_users_platform")||"null")||baseUsers;
+let farms=JSON.parse(localStorage.getItem("tayu_farms_platform")||"null")||[
+{client:"GODCORP",farm:"Finca Mariela",zone:"Principal",lat:-2.1523835295700526,lon:-79.52322582244956},
+{client:"GODCORP",farm:"Finca San Antonio",zone:"Principal",lat:-2.1666062201630147,lon:-79.5203535403974},
+{client:"GODCORP",farm:"Finca Guadalupe",zone:"Principal",lat:-2.1606431336094953,lon:-79.49932418260481},
+{client:"GODCORP",farm:"San Alberto",zone:"Principal",lat:-2.214080395914839,lon:-79.64087586914724}
+];
+let devices=[
+{
+"name": "Gateway LoRaWAN 01",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.151008901430601,
+"lon": -79.52430471667934,
+"status": "Online",
+"type": "Gateway"
+},
+{
+"name": "Nodo LoRaWAN 01",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.1581001358043865,
+"lon": -79.51724225460549,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 02",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.1561724858216182,
+"lon": -79.52777871769098,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 03",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.1505664746833575,
+"lon": -79.52507808439881,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 04",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.147708918292503,
+"lon": -79.52644492456973,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 05",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.1468697088280124,
+"lon": -79.52539240038692,
+"status": "Online",
+"type": "Sensor"
+},
+{
+"name": "Nodo LoRaWAN 06",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.1511698221069846,
+"lon": -79.51804077119743,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 07",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.1501604051494283,
+"lon": -79.51813963242584,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 08",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.149886149800645,
+"lon": -79.5286445384412,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 09",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.1478071209434977,
+"lon": -79.52215115264761,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 10",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.154655355114155,
+"lon": -79.52694422869344,
+"status": "Online",
+"type": "Sensor"
+},
+{
+"name": "Nodo LoRaWAN 11",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.148185827837694,
+"lon": -79.52223193575249,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 12",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.147127662709107,
+"lon": -79.51993839675423,
+"status": "Alerta",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 13",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.146849224985469,
+"lon": -79.52243006744517,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 14",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.150002905872435,
+"lon": -79.52187792700599,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 15",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.1552825986541797,
+"lon": -79.51774521815325,
+"status": "Online",
+"type": "Sensor"
+},
+{
+"name": "Nodo LoRaWAN 16",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.154633861099962,
+"lon": -79.51985250733541,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 17",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.1469279175105727,
+"lon": -79.52141530995017,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 18",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.1566768488895818,
+"lon": -79.51932311094451,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 19",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.1503735204280217,
+"lon": -79.52700548201001,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 20",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.157794028277727,
+"lon": -79.52284402359498,
+"status": "Online",
+"type": "Sensor"
+},
+{
+"name": "Nodo LoRaWAN 21",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.15799635757864,
+"lon": -79.51812485168197,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 22",
+"client": "GODCORP",
+"farm": "Finca Mariela",
+"zone": "Principal",
+"lat": -2.152308173329398,
+"lon": -79.52301808268967,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Gateway LoRaWAN 02",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.166877893796234,
+"lon": -79.51987054089547,
+"status": "Online",
+"type": "Gateway"
+},
+{
+"name": "Nodo LoRaWAN 23",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.161608657499621,
+"lon": -79.52266586478156,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 24",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.1681208784891743,
+"lon": -79.51936241400684,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 25",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.169038397983024,
+"lon": -79.5192059265536,
+"status": "Online",
+"type": "Sensor"
+},
+{
+"name": "Nodo LoRaWAN 26",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.166088773985371,
+"lon": -79.52115187829587,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 27",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.164527367548325,
+"lon": -79.52001465183322,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 28",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.171548906682885,
+"lon": -79.51439573061145,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 29",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.1683378239852544,
+"lon": -79.52117242830634,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 30",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.1677725822348215,
+"lon": -79.5151994900912,
+"status": "Online",
+"type": "Sensor"
+},
+{
+"name": "Nodo LoRaWAN 31",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.161180338759603,
+"lon": -79.52020961876235,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 32",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.1677983114187906,
+"lon": -79.52519475024482,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 33",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.161860215355652,
+"lon": -79.52429678962031,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 34",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.1660467078419967,
+"lon": -79.52216387509367,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 35",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.168666763589012,
+"lon": -79.52206704256938,
+"status": "Online",
+"type": "Sensor"
+},
+{
+"name": "Nodo LoRaWAN 36",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.170311096158807,
+"lon": -79.52590983748541,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 37",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.1661807901511527,
+"lon": -79.5168026529517,
+"status": "Alerta",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 38",
+"client": "GODCORP",
+"farm": "Finca San Antonio",
+"zone": "Principal",
+"lat": -2.1648412888353996,
+"lon": -79.52393545068075,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Gateway LoRaWAN 03",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.1600621717837742,
+"lon": -79.50066790635205,
+"status": "Online",
+"type": "Gateway"
+},
+{
+"name": "Nodo LoRaWAN 39",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.1617141739905104,
+"lon": -79.49538697361129,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 40",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.1555909524621217,
+"lon": -79.49979727134225,
+"status": "Online",
+"type": "Sensor"
+},
+{
+"name": "Nodo LoRaWAN 41",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.156484735179142,
+"lon": -79.49934180286662,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 42",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.1603556676673894,
+"lon": -79.49830966473567,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 43",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.1547477219079485,
+"lon": -79.49640004362445,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 44",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.160966682003087,
+"lon": -79.4965971346489,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 45",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.1589239209838054,
+"lon": -79.50107890323712,
+"status": "Online",
+"type": "Sensor"
+},
+{
+"name": "Nodo LoRaWAN 46",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.157233040560317,
+"lon": -79.49548664023713,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 47",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.159342239504757,
+"lon": -79.49401144867569,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 48",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.166424859982915,
+"lon": -79.49932408073896,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 49",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.159028211765724,
+"lon": -79.50123729714385,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 50",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.164586588146677,
+"lon": -79.49701924599343,
+"status": "Online",
+"type": "Sensor"
+},
+{
+"name": "Nodo LoRaWAN 51",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.1614303424914745,
+"lon": -79.50209622236004,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 52",
+"client": "GODCORP",
+"farm": "Finca Guadalupe",
+"zone": "Principal",
+"lat": -2.166140728316826,
+"lon": -79.49371856977335,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 53",
+"client": "GODCORP",
+"farm": "San Alberto",
+"zone": "Principal",
+"lat": -2.2158530475861147,
+"lon": -79.64545877345688,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 54",
+"client": "GODCORP",
+"farm": "San Alberto",
+"zone": "Principal",
+"lat": -2.217484231670329,
+"lon": -79.64381649116523,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 55",
+"client": "GODCORP",
+"farm": "San Alberto",
+"zone": "Principal",
+"lat": -2.2096860392705637,
+"lon": -79.64470802744245,
+"status": "Alerta",
+"type": "Sensor"
+},
+{
+"name": "Nodo LoRaWAN 56",
+"client": "GODCORP",
+"farm": "San Alberto",
+"zone": "Principal",
+"lat": -2.216764010787009,
+"lon": -79.64570761892197,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 57",
+"client": "GODCORP",
+"farm": "San Alberto",
+"zone": "Principal",
+"lat": -2.2144408682108585,
+"lon": -79.64438330881397,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 58",
+"client": "GODCORP",
+"farm": "San Alberto",
+"zone": "Principal",
+"lat": -2.2159508194299016,
+"lon": -79.6380570112472,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 59",
+"client": "GODCORP",
+"farm": "San Alberto",
+"zone": "Principal",
+"lat": -2.208979674031831,
+"lon": -79.6368660418451,
+"status": "Online",
+"type": "LoRaWAN"
+},
+{
+"name": "Nodo LoRaWAN 60",
+"client": "GODCORP",
+"farm": "San Alberto",
+"zone": "Principal",
+"lat": -2.219621012435688,
+"lon": -79.64234281495865,
+"status": "Online",
+"type": "Sensor"
+}
+];
+let vdf=[
+{param:"Frecuencia motor",reg:3202,raw:579,value:57.90,unit:"Hz"},
+{param:"Corriente motor",reg:3204,raw:2903,value:290.30,unit:"A"},
+{param:"Par motor",reg:3205,raw:975,value:97.50,unit:"%"},
+{param:"Voltaje línea",reg:3207,raw:4486,value:448.60,unit:"V"},
+{param:"Voltaje motor",reg:3208,raw:419,value:419.00,unit:"V"},
+{param:"Potencia motor",reg:3211,raw:94,value:94.00,unit:"%"},
+{param:"RPM motor",reg:8604,raw:1737,value:1737.00,unit:"rpm"},
+{param:"Retorno PID / Presión",reg:11981,raw:57,value:57.00,unit:"PSI"},
+{param:"Salida PID",reg:11983,raw:578,value:57.80,unit:"Hz"},
+{param:"Último error",reg:7121,raw:22,value:22.00,unit:""},
+{param:"Motor freq",reg:43202,raw:579,value:57.90,unit:"Hz"}
+];
+let mapStarted=false,chartsStarted=false,markers=[],pieChart,barChart,lineChart,vdfLineChart,vdfBarChart,vdfHistory=[]; let vdfMiniCharts={}; let vdfMiniHistory={}; let vdfChartConfig={}; let vdfLastLogged={};
+function doLogin(){
+  const e=document.getElementById("email").value.trim();
+  const p=document.getElementById("pass").value.trim();
+  const ok=users.find(u=>u.email===e && u.pass===p);
+  if(!ok){
+    document.getElementById("loginError").style.display="block";
+    return;
+  }
+  document.getElementById("loginError").style.display="none";
+  document.getElementById("login").style.display="none";
+  document.getElementById("app").style.display="block";
+  startPlatform();
+}
+function logout(){
+  document.getElementById("app").style.display="none";
+  document.getElementById("login").style.display="grid";
+}
+function toggleDark(){document.body.classList.toggle("dark");setTimeout(()=>{if(window.iotMap)iotMap.invalidateSize()},200)}
+function toggleMenu(){sidebar.classList.toggle("open")}
+document.querySelectorAll(".nav button").forEach(btn=>{btn.onclick=()=>{document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));btn.classList.add("active");document.getElementById(btn.dataset.view).classList.add("active");pageTitle.textContent=btn.textContent;sidebar.classList.remove("open");setTimeout(()=>{if(window.iotMap)iotMap.invalidateSize()},200)}})
+function startPlatform(){renderFarmSelectors();renderFarmCards();renderUsers();renderSensorTable();renderAlarms();renderVdfTable();if(!mapStarted){initMap();mapStarted=true}if(!chartsStarted){initCharts();chartsStarted=true}renderDashboard();updateClock();setInterval(updateClock,1000);startVdfLiveUpdates()}
+
+function openDevicesModal(){document.getElementById("devicesModal").classList.add("open")}
+function closeDevicesModal(){document.getElementById("devicesModal").classList.remove("open")}
+document.addEventListener("click",function(e){
+  const modal=document.getElementById("devicesModal");
+  if(modal && e.target===modal) closeDevicesModal();
+});
+
+
+function localTimeLabel(){
+  const d=new Date();
+  return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+}
+function localDateTimeLabel(){
+  const d=new Date();
+  return d.toLocaleDateString([], {year:"numeric", month:"2-digit", day:"2-digit"})+" "+d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+}
+
+function updateClock(){clock.textContent=new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"})}
+function unique(a){return[...new Set(a)]}
+function renderFarmSelectors(){let clients=unique(farms.map(f=>f.client));clientFilter.innerHTML=clients.map(c=>`<option>${c}</option>`).join("");updateFilters(false);reportFarm.innerHTML=unique(farms.map(f=>f.farm)).map(f=>`<option>${f}</option>`).join("")}
+function updateFilters(render=true){let c=clientFilter.value;let fs=unique(farms.filter(f=>f.client===c).map(f=>f.farm));let keep=farmFilter.value;farmFilter.innerHTML=fs.map(f=>`<option>${f}</option>`).join("");if(fs.includes(keep))farmFilter.value=keep;let f=farmFilter.value;let zs=unique(farms.filter(x=>x.client===c&&x.farm===f).map(x=>x.zone));zoneFilter.innerHTML='<option value="Todas">Todas las zonas</option>'+zs.map(z=>`<option>${z}</option>`).join("");if(render)renderDashboard()}
+function selectedDevices(){let c=clientFilter.value,f=farmFilter.value,z=zoneFilter.value;return devices.filter(d=>d.client===c&&d.farm===f&&(z==="Todas"||d.zone===z))}
+function initMap(){window.iotMap=L.map("map").setView([-2.166,-79.535],12);L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Tiles © Esri"}).addTo(iotMap)}
+function renderDashboard(){let list=selectedDevices();kpiDevices.textContent=list.length;kpiGateways.textContent=devices.filter(d=>d.type==="Gateway").length;kpiNodes.textContent=devices.filter(d=>d.name.includes("Nodo LoRaWAN")).length;if(document.getElementById("summaryGateways")) summaryGateways.textContent=list.filter(d=>d.type==="Gateway").length;
+if(document.getElementById("summaryNodes")) summaryNodes.textContent=list.filter(d=>d.name.includes("Nodo LoRaWAN")).length;
+if(document.getElementById("summaryAlerts")) summaryAlerts.textContent=list.filter(d=>d.status==="Alerta"||d.status==="Offline").length;
+deviceList.innerHTML=list.length?"":"<p class='hint'>No hay dispositivos registrados en esta selección.</p>";
+list.forEach(d=>{
+  let cls=d.status==="Online"?"status":d.status==="Alerta"?"status warn":"status off";
+  deviceList.innerHTML+=`<div class="device"><div><b>${d.name}</b><br><small>${d.type} · ${d.zone}</small></div><span class="${cls}">${d.status}</span></div>`;
+});markers.forEach(m=>iotMap.removeLayer(m));markers=[];list.forEach(d=>{let m=L.marker([d.lat,d.lon]).addTo(iotMap).bindPopup(`<b>${d.name}</b><br>${d.farm} · ${d.zone}<br>${d.status}`);markers.push(m)});let selectedFarm=farms.find(f=>f.client===clientFilter.value && f.farm===farmFilter.value);if(selectedFarm && selectedFarm.lat){iotMap.setView([selectedFarm.lat,selectedFarm.lon],15);}else if(list.length)iotMap.setView([list[0].lat,list[0].lon],13);if(pieChart){pieChart.data.datasets[0].data=[list.filter(d=>d.status==="Online").length,list.filter(d=>d.status==="Alerta").length,list.filter(d=>d.status==="Offline").length];pieChart.update()}if(barChart){barChart.data.labels=unique(list.map(d=>d.zone));barChart.data.datasets[0].data=barChart.data.labels.map(z=>list.filter(d=>d.zone===z).length*25+20);barChart.update()}}
+function initCharts(){pieChart=new Chart(document.getElementById("pieChart"),{type:"doughnut",data:{labels:["Online","Alerta","Offline"],datasets:[{data:[1,0,0],backgroundColor:["#55c62b","#f59e0b","#ef4444"]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}}}});barChart=new Chart(document.getElementById("barChart"),{type:"bar",data:{labels:["Sector 1"],datasets:[{label:"Lecturas",data:[80],backgroundColor:["#55c62b"],borderRadius:12}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});lineChart=new Chart(document.getElementById("lineChart"),{type:"line",data:{labels:["Sem 1","Sem 2","Sem 3","Sem 4"],datasets:[{label:"Eventos",data:[120,180,150,230],borderColor:"#55c62b",backgroundColor:"rgba(85,198,43,.15)",fill:true,tension:.4}]},options:{responsive:true,maintainAspectRatio:false}});vdfLineChart=new Chart(document.getElementById("vdfLineChart"),{type:"line",data:{labels:[],datasets:[{label:"Hz",data:[],borderColor:"#55c62b",backgroundColor:"rgba(85,198,43,.12)",fill:true,tension:.4}]},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{y:{min:54,max:62}}}});vdfBarChart=new Chart(document.getElementById("vdfBarChart"),{type:"bar",data:{labels:["Hz","A","V","PSI","RPM"],datasets:[{label:"Valor actual",data:[57.9,290.3,448.6,57,1737],backgroundColor:["#55c62b","#2563eb","#f59e0b","#111","#9ca3af"],borderRadius:12}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}}}}); initVdfMiniCharts(); randomizeVdf(true)}
+function renderFarmCards(){farmCards.innerHTML="";let grouped={};farms.forEach(f=>{let k=f.client+"|"+f.farm;if(!grouped[k])grouped[k]=[];grouped[k].push(f.zone)});Object.keys(grouped).forEach(k=>{let [client,farm]=k.split("|");let nodeCount=devices.filter(d=>d.client===client&&d.farm===farm&&d.name.includes("Nodo LoRaWAN")).length;let gwCount=devices.filter(d=>d.client===client&&d.farm===farm&&d.type==="Gateway").length;farmCards.innerHTML+=`<div class="card"><h3>${farm}</h3><p class="hint"><b>Cliente:</b> ${client}<br><b>Zonas:</b> ${grouped[k].join(", ")}<br><b>Gateways:</b> ${gwCount}<br><b>Nodos:</b> ${nodeCount}</p></div>`})}
+function addFarm(){let c=farmClient.value.trim(),f=farmName.value.trim(),z=farmZone.value.trim();if(!c||!f||!z){alert("Completa cliente, finca y zona.");return}farms.push({client:c,farm:f,zone:z,lat:null,lon:null});localStorage.setItem("tayu_farms_platform",JSON.stringify(farms));renderFarmSelectors();renderFarmCards();farmClient.value="";farmName.value="";farmZone.value=""}
+function renderSensorTable(){sensorTable.innerHTML='<tr><th>Sensor</th><th>Valor</th><th>Finca</th><th>Zona</th><th>Estado</th></tr><tr><td>Temperatura</td><td>31.8 °C</td><td>La Victoria</td><td>Sector 1</td><td><span class="status">OK</span></td></tr><tr><td>Humedad</td><td>72%</td><td>La Victoria</td><td>Sector 1</td><td><span class="status">OK</span></td></tr><tr><td>Corriente VDF</td><td>290.3 A</td><td>La Victoria</td><td>Bombas</td><td><span class="status">OK</span></td></tr><tr><td>Presión PID</td><td>57 PSI</td><td>La Victoria</td><td>Bombas</td><td><span class="status">OK</span></td></tr>'}
+function renderAlarms(){alarmList.innerHTML='<div class="alarm"><span class="dot yellow"></span><div><b>Corriente elevada</b><br><small>Finca La Victoria · VDF Bombas · corriente sobre umbral configurado.</small></div></div><div class="alarm"><span class="dot"></span><div><b>Nodo LoRaWAN sincronizado</b><br><small>Tablero Bombas 01 · última lectura recibida correctamente.</small></div></div>'}
+function renderUsers(){usersTable.innerHTML="<tr><th>Usuario</th><th>Rol</th><th>Estado</th></tr>";users.forEach(u=>usersTable.innerHTML+=`<tr><td>${u.email}</td><td>${u.role||"Invitado"}</td><td><span class="status">Activo</span></td></tr>`)}
+function addUser(){let e=newUser.value.trim(),p=newPass.value.trim(),r=newRole.value;if(!e||!p){alert("Ingrese correo y contraseña");return}users.push({email:e,pass:p,role:r});localStorage.setItem("tayu_users_platform",JSON.stringify(users));renderUsers();newUser.value="";newPass.value=""}
+function renderVdfTable(){vdfTable.innerHTML='<tr><th>Parámetro</th><th>Registro</th><th>Raw</th><th>Valor</th><th>Estado</th></tr>';vdf.forEach(x=>{vdfTable.innerHTML+=`<tr><td>${x.param}</td><td>${x.reg}</td><td>${Math.round(x.raw)}</td><td><b>${Number(x.value).toFixed(2)} ${x.unit}</b></td><td><span class="status">OK</span></td></tr>`})}
+function jitter(v,amount,min,max){
+  let n=v+(Math.random()-.5)*amount;
+  return Math.max(min,Math.min(max,n));
+}
+
+
+
+function initVdfChartDefaults(){
+  if(Object.keys(vdfChartConfig).length) return;
+  vdf.forEach((item,index)=>{
+    let min="", max="", sample=5;
+    if(item.unit==="Hz"){min=50;max=70;sample=3;}
+    else if(item.unit==="A"){min=240;max=340;sample=5;}
+    else if(item.unit==="V"){min=380;max=480;sample=10;}
+    else if(item.unit==="%"){min=0;max=110;sample=7;}
+    else if(item.unit==="rpm"){min=1500;max=1900;sample=3;}
+    else if(item.unit==="PSI"){min=45;max=70;sample=6;}
+    else {min="";max="";sample=8;}
+    vdfChartConfig[index]={min:min,max:max,sample:sample};
+    vdfLastLogged[index]=0;
+  });
+}
+
+function initVdfMiniCharts(){
+  initVdfChartDefaults();
+  const grid=document.getElementById("vdfChartsGrid");
+  if(!grid || Object.keys(vdfMiniCharts).length) return;
+
+  grid.innerHTML="";
+  vdf.forEach((item,index)=>{
+    const id="vdfMini_"+index;
+    vdfMiniHistory[index]=[];
+    const cfg=vdfChartConfig[index];
+    grid.innerHTML += `
+      <div class="card">
+        <h3 style="font-size:18px;margin-top:0">${item.param}</h3>
+        <div class="mini-chart-box"><canvas id="${id}"></canvas></div>
+        <div class="chart-config-panel">
+          <div><span class="mini-label">Muestreo (s)</span><input type="number" min="1" step="1" id="sample_${index}" value="${cfg.sample}"></div>
+          <div><span class="mini-label">Y mínimo</span><input type="number" step="0.1" id="min_${index}" value="${cfg.min}"></div>
+          <div><span class="mini-label">Y máximo</span><input type="number" step="0.1" id="max_${index}" value="${cfg.max}"></div>
+          <div><span class="mini-label">Ventana</span><select id="window_${index}"><option value="16">16 puntos</option><option value="30">30 puntos</option><option value="60">60 puntos</option></select></div>
+          <button class="btn ghost" onclick="applyChartSettings(${index})">Aplicar</button>
+        </div>
+      </div>`;
+  });
+
+  vdf.forEach((item,index)=>{
+    const ctx=document.getElementById("vdfMini_"+index);
+    if(!ctx) return;
+    const cfg=vdfChartConfig[index];
+    vdfMiniCharts[index]=new Chart(ctx,{
+      type:"line",
+      data:{
+        labels:[],
+        datasets:[{
+          label:item.unit || "valor",
+          data:[],
+          borderColor:"#55c62b",
+          backgroundColor:"rgba(85,198,43,.10)",
+          fill:true,
+          tension:.35,
+          pointRadius:2
+        }]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        animation:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{ticks:{maxTicksLimit:6}},
+          y:{min:cfg.min===""?undefined:Number(cfg.min),max:cfg.max===""?undefined:Number(cfg.max)}
+        }
+      }
+    });
+  });
+}
+
+function applyChartSettings(index){
+  const sample=Number(document.getElementById("sample_"+index).value || 5);
+  const minInput=document.getElementById("min_"+index).value;
+  const maxInput=document.getElementById("max_"+index).value;
+  vdfChartConfig[index]={
+    sample:sample,
+    min:minInput===""?"":Number(minInput),
+    max:maxInput===""?"":Number(maxInput)
+  };
+
+  const chart=vdfMiniCharts[index];
+  if(chart){
+    chart.options.scales.y.min=vdfChartConfig[index].min===""?undefined:vdfChartConfig[index].min;
+    chart.options.scales.y.max=vdfChartConfig[index].max===""?undefined:vdfChartConfig[index].max;
+    chart.update();
+  }
+}
+
+function updateVdfMiniCharts(indexes, force){
+  initVdfMiniCharts();
+  const now=Date.now();
+  const t=localTimeLabel();
+  const targets = force ? vdf.map((_,i)=>i) : indexes;
+
+  targets.forEach(i=>{
+    const cfg=vdfChartConfig[i] || {sample:5,min:"",max:""};
+    const sampleMs=(Number(cfg.sample)||5)*1000;
+
+    if(!force && now-(vdfLastLogged[i]||0)<sampleMs) return;
+    vdfLastLogged[i]=now;
+
+    if(!vdfMiniHistory[i]) vdfMiniHistory[i]=[];
+    vdfMiniHistory[i].push({t,value:vdf[i].value});
+    const winEl=document.getElementById("window_"+i);
+    const maxPoints=winEl ? Number(winEl.value) : 16;
+    while(vdfMiniHistory[i].length>maxPoints) vdfMiniHistory[i].shift();
+
+    if(vdfMiniCharts[i]){
+      vdfMiniCharts[i].data.labels=vdfMiniHistory[i].map(x=>x.t);
+      vdfMiniCharts[i].data.datasets[0].data=vdfMiniHistory[i].map(x=>x.value);
+      vdfMiniCharts[i].options.scales.y.min=cfg.min===""?undefined:Number(cfg.min);
+      vdfMiniCharts[i].options.scales.y.max=cfg.max===""?undefined:Number(cfg.max);
+      vdfMiniCharts[i].update();
+    }
+  });
+}
+
+function generateHistoricalSeries(index,startDate,endDate){
+  const labels=[];
+  const data=[];
+  const base=Number(vdf[index].value)||0;
+  const points=32;
+  for(let i=0;i<points;i++){
+    const hour=String(Math.floor(i*24/points)).padStart(2,"0");
+    labels.push(hour+":00");
+    const wave=Math.sin(i/3)*0.8;
+    const noise=(Math.random()-.5)*0.6;
+    let spread=1;
+    if(vdf[index].unit==="A") spread=12;
+    if(vdf[index].unit==="V") spread=5;
+    if(vdf[index].unit==="rpm") spread=45;
+    if(vdf[index].unit==="%") spread=4;
+    data.push(base + (wave+noise)*spread);
+  }
+  return {labels,data};
+}
+
+function loadHistoricalVdfData(){
+  initVdfMiniCharts();
+  const start=document.getElementById("vdfDateStart")?.value;
+  const end=document.getElementById("vdfDateEnd")?.value;
+  vdf.forEach((item,index)=>{
+    const series=generateHistoricalSeries(index,start,end);
+    vdfMiniHistory[index]=series.labels.map((t,i)=>({t,value:series.data[i]}));
+    if(vdfMiniCharts[index]){
+      vdfMiniCharts[index].data.labels=series.labels;
+      vdfMiniCharts[index].data.datasets[0].data=series.data;
+      vdfMiniCharts[index].update();
+    }
+  });
+  if(document.getElementById("lastVdfReading")){
+    lastVdfReading.textContent="Histórico consultado: "+(start||"inicio")+" / "+(end||"actual");
+  }
+}
+
+function applyVdfUpdate(i){
+  if(i===0){vdf[i].value=jitter(vdf[i].value,0.28,55,61);vdf[i].raw=Math.round(vdf[i].value*10);}
+  if(i===1){vdf[i].value=jitter(vdf[i].value,4.2,250,325);vdf[i].raw=Math.round(vdf[i].value*10);}
+  if(i===2){vdf[i].value=jitter(vdf[i].value,1.4,82,100);vdf[i].raw=Math.round(vdf[i].value*10);}
+  if(i===3){vdf[i].value=jitter(vdf[i].value,1.6,438,456);vdf[i].raw=Math.round(vdf[i].value*10);}
+  if(i===4){vdf[i].value=jitter(vdf[i].value,1.5,410,430);vdf[i].raw=Math.round(vdf[i].value);}
+  if(i===5){vdf[i].value=jitter(vdf[i].value,1.2,85,99);vdf[i].raw=Math.round(vdf[i].value);}
+  if(i===6){vdf[i].value=jitter(vdf[i].value,14,1650,1810);vdf[i].raw=Math.round(vdf[i].value);}
+  if(i===7){vdf[i].value=jitter(vdf[i].value,0.55,53,61);vdf[i].raw=Math.round(vdf[i].value);}
+  if(i===8){vdf[i].value=jitter(vdf[i].value,0.25,55,61);vdf[i].raw=Math.round(vdf[i].value*10);}
+  if(i===10){vdf[i].value=vdf[0].value;vdf[i].raw=vdf[0].raw;}
+}
+
+function updateVdfDisplay(updatedIndexes){
+  renderVdfTable();
+
+  if(document.getElementById("mFreq")) mFreq.textContent=vdf[0].value.toFixed(2);
+  if(document.getElementById("mCurrent")) mCurrent.textContent=vdf[1].value.toFixed(1);
+  if(document.getElementById("mVolt")) mVolt.textContent=vdf[3].value.toFixed(1);
+  if(document.getElementById("mPsi")) mPsi.textContent=vdf[7].value.toFixed(1);
+
+  const nowLabel=localTimeLabel();
+  if(document.getElementById("lastVdfReading")) lastVdfReading.textContent="Última lectura: "+localDateTimeLabel();
+
+  if(updatedIndexes.includes(0)){
+    vdfHistory.push({t:nowLabel,v:vdf[0].value});
+    if(vdfHistory.length>18)vdfHistory.shift();
+  }
+
+  if(vdfLineChart){
+    vdfLineChart.data.labels=vdfHistory.map(x=>x.t);
+    vdfLineChart.data.datasets[0].data=vdfHistory.map(x=>x.v);
+    vdfLineChart.update();
+  }
+
+  if(vdfBarChart){
+    vdfBarChart.data.datasets[0].data=[vdf[0].value,vdf[1].value,vdf[3].value,vdf[7].value,vdf[6].value];
+    vdfBarChart.update();
+  }
+
+  updateVdfMiniCharts(updatedIndexes, false);
+}
+
+function randomizeVdf(force){
+  const indexes = force ? vdf.map((_,i)=>i) : [0];
+  indexes.forEach(i=>applyVdfUpdate(i));
+  updateVdfDisplay(indexes);
+}
+
+let vdfIntervalsStarted=false;
+
+function setDefaultVdfDates(){
+  const today=new Date();
+  const yesterday=new Date(Date.now()-24*60*60*1000);
+  const fmt=d=>d.toISOString().slice(0,10);
+  if(document.getElementById("vdfDateStart") && !vdfDateStart.value) vdfDateStart.value=fmt(yesterday);
+  if(document.getElementById("vdfDateEnd") && !vdfDateEnd.value) vdfDateEnd.value=fmt(today);
+}
+
+function startVdfLiveUpdates(){
+  if(vdfIntervalsStarted) return;
+  vdfIntervalsStarted=true;
+
+  setDefaultVdfDates(); randomizeVdf(true); updateVdfMiniCharts(vdf.map((_,i)=>i), true);
+
+  // Actualizaciones independientes, como lecturas reales en distintos intervalos
+  setInterval(()=>{applyVdfUpdate(0); applyVdfUpdate(10); updateVdfDisplay([0,10]);}, 2800);  // Frecuencia
+  setInterval(()=>{applyVdfUpdate(1); updateVdfDisplay([1]);}, 4700);                       // Corriente
+  setInterval(()=>{applyVdfUpdate(7); updateVdfDisplay([7]);}, 6500);                       // Presión PID
+  setInterval(()=>{applyVdfUpdate(3); applyVdfUpdate(4); updateVdfDisplay([3,4]);}, 9500);  // Voltajes
+  setInterval(()=>{applyVdfUpdate(6); updateVdfDisplay([6]);}, 3300);                       // RPM
+  setInterval(()=>{applyVdfUpdate(2); applyVdfUpdate(5); updateVdfDisplay([2,5]);}, 7200);  // Par / Potencia
+  setInterval(()=>{applyVdfUpdate(8); updateVdfDisplay([8]);}, 3900);                       // Salida PID
+}
+</script>
+</body>
+</html>
