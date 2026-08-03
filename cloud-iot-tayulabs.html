@@ -1572,6 +1572,14 @@ function openAgroFromControllers(){
 (() => {
   const AUTH_URL = 'https://auth.tayulabs.com';
   const API_URL = 'https://api.tayulabs.com';
+  const integrationStatus = document.createElement('div');
+  integrationStatus.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:9999;max-width:360px;padding:12px 14px;border-radius:10px;background:#172554;color:#fff;font:600 14px system-ui;box-shadow:0 8px 24px rgba(0,0,0,.25)';
+  document.body.appendChild(integrationStatus);
+  const setIntegrationStatus = text => integrationStatus.textContent = text;
+  if (typeof Keycloak !== 'function') {
+    setIntegrationStatus('No se cargó el módulo de inicio de sesión.');
+    return;
+  }
   const keycloak = new Keycloak({ url: AUTH_URL, realm: 'tayu-platform', clientId: 'tayu-dashboard' });
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
 
@@ -1640,6 +1648,7 @@ function openAgroFromControllers(){
     return response.json();
   }
 
+  setIntegrationStatus('Iniciando sesión segura…');
   keycloak.init({ onLoad:'login-required', pkceMethod:'S256', checkLoginIframe:false }).then(async authenticated => {
     if (!authenticated) return;
     document.getElementById('login').style.display = 'none';
@@ -1647,16 +1656,19 @@ function openAgroFromControllers(){
     currentUser = { role:'admin', email:keycloak.tokenParsed?.email || keycloak.tokenParsed?.preferred_username || 'Usuario Tayu Labs' };
     window.logout = () => keycloak.logout({ redirectUri: window.location.href });
     installShrimpModule();
+    setIntegrationStatus('Sesión lista. Consultando datos reales…');
     const [realDevices, realTelemetry] = await Promise.all([api('/devices'), api('/telemetry/latest')]);
     devices = realDevices.map(row => ({ name:row.name, client:row.organization_name, farm:row.organization_name, zone:'Sin zona', status:row.status === 'online' ? 'Online' : 'Offline', type:row.device_type, lat:null, lon:null }));
     applyRolePermissions();
     startPlatform();
     renderRealTelemetry(realTelemetry);
     renderShrimpData(realDevices, realTelemetry);
+    setIntegrationStatus('Conectado a la API: datos reales cargados.');
   }).catch(error => {
     console.error('No se pudo iniciar el dashboard seguro:', error);
     document.getElementById('loginError').textContent = 'No se pudo iniciar la sesión segura. Revisa la configuración de acceso.';
     document.getElementById('loginError').style.display = 'block';
+    setIntegrationStatus(`No se pudo cargar la plataforma: ${error.message}`);
   });
 })();
 </script>
