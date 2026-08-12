@@ -816,7 +816,7 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
       </div>
 
     <div class="modbus-config-grid">
-      <div><label>NOVA EDGE</label><select id="mbDeviceSelect"></select></div>
+      <div><label>NOVA EDGE</label><select id="mbDeviceSelect" onchange="window.onModbusDeviceChanged?.()"></select></div>
       <div><label>Baudrate</label>
         <select id="mbBaud"><option>4800</option><option selected>9600</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option></select>
       </div>
@@ -2752,7 +2752,6 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     renderNovaApplicationConfig();
     ensureNovaApplicationsWidget();
     updateModbusDeviceSelect(realDevices);
-    ensureDefaultModbusRows();
     renderModbusLive(realTelemetry);
     syncRealModbusToDashboard(realDevices, realTelemetry);
     renderDashboardWidgets();
@@ -2843,15 +2842,116 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     ].forEach(addModbusParamRow);
   }
 
+  const remoteModbusConfigs = {};
+  const loadedModbusConfigKeys = new Set();
+
+  function normalizeCloudModbusConfig(raw={}) {
+    const bus = raw.bus_config || {};
+    const equipment = raw.equipment_config || {};
+    return {
+      baudrate: Number(bus.baudrate ?? 9600),
+      slave_id: Number(bus.slave_id ?? 1),
+      parity: bus.parity || 'N',
+      stop_bits: Number(bus.stop_bits ?? 1),
+      timeout_ms: Number(bus.timeout_ms ?? 600),
+      poll_ms: Number(bus.poll_ms ?? 1000),
+      params: Array.isArray(raw.parameters) ? raw.parameters : [],
+      equipment_type: equipment.type || 'Variador de frecuencia',
+      equipment_name: equipment.name || 'Equipo Modbus',
+      application_area: equipment.application || 'Monitoreo',
+      updated_at: raw.updated_at || null
+    };
+  }
+
+  async function loadModbusConfigFromCloud(deviceKey, force=false) {
+    if (!deviceKey) return null;
+    if (!force && loadedModbusConfigKeys.has(deviceKey)) return remoteModbusConfigs[deviceKey] || null;
+
+    const raw = await api(`/devices/modbus-config?device_key=${encodeURIComponent(deviceKey)}`);
+    const cfg = normalizeCloudModbusConfig(raw);
+    remoteModbusConfigs[deviceKey] = cfg;
+    loadedModbusConfigKeys.add(deviceKey);
+
+    // Compatibilidad local mientras terminamos la migración completa.
+    localStorage.setItem(`tayu_real_modbus_config_${deviceKey}`, JSON.stringify(cfg));
+    return cfg;
+  }
+
+  async function loadAllModbusConfigs(realDevices, force=false) {
+    const nova = realDevices.filter(r => assetType(r)==='novaEdge');
+    await Promise.all(nova.map(r => loadModbusConfigFromCloud(r.device_key, force).catch(error => {
+      console.warn(`No se pudo cargar Modbus de ${r.device_key}:`, error);
+      return null;
+    })));
+  }
+
+  function setModbusFormValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value ?? '';
+  }
+
+  function renderModbusConfigForm(deviceKey, force=false) {
+    const tbody = document.getElementById('mbParamRows');
+    const sel = document.getElementById('mbDeviceSelect');
+    if (!tbody || !sel || !deviceKey) return;
+
+    if (!force && sel.dataset.loadedDevice === deviceKey) return;
+
+    const cfg = remoteModbusConfigs[deviceKey] || {
+      baudrate:9600, slave_id:1, parity:'N', stop_bits:1,
+      timeout_ms:600, poll_ms:1000, params:[],
+      equipment_type:'Variador de frecuencia',
+      equipment_name:'Equipo Modbus',
+      application_area:'Monitoreo'
+    };
+
+    setModbusFormValue('mbBaud', cfg.baudrate);
+    setModbusFormValue('mbSlave', cfg.slave_id);
+    setModbusFormValue('mbParity', cfg.parity);
+    setModbusFormValue('mbStop', cfg.stop_bits);
+    setModbusFormValue('mbTimeout', cfg.timeout_ms);
+    setModbusFormValue('mbPoll', cfg.poll_ms);
+    setModbusFormValue('mbApplicationType', cfg.equipment_type);
+    setModbusFormValue('mbApplicationName', cfg.equipment_name);
+    setModbusFormValue('mbApplicationArea', cfg.application_area);
+
+    tbody.innerHTML = '';
+    const rows = Array.isArray(cfg.params) && cfg.params.length
+      ? cfg.params
+      : [
+          {name:'Voltaje',fc:3,reg:0,type:'U16',scale:1,offset:0,unit:'V',enabled:true},
+          {name:'Corriente',fc:3,reg:1,type:'U16',scale:1,offset:0,unit:'A',enabled:true},
+          {name:'Frecuencia',fc:3,reg:2,type:'U16',scale:1,offset:0,unit:'Hz',enabled:true},
+          {name:'Potencia',fc:3,reg:3,type:'U16',scale:1,offset:0,unit:'kW',enabled:true}
+        ];
+
+    rows.forEach(addModbusParamRow);
+    sel.dataset.loadedDevice = deviceKey;
+  }
+
+  window.onModbusDeviceChanged = async function(){
+    const deviceKey = document.getElementById('mbDeviceSelect')?.value;
+    if (!deviceKey) return;
+    await loadModbusConfigFromCloud(deviceKey).catch(console.error);
+    const sel = document.getElementById('mbDeviceSelect');
+    if (sel) sel.dataset.loadedDevice = '';
+    renderModbusConfigForm(deviceKey, true);
+    window.refreshRealData?.();
+  };
+
   function updateModbusDeviceSelect(realDevices) {
     const sel = document.getElementById('mbDeviceSelect');
     if (!sel) return;
     const previous = sel.value;
     const nova = realDevices.filter(r => assetType(r)==='novaEdge');
+
     sel.innerHTML = nova.length
       ? nova.map(r => `<option value="${r.device_key}">${r.name} · ${r.device_key}</option>`).join('')
       : '<option value="">No hay NOVA EDGE</option>';
+
     if (nova.some(r => r.device_key === previous)) sel.value = previous;
+
+    if (sel.value) renderModbusConfigForm(sel.value);
   }
 
   function inferModbusUnit(name) {
@@ -2878,11 +2978,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
         const entries = Object.entries(values);
         if (!entries.length) return;
 
-        let saved = {};
-        try {
-          saved = JSON.parse(localStorage.getItem(`tayu_real_modbus_config_${d.device_key}`) || '{}');
-        } catch (_) {}
-
+        const saved = remoteModbusConfigs[d.device_key] || {};
         const params = Array.isArray(saved.params) ? saved.params.filter(p=>p.enabled!==false && p.name) : [];
         const sourceEntries = params.length
           ? params.filter(p=>Object.prototype.hasOwnProperty.call(values,p.name)).map(p=>[p.name,values[p.name],p])
@@ -2975,8 +3071,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     const row = realTelemetry.find(r => r.device_key === deviceKey);
     const modbus = row?.payload?.modbus || {};
 
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem(`tayu_real_modbus_config_${deviceKey}`) || '{}'); } catch (_) {}
+    const saved = remoteModbusConfigs[deviceKey] || {};
     const configured = Array.isArray(saved.params) ? saved.params.filter(p=>p.enabled!==false && p.name) : [];
 
     // Si existe configuración en la plataforma, SOLO se muestran esas variables.
@@ -3024,32 +3119,42 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
         timeout_ms: Number(document.getElementById('mbTimeout').value),
         poll_ms: Number(document.getElementById('mbPoll').value),
         params
+      },
+      equipment_config: {
+        type: document.getElementById('mbApplicationType')?.value || 'Variador de frecuencia',
+        name: document.getElementById('mbApplicationName')?.value || 'Equipo Modbus',
+        application: document.getElementById('mbApplicationArea')?.value || 'Monitoreo'
       }
     };
 
     try {
-      localStorage.setItem(
-        `tayu_real_modbus_config_${deviceKey}`,
-        JSON.stringify({
-          baudrate: body.modbus_config.baudrate,
-          slave_id: body.modbus_config.slave_id,
-          parity: body.modbus_config.parity,
-          stop_bits: body.modbus_config.stop_bits,
-          params: body.modbus_config.params,
-          equipment_type: document.getElementById('mbApplicationType')?.value || 'Variador de frecuencia',
-          equipment_name: document.getElementById('mbApplicationName')?.value || 'Equipo Modbus',
-          application_area: document.getElementById('mbApplicationArea')?.value || 'Monitoreo'
-        })
-      );
-
-      if (status) status.textContent = 'Enviando configuración al NOVA EDGE…';
+      if (status) status.textContent = 'Guardando configuración en servidor y enviando al NOVA EDGE…';
       await apiPost('/devices/modbus-config', body);
+
+      remoteModbusConfigs[deviceKey] = {
+        baudrate: body.modbus_config.baudrate,
+        slave_id: body.modbus_config.slave_id,
+        parity: body.modbus_config.parity,
+        stop_bits: body.modbus_config.stop_bits,
+        timeout_ms: body.modbus_config.timeout_ms,
+        poll_ms: body.modbus_config.poll_ms,
+        params: body.modbus_config.params,
+        equipment_type: body.equipment_config.type,
+        equipment_name: body.equipment_config.name,
+        application_area: body.equipment_config.application,
+        updated_at: new Date().toISOString()
+      };
+      loadedModbusConfigKeys.add(deviceKey);
+      localStorage.setItem(`tayu_real_modbus_config_${deviceKey}`, JSON.stringify(remoteModbusConfigs[deviceKey]));
       if (status) status.textContent = 'Configuración enviada. Esperando telemetría…';
       await new Promise(r => setTimeout(r, 1500));
+      const sel = document.getElementById('mbDeviceSelect');
+      if (sel) sel.dataset.loadedDevice = '';
+      renderModbusConfigForm(deviceKey, true);
       await refreshRealData();
       refreshMbDevices();
       renderDashboardWidgets();
-      if (status) status.textContent = 'Configuración aplicada. Variables y dashboard sincronizados.';
+      if (status) status.textContent = 'Configuración guardada en PostgreSQL, aplicada al NOVA EDGE y sincronizada con el Dashboard.';
     } catch (error) {
       console.error(error);
       if (status) status.textContent = `Error: ${error.message}`;
@@ -3069,6 +3174,10 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
         api('/telemetry/latest'),
         api('/modules')
       ]);
+
+      // Cargamos una sola vez por sesión la configuración persistente de cada NOVA EDGE.
+      // Así PC, celular y cualquier navegador reconstruyen las mismas variables Modbus.
+      await loadAllModbusConfigs(realDevices);
 
       applyModulePermissions(organizationModules);
       applyRealData(realDevices, realTelemetry);
