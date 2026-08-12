@@ -442,6 +442,22 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 .nova-command-msg{font-size:12px;color:var(--muted);margin-top:8px;min-height:18px}
 </style>
 
+
+<style>
+.modbus-config-card{margin-top:18px}
+.modbus-config-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+.modbus-param-table{width:100%;border-collapse:collapse;margin-top:14px}
+.modbus-param-table th,.modbus-param-table td{padding:10px;border-bottom:1px solid var(--border);font-size:12px;text-align:left}
+.modbus-param-table input,.modbus-param-table select{padding:8px;font-size:12px}
+.modbus-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.modbus-live-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
+.modbus-live-card{background:var(--panel2);border:1px solid var(--border);border-radius:18px;padding:15px}
+.modbus-live-card span{display:block;color:var(--muted);font-size:12px;font-weight:800}
+.modbus-live-card b{font-size:24px}
+@media(max-width:900px){.modbus-config-grid,.modbus-live-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.modbus-config-grid,.modbus-live-grid{grid-template-columns:1fr}.modbus-param-table{min-width:900px}}
+</style>
+
 </head>
 <body>
 <section class="login" id="login">
@@ -723,7 +739,53 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 </section>
 
 
+
 <section id="modbus" class="view">
+  <div class="card modbus-config-card">
+    <div class="module-header">
+      <div>
+        <h3>Configuración RS485 / Modbus</h3>
+        <p class="hint">Configura el bus y los registros que leerá el NOVA EDGE. La configuración se envía por MQTT y queda guardada en el equipo.</p>
+      </div>
+      <button class="btn ghost" onclick="window.refreshRealData?.()">Actualizar datos</button>
+    </div>
+
+    <div class="modbus-config-grid">
+      <div><label>NOVA EDGE</label><select id="mbDeviceSelect"></select></div>
+      <div><label>Baudrate</label>
+        <select id="mbBaud"><option>4800</option><option selected>9600</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option></select>
+      </div>
+      <div><label>Slave ID</label><input id="mbSlave" type="number" min="1" max="247" value="1"></div>
+      <div><label>Paridad</label><select id="mbParity"><option value="N">None</option><option value="E">Even</option><option value="O">Odd</option></select></div>
+      <div><label>Stop bits</label><select id="mbStop"><option value="1">1</option><option value="2">2</option></select></div>
+      <div><label>Timeout (ms)</label><input id="mbTimeout" type="number" value="600" min="100" max="5000"></div>
+      <div><label>Polling (ms)</label><input id="mbPoll" type="number" value="1000" min="200" max="60000"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="modbus-param-table">
+        <thead>
+          <tr><th>Nombre</th><th>FC</th><th>Registro</th><th>Tipo</th><th>Escala</th><th>Offset</th><th>Unidad</th><th>Activo</th></tr>
+        </thead>
+        <tbody id="mbParamRows"></tbody>
+      </table>
+    </div>
+
+    <div class="modbus-actions">
+      <button class="btn ghost" onclick="addModbusParamRow()">＋ Agregar parámetro</button>
+      <button class="btn" onclick="saveModbusConfigFromPlatform()">Guardar configuración</button>
+    </div>
+    <div class="hint" id="mbConfigStatus" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>Lecturas Modbus en tiempo real</h3>
+    <p class="hint">Valores recibidos por telemetría desde el NOVA EDGE.</p>
+    <div id="modbusLiveValues" class="modbus-live-grid">
+      <div class="nova-empty">Aún no hay valores Modbus disponibles.</div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="module-header"><div><h3>🔌 Equipos Modbus</h3><p class="hint">Configura PLC, variadores, medidores y sensores Modbus RTU/TCP.</p></div><button class="btn" onclick="addModbusDevice()">＋ Agregar equipo</button></div>
     <div id="modbusDeviceGrid" class="modbus-grid" style="margin-top:18px"></div>
@@ -2194,6 +2256,9 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     renderBananaSatellite();
     renderCattleSatellite();
     renderNovaEdgePanel(realDevices, realTelemetry);
+    updateModbusDeviceSelect(realDevices);
+    ensureDefaultModbusRows();
+    renderModbusLive(realTelemetry);
 
     // Real telemetry table.
     const table = document.getElementById('sensorTable');
@@ -2245,6 +2310,116 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
         button.disabled = false;
         button.textContent = previousText;
       }
+    }
+  };
+
+
+  function addModbusParamRow(data={}) {
+    const tbody = document.getElementById('mbParamRows');
+    if (!tbody) return;
+    if (tbody.children.length >= 8) return;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input class="mb-name" value="${data.name ?? ''}" placeholder="Voltaje"></td>
+      <td><select class="mb-fc"><option value="3" ${String(data.fc??3)==='3'?'selected':''}>03</option><option value="4" ${String(data.fc)==='4'?'selected':''}>04</option></select></td>
+      <td><input class="mb-reg" type="number" min="0" max="65535" value="${data.reg ?? 0}"></td>
+      <td><select class="mb-type">
+        ${['U16','I16','U32_AB','U32_BA','I32_AB','I32_BA','F32_AB','F32_BA'].map(t=>`<option ${data.type===t?'selected':''}>${t}</option>`).join('')}
+      </select></td>
+      <td><input class="mb-scale" type="number" step="any" value="${data.scale ?? 1}"></td>
+      <td><input class="mb-offset" type="number" step="any" value="${data.offset ?? 0}"></td>
+      <td><input class="mb-unit" value="${data.unit ?? ''}" placeholder="V"></td>
+      <td><input class="mb-enabled" type="checkbox" ${data.enabled===false?'':'checked'}></td>`;
+    tbody.appendChild(tr);
+  }
+  window.addModbusParamRow = addModbusParamRow;
+
+  function ensureDefaultModbusRows() {
+    const tbody = document.getElementById('mbParamRows');
+    if (!tbody || tbody.children.length) return;
+    [
+      {name:'Voltaje',fc:3,reg:0,type:'U16',scale:1,offset:0,unit:'V',enabled:true},
+      {name:'Corriente',fc:3,reg:1,type:'U16',scale:1,offset:0,unit:'A',enabled:true},
+      {name:'Frecuencia',fc:3,reg:2,type:'U16',scale:1,offset:0,unit:'Hz',enabled:true},
+      {name:'Potencia',fc:3,reg:3,type:'U16',scale:1,offset:0,unit:'kW',enabled:true}
+    ].forEach(addModbusParamRow);
+  }
+
+  function updateModbusDeviceSelect(realDevices) {
+    const sel = document.getElementById('mbDeviceSelect');
+    if (!sel) return;
+    const nova = realDevices.filter(r => assetType(r)==='novaEdge');
+    sel.innerHTML = nova.length
+      ? nova.map(r => `<option value="${r.device_key}">${r.name} · ${r.device_key}</option>`).join('')
+      : '<option value="">No hay NOVA EDGE</option>';
+  }
+
+  function renderModbusLive(realTelemetry) {
+    const host = document.getElementById('modbusLiveValues');
+    if (!host) return;
+    const sel = document.getElementById('mbDeviceSelect');
+    const deviceKey = sel?.value;
+    if (!deviceKey) {
+      host.innerHTML = '<div class="nova-empty">Selecciona un NOVA EDGE.</div>';
+      return;
+    }
+
+    const row = realTelemetry.find(r => r.device_key === deviceKey);
+    const modbus = row?.payload?.modbus || {};
+    const entries = Object.entries(modbus);
+    if (!entries.length) {
+      host.innerHTML = '<div class="nova-empty">Aún no hay valores Modbus disponibles.</div>';
+      return;
+    }
+
+    host.innerHTML = entries.map(([k,v]) => `
+      <div class="modbus-live-card"><span>${k}</span><b>${v}</b></div>
+    `).join('');
+  }
+
+  window.saveModbusConfigFromPlatform = async () => {
+    const deviceKey = document.getElementById('mbDeviceSelect')?.value;
+    const status = document.getElementById('mbConfigStatus');
+    if (!deviceKey) {
+      if (status) status.textContent = 'No hay NOVA EDGE seleccionado.';
+      return;
+    }
+
+    const params = [...document.querySelectorAll('#mbParamRows tr')].map(tr => ({
+      name: tr.querySelector('.mb-name').value.trim(),
+      fc: Number(tr.querySelector('.mb-fc').value),
+      reg: Number(tr.querySelector('.mb-reg').value),
+      type: tr.querySelector('.mb-type').value,
+      scale: Number(tr.querySelector('.mb-scale').value),
+      offset: Number(tr.querySelector('.mb-offset').value),
+      unit: tr.querySelector('.mb-unit').value.trim(),
+      enabled: tr.querySelector('.mb-enabled').checked
+    })).filter(p => p.name);
+
+    const body = {
+      device_key: deviceKey,
+      modbus_config: {
+        baudrate: Number(document.getElementById('mbBaud').value),
+        slave_id: Number(document.getElementById('mbSlave').value),
+        parity: document.getElementById('mbParity').value,
+        stop_bits: Number(document.getElementById('mbStop').value),
+        timeout_ms: Number(document.getElementById('mbTimeout').value),
+        poll_ms: Number(document.getElementById('mbPoll').value),
+        params
+      }
+    };
+
+    try {
+      if (status) status.textContent = 'Enviando configuración al NOVA EDGE…';
+      await apiPost('/devices/modbus-config', body);
+      if (status) status.textContent = 'Configuración enviada. Esperando telemetría…';
+      await new Promise(r => setTimeout(r, 1500));
+      await refreshRealData();
+      if (status) status.textContent = 'Configuración aplicada.';
+    } catch (error) {
+      console.error(error);
+      if (status) status.textContent = `Error: ${error.message}`;
     }
   };
 
