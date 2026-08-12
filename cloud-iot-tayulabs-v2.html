@@ -434,6 +434,14 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 @media(max-width:520px){.nova-relay-grid,.nova-info-grid{grid-template-columns:1fr}}
 </style>
 
+
+<style>
+.nova-relay-control{margin-top:12px;display:flex;gap:8px;align-items:center}
+.nova-relay-control .btn{width:100%}
+.nova-relay-control .btn:disabled{opacity:.55;cursor:wait}
+.nova-command-msg{font-size:12px;color:var(--muted);margin-top:8px;min-height:18px}
+</style>
+
 </head>
 <body>
 <section class="login" id="login">
@@ -1931,6 +1939,21 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     return response.json();
   }
 
+  async function apiPost(path, body) {
+    await keycloak.updateToken(30);
+    const response = await fetch(`${API_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${keycloak.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `API ${response.status}`);
+    return data;
+  }
+
   function applyModulePermissions(modules) {
     const allowed = new Set(Array.isArray(modules) ? modules : []);
 
@@ -2014,11 +2037,24 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
     })[ch]);
 
-    const relayCard = (label, value) => {
+    const relayCard = (label, value, deviceKey, relayNumber) => {
       const on = value === true;
+      const canControl = relayNumber === 1;
+      const control = canControl
+        ? `<div class="nova-relay-control">
+             <button class="btn ${on ? 'ghost' : ''}"
+               data-nova-relay1="${esc(deviceKey)}"
+               onclick="window.setNovaRelay1?.('${esc(deviceKey)}', ${on ? 'false' : 'true'}, this)">
+               ${on ? 'APAGAR' : 'ENCENDER'}
+             </button>
+           </div>
+           <div class="nova-command-msg" id="novaCmd_${esc(deviceKey).replace(/[^a-zA-Z0-9_-]/g,'_')}"></div>`
+        : `<div class="nova-command-msg">Control remoto pendiente</div>`;
+
       return `<div class="nova-relay-card ${on ? 'on' : 'off'}">
         <span class="hint">${label}</span>
         <div class="relay-state">${on ? '● ENCENDIDO' : '○ APAGADO'}</div>
+        ${control}
       </div>`;
     };
 
@@ -2051,10 +2087,10 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
         </div>
 
         <div class="nova-relay-grid">
-          ${relayCard('Relay 1 · GPIO 2', p.relay1)}
-          ${relayCard('Relay 2 · GPIO 1', p.relay2)}
-          ${relayCard('Relay 3 · GPIO 46', p.relay3)}
-          ${relayCard('Relay 4 · GPIO 45', p.relay4)}
+          ${relayCard('Relay 1 · GPIO 2', p.relay1, device.device_key, 1)}
+          ${relayCard('Relay 2 · GPIO 1', p.relay2, device.device_key, 2)}
+          ${relayCard('Relay 3 · GPIO 46', p.relay3, device.device_key, 3)}
+          ${relayCard('Relay 4 · GPIO 45', p.relay4, device.device_key, 4)}
         </div>
 
         <div class="nova-info-grid">
@@ -2177,6 +2213,41 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
         }).join('');
     }
   }
+
+  window.setNovaRelay1 = async (deviceKey, state, button) => {
+    const safeId = String(deviceKey).replace(/[^a-zA-Z0-9_-]/g,'_');
+    const msg = document.getElementById(`novaCmd_${safeId}`);
+    const previousText = button?.textContent || '';
+
+    try {
+      if (button) {
+        button.disabled = true;
+        button.textContent = state ? 'ENCENDIENDO…' : 'APAGANDO…';
+      }
+      if (msg) msg.textContent = 'Enviando comando al NOVA EDGE…';
+
+      await apiPost('/devices/relay1', {
+        device_key: deviceKey,
+        state: Boolean(state)
+      });
+
+      if (msg) msg.textContent = 'Comando enviado. Esperando confirmación del equipo…';
+
+      // El firmware publica telemetría inmediatamente al ejecutar el comando.
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      await refreshRealData();
+
+      // No cambiamos el estado visual manualmente:
+      // renderNovaEdgePanel lo toma de la telemetría real recibida.
+    } catch (error) {
+      console.error('Error controlando Relay 1:', error);
+      if (msg) msg.textContent = `Error: ${error.message}`;
+      if (button) {
+        button.disabled = false;
+        button.textContent = previousText;
+      }
+    }
+  };
 
   async function refreshRealData() {
     setStatus('Actualizando datos reales…');
