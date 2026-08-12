@@ -1545,7 +1545,7 @@ let shrimpMarkers=[];
 function initCustomPlatform(){
  if(localStorage.getItem('tayu_sidebar_collapsed')==='1')document.body.classList.add('sidebar-collapsed');
  if(localStorage.getItem('tayu_dark')==='1'){document.body.classList.add('dark');const b=document.getElementById('themeButton');if(b)b.textContent='☀️'}
- renderDashboardWidgets();renderShrimpEquipment();renderSensorTable();renderAlarms();renderFrames();
+ renderDashboardWidgets();window.renderShrimpEquipment?.();renderSensorTable();renderAlarms();renderFrames();
  setTimeout(()=>{syncAssetsToModules();renderAssetInventory();initShrimpMap();initCattleSatelliteMap();initBananaSatelliteMap();renderIrrigationSystem();renderModbusDevices();initMbPreview();updateAlarmBadge();},250);
 }
 
@@ -1569,7 +1569,7 @@ function toggleOxygenControl(id){
  const x=shrimpEquipment.find(e=>e.id===id&&e.type==='aerator');if(!x)return;
  x.oxygenControl=!x.oxygenControl;
  if(x.oxygenControl)x.auto=true;
- saveShrimp();renderShrimpEquipment();renderDashboardWidgets();
+ saveShrimp();window.renderShrimpEquipment?.();renderDashboardWidgets();
  platformFrames.unshift({date:new Date().toLocaleString('es-EC'),device:x.name,direction:'downlink',topic:`tayulabs/camaronera/${x.id}/oxygen-control`,payload:JSON.stringify({oxygen_control:x.oxygenControl,sensor_id:x.oxygenSensorId,threshold:x.oxygenThreshold}),status:'OK'});
  renderFrames();
 }
@@ -1985,7 +1985,7 @@ function syncAssetsToModules(){
  irrigationTanks=assetInventory.filter(a=>['tankWater','tankDiesel'].includes(a.type)).map(a=>({id:a.id,name:a.name,fluid:a.type==='tankDiesel'?'Diésel':'Agua',capacity:a.capacity||0,level:a.level||0,sensor:'Sensor asociado',location:a.zone||a.farm}));
  irrigationPumps=assetInventory.filter(a=>['pumpWater','pumpDiesel'].includes(a.type)).map(a=>({id:a.id,name:a.name,type:a.type==='pumpDiesel'?'Diésel':'Agua',sourceTank:a.sourceTank||irrigationTanks[0]?.id||'',online:a.status==='Online',running:a.running||false,mode:a.mode||'manual',levelControl:a.mode==='level',startBelow:a.startBelow||30,stopAbove:a.stopAbove||85,start:a.start||'06:00',stop:a.stop||'08:00'}));
  saveShrimp();saveIrrigation();localStorage.setItem('tayu_sensors',JSON.stringify(platformSensors));
- renderShrimpEquipment();renderSensorTable();renderIrrigationSystem();
+ window.renderShrimpEquipment?.();renderSensorTable();renderIrrigationSystem();
 }
 
 function openWidgetLibrary(){renderWidgetLibrary();document.getElementById('widgetModal').classList.add('open')}
@@ -2135,12 +2135,12 @@ function equipmentCard(x){
  <div class="switch-label"><span>Modo automático por horario</span><button class="tayu-switch ${x.auto?'on':''}" onclick="toggleEquipmentAuto('${x.id}')"><span></span></button></div>
  <button class="btn ${x.running?'ghost':''}" style="width:100%" ${x.online?'':'disabled'} onclick="toggleEquipment('${x.id}')">${x.running?'Apagar equipo':'Encender equipo'}</button></article>`;
 }
-function updateEquipment(id,key,value){const x=shrimpEquipment.find(e=>e.id===id);if(!x)return;x[key]=['capacityKg','foodKg','oxygenThreshold'].includes(key)?Math.max(0,Number(value)||0):value;if(x.type==='feeder'&&x.foodKg>x.capacityKg)x.foodKg=x.capacityKg;if(x.type==='aerator')evaluateOxygenAutomation(x);saveShrimp();renderShrimpEquipment();renderDashboardWidgets();renderFrames();checkHopperAlarm(x)}
-function toggleEquipment(id){const x=shrimpEquipment.find(e=>e.id===id);if(!x||!x.online)return;if(x.type==='aerator'&&x.oxygenControl)x.oxygenControl=false;x.running=!x.running;platformFrames.unshift({date:new Date().toLocaleString('es-EC'),device:x.name,direction:'downlink',topic:`tayulabs/camaronera/${x.id}/cmd`,payload:`{"command":"${x.running?'on':'off'}"}`,status:'OK'});saveShrimp();renderShrimpEquipment();renderFrames();renderDashboardWidgets()}
+function updateEquipment(id,key,value){const x=shrimpEquipment.find(e=>e.id===id);if(!x)return;x[key]=['capacityKg','foodKg','oxygenThreshold'].includes(key)?Math.max(0,Number(value)||0):value;if(x.type==='feeder'&&x.foodKg>x.capacityKg)x.foodKg=x.capacityKg;if(x.type==='aerator')evaluateOxygenAutomation(x);saveShrimp();window.renderShrimpEquipment?.();renderDashboardWidgets();renderFrames();checkHopperAlarm(x)}
+function toggleEquipment(id){const x=shrimpEquipment.find(e=>e.id===id);if(!x||!x.online)return;if(x.type==='aerator'&&x.oxygenControl)x.oxygenControl=false;x.running=!x.running;platformFrames.unshift({date:new Date().toLocaleString('es-EC'),device:x.name,direction:'downlink',topic:`tayulabs/camaronera/${x.id}/cmd`,payload:`{"command":"${x.running?'on':'off'}"}`,status:'OK'});saveShrimp();window.renderShrimpEquipment?.();renderFrames();renderDashboardWidgets()}
 function toggleEquipmentAuto(id){const x=shrimpEquipment.find(e=>e.id===id);if(!x)return;x.auto=!x.auto;saveShrimp();renderShrimpEquipment()}
 function checkHopperAlarm(x){if(x.type!=='feeder'||!x.capacityKg)return;const pct=x.foodKg/x.capacityKg*100;if(pct<20&&!platformAlarms.some(a=>a.equipment===x.name&&a.message.includes('Tolva')&&a.state==='Activa')){const d=new Date();platformAlarms.unshift({id:Date.now(),date:d.toISOString().slice(0,10),time:d.toTimeString().slice(0,5),equipment:x.name,message:'Tolva con poca comida',reading:`${x.foodKg} kg / ${x.capacityKg} kg`,threshold:'Mín. 20%',severity:'Advertencia',state:'Activa'});saveAlarms();renderAlarms()}}
 function saveShrimp(){localStorage.setItem('tayu_shrimp_equipment',JSON.stringify(shrimpEquipment))}
-function addShrimpEquipment(){const type=prompt('Tipo de equipo: alimentador o aireador','alimentador');if(!type)return;const feeder=type.toLowerCase().startsWith('ali');const name=prompt('Nombre del equipo',feeder?'Alimentador nuevo':'Aireador nuevo');if(!name)return;shrimpEquipment.push({id:'eq-'+Date.now(),type:feeder?'feeder':'aerator',name,farm:'Camaronera nueva',pond:'Piscina 1',online:true,running:false,lat:-2.258+Math.random()*.006-.003,lon:-80.004+Math.random()*.006-.003,capacityKg:feeder?150:0,foodKg:feeder?100:0,start:'07:00',stop:'07:10',auto:false,oxygenControl:false,oxygenSensorId:'ox-04',oxygenThreshold:4});saveShrimp();renderShrimpEquipment();renderDashboardWidgets()}
+function addShrimpEquipment(){const type=prompt('Tipo de equipo: alimentador o aireador','alimentador');if(!type)return;const feeder=type.toLowerCase().startsWith('ali');const name=prompt('Nombre del equipo',feeder?'Alimentador nuevo':'Aireador nuevo');if(!name)return;shrimpEquipment.push({id:'eq-'+Date.now(),type:feeder?'feeder':'aerator',name,farm:'Camaronera nueva',pond:'Piscina 1',online:true,running:false,lat:-2.258+Math.random()*.006-.003,lon:-80.004+Math.random()*.006-.003,capacityKg:feeder?150:0,foodKg:feeder?100:0,start:'07:00',stop:'07:10',auto:false,oxygenControl:false,oxygenSensorId:'ox-04',oxygenThreshold:4});saveShrimp();window.renderShrimpEquipment?.();renderDashboardWidgets()}
 function renderSensorTable(){const table=document.getElementById('sensorTable');if(!table)return;table.innerHTML='<tr><th>Sensor</th><th>Lectura</th><th>Ubicación</th><th>Mínimo</th><th>Máximo</th><th>Estado</th><th></th></tr>'+platformSensors.map(s=>`<tr><td>${s.name}</td><td><b>${s.value} ${s.unit}</b></td><td>${s.location}</td><td><input class="small-input" type="number" value="${s.min}" onchange="updateSensor(\'${s.id}\',\'min\',this.value)"></td><td><input class="small-input" type="number" value="${s.max}" onchange="updateSensor(\'${s.id}\',\'max\',this.value)"></td><td><span class="${s.state==='Normal'?'status':'status warn'}">${s.state}</span></td><td><button class="btn ghost" onclick="deleteSensor('${s.id}')">×</button></td></tr>`).join('')}
 function updateSensor(id,key,value){const s=platformSensors.find(x=>x.id===id);if(!s)return;s[key]=Number(value);s.state=s.value<s.min?'Bajo':s.value>s.max?'Alto':'Normal';localStorage.setItem('tayu_sensors',JSON.stringify(platformSensors));renderSensorTable();renderDashboardWidgets()}
 function addSensor(){const name=prompt('Nombre del sensor','Oxígeno disuelto');if(!name)return;platformSensors.push({id:'s-'+Date.now(),name,unit:prompt('Unidad','mg/L')||'',value:Number(prompt('Lectura actual','0'))||0,min:Number(prompt('Umbral mínimo','0'))||0,max:Number(prompt('Umbral máximo','100'))||100,location:prompt('Ubicación','Piscina 1')||'Sin ubicación',state:'Normal'});localStorage.setItem('tayu_sensors',JSON.stringify(platformSensors));renderSensorTable()}
@@ -2791,6 +2791,22 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     setStatus(`No se pudo cargar la plataforma: ${error.message}`);
   });
 })();
+</script>
+
+
+<script>
+if (typeof window.renderShrimpEquipment !== 'function') {
+  window.renderShrimpEquipment = function () {
+    try {
+      if (typeof renderShrimpCards === 'function') renderShrimpCards();
+      if (typeof renderShrimpMarkers === 'function') renderShrimpMarkers();
+      if (typeof renderShrimpMapList === 'function') renderShrimpMapList();
+      if (typeof renderNovaApplicationConfig === 'function') renderNovaApplicationConfig();
+    } catch (e) {
+      console.warn('renderShrimpEquipment compat:', e);
+    }
+  };
+}
 </script>
 
 </body>
