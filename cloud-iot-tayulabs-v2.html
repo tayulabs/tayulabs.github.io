@@ -458,6 +458,46 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 @media(max-width:560px){.modbus-config-grid,.modbus-live-grid{grid-template-columns:1fr}.modbus-param-table{min-width:900px}}
 </style>
 
+
+<style>
+/* ===== v2.8 · Paneles plegables, aplicaciones y dashboard real ===== */
+.config-accordion{border:1px solid var(--border);border-radius:22px;background:var(--panel);box-shadow:var(--shadow);overflow:hidden}
+.config-accordion + .config-accordion,.config-accordion + .card,.card + .config-accordion{margin-top:18px}
+.config-accordion>summary{list-style:none;cursor:pointer;padding:19px 22px;display:flex;justify-content:space-between;gap:16px;align-items:center;font-weight:900}
+.config-accordion>summary::-webkit-details-marker{display:none}
+.config-accordion>summary:after{content:"⌄";font-size:22px;transition:.2s;line-height:1}
+.config-accordion[open]>summary:after{transform:rotate(180deg)}
+.config-accordion .accordion-body{padding:0 22px 22px;border-top:1px solid var(--border)}
+.config-accordion .accordion-subtitle{display:block;color:var(--muted);font-size:12px;font-weight:600;margin-top:4px}
+
+.app-mapping-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+.app-mapping-card{border:1px solid var(--border);background:var(--panel2);border-radius:18px;padding:15px}
+.app-mapping-card h4{margin:0 0 4px}
+.app-mapping-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+.app-state{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;font-weight:850}
+.application-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--panel);padding:6px 9px;border-radius:999px;font-size:11px;font-weight:850}
+
+.modbus-classification{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.section-spaced{margin-top:18px!important}
+
+.chart-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.chart-step{background:var(--panel2);border:1px solid var(--border);border-radius:15px;padding:12px}
+.chart-step b{display:block;margin-bottom:3px}
+.chart-helper{padding:12px 14px;border-radius:15px;background:rgba(85,198,43,.09);border:1px solid rgba(85,198,43,.25);margin:12px 0;font-size:13px}
+
+.dashboard-app-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dashboard-app-item{border:1px solid var(--border);border-radius:16px;background:var(--panel2);padding:12px}
+.dashboard-app-item .top{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.dashboard-app-item small{display:block;color:var(--muted);margin-top:5px}
+.reference-map-label{font-size:12px;background:rgba(0,0,0,.72);color:white;padding:6px 9px;border-radius:999px;white-space:nowrap}
+.empty-map-note{padding:10px 12px;border-radius:14px;background:var(--panel2);border:1px solid var(--border);font-size:12px;color:var(--muted);margin-top:8px}
+
+@media(max-width:800px){
+  .app-mapping-grid,.modbus-classification,.chart-steps,.dashboard-app-grid{grid-template-columns:1fr}
+  .app-mapping-row{grid-template-columns:1fr}
+}
+</style>
+
 </head>
 <body>
 <section class="login" id="login">
@@ -693,6 +733,25 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
     </div>
     <div id="novaEdgePanel"><div class="nova-empty">Esperando telemetría de NOVA EDGE…</div></div>
   </div>
+
+  <details class="config-accordion section-spaced">
+    <summary>
+      <span>🧩 Aplicaciones del NOVA EDGE
+        <span class="accordion-subtitle">Asigna cada relay a la función real que controla</span>
+      </span>
+    </summary>
+    <div class="accordion-body">
+      <div class="module-header" style="margin-top:16px">
+        <div>
+          <h3 style="margin:0">Asignación de salidas</h3>
+          <p class="hint">Ejemplo: Relay 1 = Aireador Piscina 1, Relay 2 = Bomba de riego. El Dashboard usará estos nombres y aplicaciones.</p>
+        </div>
+        <button class="btn" onclick="saveNovaApplicationConfig()">Guardar aplicaciones</button>
+      </div>
+      <div id="novaApplicationConfig" class="app-mapping-grid"></div>
+      <div id="novaApplicationStatus" class="hint" style="margin-top:10px"></div>
+    </div>
+  </details>
   <div class="grid dashboard-layout" style="margin-top:18px">
     <div class="card map-card"><div id="shrimpMap"></div></div>
     <div class="card"><h3>Equipos en el mapa</h3><p class="hint">El ícono SVG identifica el tipo de equipo y su ubicación GPS. Selecciona uno para centrarlo.</p><div id="shrimpMapList" class="equipment-list"></div></div>
@@ -741,14 +800,20 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 
 
 <section id="modbus" class="view">
-  <div class="card modbus-config-card">
-    <div class="module-header">
-      <div>
-        <h3>Configuración RS485 / Modbus</h3>
-        <p class="hint">Configura el bus y los registros que leerá el NOVA EDGE. La configuración se envía por MQTT y queda guardada en el equipo.</p>
+  <details class="config-accordion" open>
+    <summary>
+      <span>⚙️ Configuración RS485 / Modbus
+        <span class="accordion-subtitle">Bus, esclavo y registros del NOVA EDGE</span>
+      </span>
+    </summary>
+    <div class="accordion-body">
+      <div class="module-header" style="margin-top:16px">
+        <div>
+          <h3 style="margin:0">Parámetros de comunicación</h3>
+          <p class="hint">La configuración se envía por MQTT y queda guardada en el equipo.</p>
+        </div>
+        <button class="btn ghost" onclick="window.refreshRealData?.()">Actualizar datos</button>
       </div>
-      <button class="btn ghost" onclick="window.refreshRealData?.()">Actualizar datos</button>
-    </div>
 
     <div class="modbus-config-grid">
       <div><label>NOVA EDGE</label><select id="mbDeviceSelect"></select></div>
@@ -760,6 +825,13 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
       <div><label>Stop bits</label><select id="mbStop"><option value="1">1</option><option value="2">2</option></select></div>
       <div><label>Timeout (ms)</label><input id="mbTimeout" type="number" value="600" min="100" max="5000"></div>
       <div><label>Polling (ms)</label><input id="mbPoll" type="number" value="1000" min="200" max="60000"></div>
+    </div>
+    <div class="modbus-classification">
+      <div><label>Tipo de equipo conectado</label><select id="mbApplicationType">
+        <option>Variador de frecuencia</option><option>PLC</option><option>Medidor de energía</option><option>Sensor</option><option>Caudalímetro</option><option>Medidor de nivel</option><option>Arrancador suave</option>
+      </select></div>
+      <div><label>Nombre del equipo</label><input id="mbApplicationName" value="VDF Principal" placeholder="Ej: VDF Bomba Principal"></div>
+      <div><label>Aplicación</label><select id="mbApplicationArea"><option>Camaronera</option><option>Riego</option><option>Bombeo</option><option>Industria</option><option>Monitoreo</option></select></div>
     </div>
 
     <div class="table-wrap">
@@ -776,9 +848,10 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
       <button class="btn" onclick="saveModbusConfigFromPlatform()">Guardar configuración</button>
     </div>
     <div class="hint" id="mbConfigStatus" style="margin-top:10px"></div>
-  </div>
+    </div>
+  </details>
 
-  <div class="card" style="margin-top:18px">
+  <div class="card section-spaced">
     <h3>Lecturas Modbus en tiempo real</h3>
     <p class="hint">Valores recibidos por telemetría desde el NOVA EDGE.</p>
     <div id="modbusLiveValues" class="modbus-live-grid">
@@ -786,12 +859,24 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
     </div>
   </div>
 
-  <div class="card">
+  <div class="card section-spaced">
     <div class="module-header"><div><h3>🔌 Equipos Modbus</h3><p class="hint">Configura PLC, variadores, medidores y sensores Modbus RTU/TCP.</p></div><button class="btn" onclick="addModbusDevice()">＋ Agregar equipo</button></div>
     <div id="modbusDeviceGrid" class="modbus-grid" style="margin-top:18px"></div>
   </div>
-  <div class="card" style="margin-top:18px">
-    <div class="module-header"><div><h3>📈 Widget configurable de gráficas</h3><p class="hint">Selecciona equipo, variable, tipo de gráfica, periodo y escala.</p></div><button class="btn" onclick="addModbusChartWidget()">Agregar al dashboard</button></div>
+  <details class="config-accordion">
+    <summary>
+      <span>📈 Configurar gráfica para el Dashboard
+        <span class="accordion-subtitle">Selecciona una variable real y crea su widget</span>
+      </span>
+    </summary>
+    <div class="accordion-body">
+      <div class="chart-helper"><b>Cómo agregar una gráfica:</b> selecciona el equipo → selecciona la variable → revisa la vista previa → pulsa <b>Agregar al dashboard</b>.</div>
+      <div class="chart-steps">
+        <div class="chart-step"><b>1. Equipo</b><span class="hint">El NOVA EDGE o equipo Modbus que quieres visualizar.</span></div>
+        <div class="chart-step"><b>2. Variable</b><span class="hint">Voltaje, corriente, frecuencia, potencia, etc.</span></div>
+        <div class="chart-step"><b>3. Dashboard</b><span class="hint">La gráfica aparecerá como un widget movible.</span></div>
+      </div>
+      <div class="module-header"><div><h3 style="margin:0">Vista previa</h3><p class="hint">Configura periodo, tipo y rango del eje Y.</p></div><button class="btn" onclick="addModbusChartWidget()">＋ Agregar gráfica al dashboard</button></div>
     <div class="modbus-builder">
       <div><label>Equipo</label><select id="mbChartDevice" onchange="refreshMbVariables()"></select></div>
       <div><label>Variable</label><select id="mbChartVariable"></select></div>
@@ -802,7 +887,8 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
       <div class="full"><label>Título</label><input id="mbChartTitle" placeholder="Ej: Frecuencia del motor"></div>
     </div>
     <div class="modbus-chart-box" style="margin-top:16px"><canvas id="mbPreviewChart"></canvas></div>
-  </div>
+    </div>
+  </details>
 </section>
 
 <section id="sensores" class="view"><div class="card"><div class="module-header"><div><h3>🌡️ Sensores y umbrales</h3><p class="hint">Configura límites bajos y altos para generar alarmas automáticas.</p></div><button class="btn" onclick="addSensor()">＋ Agregar sensor</button></div><div class="table-wrap"><table class="table" id="sensorTable"></table></div></div></section>
@@ -1677,12 +1763,13 @@ function mbRegisterTable(d){
  <td><button class="btn ghost" onclick="removeMbVariable('${d.id}','${v.id}')">×</button></td></tr>`).join('')}</tbody></table></div>`;
 }
 function mbDeviceCard(d){
- return `<article class="modbus-card"><div class="pump-header"><div><h3>${d.type==='PLC'?'🧠':'🔌'} ${d.name}</h3><small>${d.type} · Modbus ${d.protocol}</small></div><span class="${d.online?'status':'status off'}">${d.online?'Online':'Offline'}</span></div>
+ const icon=d.type==='PLC'?'🧠':d.type==='Variador de frecuencia'?'⚙️':d.type==='Medidor de energía'?'⚡':d.type==='Sensor'?'🌡️':'🔌';
+ return `<details class="config-accordion" ${d.id.startsWith('real-')?'':'open'}><summary><span>${icon} ${d.name}<span class="accordion-subtitle">${d.type} · Modbus ${d.protocol} · ${d.online?'Online':'Offline'}</span></span></summary><div class="accordion-body"><div class="pump-header" style="margin-top:14px"><div><h3>${icon} ${d.name}</h3><small>${d.type} · Modbus ${d.protocol}</small></div><span class="${d.online?'status':'status off'}">${d.online?'Online':'Offline'}</span></div>
  <div class="modbus-meta"><div><span>${d.protocol==='TCP'?'IP':'Slave ID'}</span><b>${d.protocol==='TCP'?d.host:d.slave}</b></div><div><span>${d.protocol==='TCP'?'Puerto':'Baud rate'}</span><b>${d.protocol==='TCP'?d.port:d.baud}</b></div><div><span>Intervalo</span><b>${d.interval} s</b></div><div><span>Variables</span><b>${d.variables.length}</b></div></div>
- <div class="timer-row"><div><label>Nombre</label><input class="small-input" value="${d.name}" onchange="updateMbDevice('${d.id}','name',this.value)"></div><div><label>Tipo</label><select class="small-input" onchange="updateMbDevice('${d.id}','type',this.value)"><option ${d.type==='Variador de frecuencia'?'selected':''}>Variador de frecuencia</option><option ${d.type==='PLC'?'selected':''}>PLC</option><option ${d.type==='Medidor de energía'?'selected':''}>Medidor de energía</option><option ${d.type==='Arrancador suave'?'selected':''}>Arrancador suave</option></select></div></div>
+ <div class="timer-row"><div><label>Nombre</label><input class="small-input" value="${d.name}" onchange="updateMbDevice('${d.id}','name',this.value)"></div><div><label>Tipo</label><select class="small-input" onchange="updateMbDevice('${d.id}','type',this.value)"><option ${d.type==='Variador de frecuencia'?'selected':''}>Variador de frecuencia</option><option ${d.type==='PLC'?'selected':''}>PLC</option><option ${d.type==='Medidor de energía'?'selected':''}>Medidor de energía</option><option ${d.type==='Arrancador suave'?'selected':''}>Arrancador suave</option><option ${d.type==='Sensor'?'selected':''}>Sensor</option><option ${d.type==='Caudalímetro'?'selected':''}>Caudalímetro</option><option ${d.type==='Medidor de nivel'?'selected':''}>Medidor de nivel</option></select></div></div>
  <div class="timer-row"><div><label>Protocolo</label><select class="small-input" onchange="updateMbDevice('${d.id}','protocol',this.value)"><option ${d.protocol==='RTU'?'selected':''}>RTU</option><option ${d.protocol==='TCP'?'selected':''}>TCP</option></select></div><div><label>Lectura (s)</label><input class="small-input" type="number" value="${d.interval}" onchange="updateMbDevice('${d.id}','interval',this.value)"></div></div>
  ${d.protocol==='TCP'?`<div class="timer-row"><div><label>IP</label><input class="small-input" value="${d.host}" onchange="updateMbDevice('${d.id}','host',this.value)"></div><div><label>Puerto</label><input class="small-input" type="number" value="${d.port}" onchange="updateMbDevice('${d.id}','port',this.value)"></div></div>`:`<div class="timer-row"><div><label>Slave ID</label><input class="small-input" type="number" value="${d.slave}" onchange="updateMbDevice('${d.id}','slave',this.value)"></div><div><label>Baud rate</label><select class="small-input" onchange="updateMbDevice('${d.id}','baud',this.value)"><option ${d.baud==9600?'selected':''}>9600</option><option ${d.baud==19200?'selected':''}>19200</option><option ${d.baud==38400?'selected':''}>38400</option><option ${d.baud==115200?'selected':''}>115200</option></select></div></div>`}
- <h4>Registros Modbus</h4>${mbRegisterTable(d)}<button class="btn ghost" style="width:100%;margin-top:12px" onclick="addMbVariable('${d.id}')">＋ Agregar variable</button></article>`;
+ <h4>Registros Modbus</h4>${mbRegisterTable(d)}<button class="btn ghost" style="width:100%;margin-top:12px" onclick="addMbVariable('${d.id}')">＋ Agregar variable</button></div></details>`;
 }
 function renderModbusDevices(){
  const grid=document.getElementById('modbusDeviceGrid');if(grid)grid.innerHTML=modbusDevices.map(mbDeviceCard).join('');
@@ -1700,7 +1787,9 @@ function refreshMbVariables(){
  const ds=document.getElementById('mbChartDevice'),vs=document.getElementById('mbChartVariable');if(!ds||!vs)return;const d=modbusDevices.find(x=>x.id===ds.value)||modbusDevices[0];vs.innerHTML=(d?.variables||[]).map(v=>`<option value="${v.id}">${v.name} (${v.unit})</option>`).join('');updateMbPreview();
 }
 function mbHistory(d,v){
- const key=d.id+'|'+v.id;if(!modbusHistories[key])modbusHistories[key]=Array.from({length:30},(_,i)=>({t:new Date(Date.now()-(29-i)*60000),v:Math.max(0,Number(v.value)+(Math.random()-.5)*Math.max(1,Number(v.value)*.08))}));return modbusHistories[key];
+ const key=d.id+'|'+v.id;
+ if(!modbusHistories[key])modbusHistories[key]=[];
+ return modbusHistories[key];
 }
 let mbPreviewChart;
 function initMbPreview(){
@@ -1715,10 +1804,78 @@ function addModbusChartWidget(){
 function renderDashboardModbusChart(){
  setTimeout(()=>document.querySelectorAll('.dashboard-modbus-chart').forEach(c=>{if(c._chart)c._chart.destroy();const cfg=modbusChartConfig||{deviceId:modbusDevices[0]?.id,variableId:modbusDevices[0]?.variables[0]?.id,type:'line',title:'Variable Modbus'};const d=modbusDevices.find(x=>x.id===cfg.deviceId),v=d?.variables.find(x=>x.id===cfg.variableId);if(!d||!v)return;const h=mbHistory(d,v);c._chart=new Chart(c,{type:cfg.type||'line',data:{labels:h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})),datasets:[{label:cfg.title||v.name,data:h.map(x=>x.v),tension:.3}]},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{y:{min:cfg.min!==''?Number(cfg.min):undefined,max:cfg.max!==''?Number(cfg.max):undefined}}}})}),80);
 }
-function simulateModbus(){
- modbusDevices.forEach(d=>d.variables.forEach(v=>{const span=Math.max(1,(Number(v.max)-Number(v.min))*.015);v.value=Math.max(Number(v.min)||0,Math.min(Number(v.max)||999999,Number(v.value)+(Math.random()-.5)*span));v.value=Number(v.value.toFixed(2));const h=mbHistory(d,v);h.push({t:new Date(),v:v.value});if(h.length>60)h.shift()}));saveModbus();renderDashboardWidgets();updateMbPreview();
+function simulateModbus(){/* Telemetría real: sin simulación */}
+
+
+
+const NOVA_APP_TYPES=[
+  {id:'aerator',label:'Aireador',icon:'🦐'},
+  {id:'feeder',label:'Alimentador automático',icon:'🌾'},
+  {id:'irrigation_pump',label:'Bomba de riego',icon:'💧'},
+  {id:'well_pump',label:'Bomba de pozo',icon:'🚰'},
+  {id:'valve',label:'Válvula',icon:'🔵'},
+  {id:'motor',label:'Motor',icon:'⚙️'},
+  {id:'light',label:'Iluminación',icon:'💡'},
+  {id:'generic',label:'Salida genérica',icon:'🔌'}
+];
+
+let novaApplicationConfigs={};
+try{novaApplicationConfigs=JSON.parse(localStorage.getItem('tayu_nova_applications')||'{}')||{}}catch(e){novaApplicationConfigs={}}
+
+function novaAppMeta(id){return NOVA_APP_TYPES.find(x=>x.id===id)||NOVA_APP_TYPES[NOVA_APP_TYPES.length-1]}
+function saveNovaAppsLocal(){localStorage.setItem('tayu_nova_applications',JSON.stringify(novaApplicationConfigs))}
+
+function renderNovaApplicationConfig(){
+  const host=document.getElementById('novaApplicationConfig');
+  if(!host)return;
+  const novas=assetInventory.filter(a=>a.type==='novaEdge');
+  if(!novas.length){host.innerHTML='<div class="nova-empty">No hay NOVA EDGE asignados.</div>';return}
+
+  host.innerHTML=novas.map(device=>{
+    const cfg=novaApplicationConfigs[device.uuid]||{};
+    return [1,2,3,4].map(relay=>{
+      const r=cfg[relay]||{type:'generic',name:`Relay ${relay}`};
+      const p=latestPayloadByDevice?.[device.uuid]||{};
+      const state=p[`relay${relay}`]===true;
+      return `<div class="app-mapping-card">
+        <h4>${device.name} · Relay ${relay}</h4>
+        <span class="hint">GPIO ${[2,1,46,45][relay-1]}</span>
+        <div class="app-state"><i class="state-dot ${state?'on':'off'}"></i>${state?'ENCENDIDO':'APAGADO'}</div>
+        <div class="app-mapping-row">
+          <div><label>Aplicación</label><select data-app-device="${device.uuid}" data-app-relay="${relay}" data-field="type">
+            ${NOVA_APP_TYPES.map(t=>`<option value="${t.id}" ${r.type===t.id?'selected':''}>${t.icon} ${t.label}</option>`).join('')}
+          </select></div>
+          <div><label>Nombre en plataforma</label><input data-app-device="${device.uuid}" data-app-relay="${relay}" data-field="name" value="${String(r.name||'').replace(/"/g,'&quot;')}" placeholder="Ej: Aireador Piscina 1"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }).join('');
 }
-setInterval(simulateModbus,5000);
+
+window.saveNovaApplicationConfig=function(){
+  document.querySelectorAll('[data-app-device][data-app-relay][data-field]').forEach(el=>{
+    const dev=el.dataset.appDevice, relay=el.dataset.appRelay, field=el.dataset.field;
+    novaApplicationConfigs[dev] ||= {};
+    novaApplicationConfigs[dev][relay] ||= {type:'generic',name:`Relay ${relay}`};
+    novaApplicationConfigs[dev][relay][field]=el.value;
+  });
+  saveNovaAppsLocal();
+  const msg=document.getElementById('novaApplicationStatus');
+  if(msg)msg.textContent='Aplicaciones guardadas. El Dashboard se actualizó.';
+  ensureNovaApplicationsWidget();
+  renderDashboardWidgets();
+  renderNovaApplicationConfig();
+};
+
+function ensureNovaApplicationsWidget(){
+  const hasNova=assetInventory.some(a=>a.type==='novaEdge');
+  if(hasNova && !dashboardWidgetIds.some(id=>widgetType(id)==='novaApplications')){
+    dashboardWidgetIds.push(newWidgetInstance('novaApplications'));
+    saveWidgetLayout();
+  }
+}
+
+let latestPayloadByDevice={};
 
 
 function saveAssets(){localStorage.setItem('tayu_asset_inventory',JSON.stringify(assetInventory))}
@@ -1732,7 +1889,7 @@ function getCompatibleAssetsForWidget(type){
   feeders:['feeder'],aerators:['aerator'],tanks:['tankWater','tankDiesel','levelSensor'],
   pumps:['pumpWater','pumpDiesel'],modbusValue:['plc','vdf','energyMeter'],
   modbusGroup:['plc','vdf','energyMeter'],modbusChart:['plc','vdf','energyMeter'],
-  oxygen:['oxygenSensor'],orion:['gpsOrion'],cattle:['gpsCattle']
+  oxygen:['oxygenSensor'],orion:['gpsOrion'],cattle:['gpsCattle'],novaApplications:['novaEdge']
  };
  return assetInventory.filter(a=>(map[type]||[]).includes(a.type));
 }
@@ -1891,7 +2048,22 @@ function widgetHtml(instanceId){
 }
 function widgetBody(id,instanceId){
  const feeders=shrimpEquipment.filter(x=>x.type==='feeder'),aerators=shrimpEquipment.filter(x=>x.type==='aerator');
- if(id==='summary')return `<div class="grid four-summary"><div><span class="hint">Equipos</span><div class="metric-value">${devices.length+shrimpEquipment.length}</div></div><div><span class="hint">Online</span><div class="metric-value">${shrimpEquipment.filter(x=>x.online).length}</div></div><div><span class="hint">Alarmas</span><div class="metric-value">${platformAlarms.filter(x=>x.state==='Activa').length}</div></div><div><span class="hint">Comida</span><div class="metric-value">${feeders.reduce((s,x)=>s+x.foodKg,0)} kg</div></div></div>`;
+ if(id==='novaApplications'){
+   const novas=assetInventory.filter(a=>a.type==='novaEdge');
+   if(!novas.length)return '<p class="hint">No hay NOVA EDGE registrados.</p>';
+   return novas.map(device=>{
+     const cfg=novaApplicationConfigs[device.uuid]||{};
+     const p=latestPayloadByDevice[device.uuid]||{};
+     return `<div style="margin-bottom:12px"><div class="device"><div><b>${device.name}</b><br><small>${device.uuid}</small></div><span class="${device.status==='Online'?'status':'status off'}">${device.status}</span></div>
+       <div class="dashboard-app-grid">${[1,2,3,4].map(relay=>{
+         const r=cfg[relay]||{type:'generic',name:`Relay ${relay}`};
+         const meta=novaAppMeta(r.type);
+         const on=p[`relay${relay}`]===true;
+         return `<div class="dashboard-app-item"><div class="top"><b>${meta.icon} ${r.name||meta.label}</b><span><i class="state-dot ${on?'on':'off'}"></i>${on?'ON':'OFF'}</span></div><small>Relay ${relay} · ${meta.label}</small></div>`;
+       }).join('')}</div></div>`;
+   }).join('');
+ }
+ if(id==='summary')return `<div class="grid four-summary"><div><span class="hint">Equipos</span><div class="metric-value">${devices.length+shrimpEquipment.length}</div></div><div><span class="hint">Online</span><div class="metric-value">${devices.filter(x=>x.status==='Online').length + shrimpEquipment.filter(x=>x.online).length}</div></div><div><span class="hint">Alarmas</span><div class="metric-value">${platformAlarms.filter(x=>x.state==='Activa').length}</div></div><div><span class="hint">Comida</span><div class="metric-value">${feeders.reduce((s,x)=>s+x.foodKg,0)} kg</div></div></div>`;
  if(id==='map')return `<div id="dashboardDeviceMap-${instanceId.replace(/[^a-zA-Z0-9_-]/g,'-')}" class="map-widget dashboard-device-map"></div>`;
  if(id==='shrimp')return `<div class="grid two"><div><span class="hint">Alimentadores trabajando</span><div class="metric-value">${feeders.filter(x=>x.running).length}/${feeders.length}</div></div><div><span class="hint">Aireadores trabajando</span><div class="metric-value">${aerators.filter(x=>x.running).length}/${aerators.length}</div></div></div><button class="btn ghost" onclick="goToView('camaroneras')">Abrir camaroneras</button>`;
  if(id==='alarms')return platformAlarms.filter(x=>x.state==='Activa').slice(0,3).map(a=>`<div class="alarm"><span class="dot ${a.severity==='Crítica'?'red':'yellow'}"></span><div><b>${a.message}</b><br><small>${a.equipment} · ${a.date} ${a.time}</small></div></div>`).join('')||'<p class="hint">Sin alarmas activas.</p>';
@@ -1912,24 +2084,38 @@ function widgetBody(id,instanceId){
 function equipmentMini(x){return `<div class="device"><div><b>${equipmentIconHtml(x.type,'small')} ${x.name}</b><br><small>${x.pond}</small></div><span><i class="state-dot ${x.running?'on':'off'}"></i>${x.running?'Trabajando':'Apagado'}</span></div>`}
 function goToView(id){document.querySelector(`.nav button[data-view="${id}"]`)?.click()}
 function renderDashboardMapWidget(){
+ const GYE=[-2.170998,-79.922359];
  document.querySelectorAll('.dashboard-device-map').forEach(el=>{
    if(el._leaflet_id)return;
-   const m=L.map(el,{zoomControl:true}).setView([-2.16,-79.53],12);
+   const m=L.map(el,{zoomControl:true}).setView(GYE,13);
    addSatelliteLayer(m);
-   devices.filter(d=>Number.isFinite(Number(d.lat))&&Number.isFinite(Number(d.lon))).slice(0,20).forEach(d=>L.circleMarker([Number(d.lat),Number(d.lon)],{radius:6,color:d.status==='Online'?'#55c62b':'#ef4444',fillOpacity:.9}).addTo(m).bindPopup(`<b>${d.name}</b><br>${d.farm||'Sin unidad'}`));
+   const gps=devices.filter(d=>Number.isFinite(Number(d.lat))&&Number.isFinite(Number(d.lon))).slice(0,50);
+   if(gps.length){
+     const ms=gps.map(d=>L.circleMarker([Number(d.lat),Number(d.lon)],{radius:7,color:d.status==='Online'?'#55c62b':'#ef4444',fillOpacity:.9}).addTo(m).bindPopup(`<b>${d.name}</b><br>${d.farm||'Sin unidad'}<br>${d.status}`));
+     m.fitBounds(L.featureGroup(ms).getBounds().pad(.25));
+   }else{
+     const ref=L.marker(GYE,{icon:L.divIcon({className:'',html:'<div class="reference-map-label">📍 Guayaquil · ubicación de referencia</div>',iconSize:[220,30],iconAnchor:[110,15]})}).addTo(m);
+   }
    setTimeout(()=>m.invalidateSize(),100);
  });
 }
-function initShrimpMap(){const el=document.getElementById('shrimpMap');if(!el||!window.L)return;if(window.shrimpMap){shrimpMap.invalidateSize();renderShrimpMarkers();return}window.shrimpMap=L.map(el).setView([-2.258,-80.004],15);L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imágenes © Esri'}).addTo(shrimpMap);renderShrimpMarkers()}
+function initShrimpMap(){const el=document.getElementById('shrimpMap');if(!el||!window.L)return;if(window.shrimpMap){shrimpMap.invalidateSize();renderShrimpMarkers();return}window.shrimpMap=L.map(el).setView([-2.170998,-79.922359],13);L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imágenes © Esri'}).addTo(shrimpMap);renderShrimpMarkers()}
 function emojiIcon(x){return L.divIcon({className:'',html:`<div class="equipment-marker-wrap">${equipmentIconHtml(x.type,'marker')}<span class="gps-pin">📍</span></div>`,iconSize:[58,58],iconAnchor:[29,52],popupAnchor:[0,-48]})}
 function equipmentPopup(x){const food=x.type==='feeder'?`<br>Tolva: ${x.foodKg} / ${x.capacityKg} kg (${Math.round(x.foodKg/x.capacityKg*100)}%)`:'';return `<b>${equipmentIconHtml(x.type,'small')} ${x.name}</b><br>${x.farm} · ${x.pond}<br>${x.running?'🟢 Trabajando':'🔴 Apagado'} · ${x.online?'🟢 Online':'⚪ Offline'}${food}<br>GPS: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`}
-function renderShrimpMarkers(){if(!window.shrimpMap)return;shrimpMarkers.forEach(m=>shrimpMap.removeLayer(m));shrimpMarkers=shrimpEquipment.filter(x=>Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lon))).map(x=>L.marker([Number(x.lat),Number(x.lon)],{icon:emojiIcon(x)}).addTo(shrimpMap).bindPopup(equipmentPopup(x)));if(shrimpMarkers.length)shrimpMap.fitBounds(L.featureGroup(shrimpMarkers).getBounds().pad(.18));renderShrimpMapList()}
-function focusShrimpEquipment(id){const x=shrimpEquipment.find(e=>e.id===id);if(x&&window.shrimpMap){goToView('camaroneras');setTimeout(()=>{shrimpMap.setView([x.lat,x.lon],18);const i=shrimpEquipment.indexOf(x);shrimpMarkers[i]?.openPopup()},180)}}
-function renderShrimpMapList(){const box=document.getElementById('shrimpMapList');if(box)box.innerHTML=shrimpEquipment.map(x=>`<button onclick="focusShrimpEquipment('${x.id}')"><span>${equipmentIconHtml(x.type,'small')} <b>${x.name}</b><br><small>${x.pond}</small></span><span>📍</span></button>`).join('')}
-function renderShrimpEquipment(){
- const feeders=shrimpEquipment.filter(x=>x.type==='feeder'),aerators=shrimpEquipment.filter(x=>x.type==='aerator');
- const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};set('shrimpFeederCount',feeders.length);set('shrimpAeratorCount',aerators.length);set('shrimpFoodTotal',feeders.reduce((s,x)=>s+x.foodKg,0)+' kg');set('shrimpAlarmCount',platformAlarms.filter(x=>x.state==='Activa').length);
- const box=document.getElementById('shrimpEquipmentGrid');if(box)box.innerHTML=shrimpEquipment.map(x=>equipmentCard(x)).join('');renderShrimpMapList();if(window.shrimpMap)renderShrimpMarkers();
+function renderShrimpMarkers(){
+ if(!window.shrimpMap)return;
+ shrimpMarkers.forEach(m=>shrimpMap.removeLayer(m));
+ shrimpMarkers=[];
+ const gps=shrimpEquipment.filter(x=>Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lon)));
+ if(gps.length){
+   shrimpMarkers=gps.map(x=>L.marker([Number(x.lat),Number(x.lon)],{icon:emojiIcon(x)}).addTo(shrimpMap).bindPopup(equipmentPopup(x)));
+   shrimpMap.fitBounds(L.featureGroup(shrimpMarkers).getBounds().pad(.18));
+ }else{
+   shrimpMap.setView([-2.170998,-79.922359],13);
+   const ref=L.marker([-2.170998,-79.922359],{icon:L.divIcon({className:'',html:'<div class="reference-map-label">📍 Guayaquil · esperando GPS real</div>',iconSize:[210,30],iconAnchor:[105,15]})}).addTo(shrimpMap);
+   shrimpMarkers=[ref];
+ }
+ renderShrimpMapList();
 }
 function equipmentCard(x){
  const pct=x.type==='feeder'?Math.max(0,Math.min(100,Math.round(x.foodKg/x.capacityKg*100))):0;
@@ -2169,6 +2355,11 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     const latest = latestTelemetryByDevice(realTelemetry);
     const organizationName = realDevices[0]?.organization_name || 'Mi organización';
 
+    latestPayloadByDevice={};
+    realTelemetry.forEach(row=>{
+      if(!(row.device_key in latestPayloadByDevice)) latestPayloadByDevice[row.device_key]=row.payload||{};
+    });
+
     devices = realDevices.map(row => {
       const telemetry = latest.get(row.device_key);
       const p = telemetry?.payload || {};
@@ -2256,9 +2447,13 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     renderBananaSatellite();
     renderCattleSatellite();
     renderNovaEdgePanel(realDevices, realTelemetry);
+    renderNovaApplicationConfig();
+    ensureNovaApplicationsWidget();
     updateModbusDeviceSelect(realDevices);
     ensureDefaultModbusRows();
     renderModbusLive(realTelemetry);
+    syncRealModbusToDashboard(realDevices, realTelemetry);
+    renderDashboardWidgets();
 
     // Real telemetry table.
     const table = document.getElementById('sensorTable');
@@ -2349,10 +2544,99 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   function updateModbusDeviceSelect(realDevices) {
     const sel = document.getElementById('mbDeviceSelect');
     if (!sel) return;
+    const previous = sel.value;
     const nova = realDevices.filter(r => assetType(r)==='novaEdge');
     sel.innerHTML = nova.length
       ? nova.map(r => `<option value="${r.device_key}">${r.name} · ${r.device_key}</option>`).join('')
       : '<option value="">No hay NOVA EDGE</option>';
+    if (nova.some(r => r.device_key === previous)) sel.value = previous;
+  }
+
+  function inferModbusUnit(name) {
+    const n = String(name || '').toLowerCase();
+    if (n.includes('volt')) return 'V';
+    if (n.includes('corr') || n.includes('amp')) return 'A';
+    if (n.includes('frec')) return 'Hz';
+    if (n.includes('pot')) return 'kW';
+    if (n.includes('temper')) return '°C';
+    if (n.includes('pres')) return 'PSI';
+    return '';
+  }
+
+  function syncRealModbusToDashboard(realDevices, realTelemetry) {
+    const latest = latestTelemetryByDevice(realTelemetry);
+    const real = [];
+
+    realDevices
+      .filter(d => assetType(d) === 'novaEdge')
+      .forEach(d => {
+        const row = latest.get(d.device_key);
+        const payload = row?.payload || {};
+        const values = payload.modbus || {};
+        const entries = Object.entries(values);
+        if (!entries.length) return;
+
+        let saved = {};
+        try {
+          saved = JSON.parse(localStorage.getItem(`tayu_real_modbus_config_${d.device_key}`) || '{}');
+        } catch (_) {}
+
+        const params = Array.isArray(saved.params) ? saved.params : [];
+        const variables = entries.map(([name, value], index) => {
+          const p = params.find(x => String(x.name) === String(name)) || params[index] || {};
+          return {
+            id: `${d.device_key}-${index}`,
+            name,
+            register: p.reg ?? index,
+            fc: String(p.fc ?? 3).padStart(2, '0'),
+            dataType: p.type || 'U16',
+            scale: Number(p.scale ?? 1),
+            unit: p.unit || inferModbusUnit(name),
+            value: Number.isFinite(Number(value)) ? Number(value) : value,
+            min: 0,
+            max: 100000
+          };
+        });
+
+        variables.forEach(v=>{
+          const key=`real-${d.device_key}|${v.id}`;
+          if(!modbusHistories[key])modbusHistories[key]=[];
+          const h=modbusHistories[key];
+          const val=Number(v.value);
+          if(Number.isFinite(val)){
+            const last=h[h.length-1];
+            if(!last || last.v!==val || Date.now()-last.t.getTime()>2500){
+              h.push({t:new Date(),v:val});
+              if(h.length>600)h.shift();
+            }
+          }
+        });
+
+        const age = row?.time ? Date.now() - new Date(row.time).getTime() : Infinity;
+        real.push({
+          id: `real-${d.device_key}`,
+          name: saved.equipment_name || d.name,
+          type: saved.equipment_type || 'Equipo Modbus',
+          protocol: 'RTU',
+          host: '',
+          port: 0,
+          slave: saved.slave_id ?? 1,
+          baud: saved.baudrate ?? 9600,
+          interval: 3,
+          online: age < 60000,
+          variables
+        });
+      });
+
+    // Only real Modbus devices are used for the live dashboard.
+    modbusDevices = real;
+
+    // Automatically place one real Modbus group widget on the dashboard
+    // the first time live Modbus data becomes available.
+    if (real.length && !dashboardWidgetIds.some(id => widgetType(id) === 'modbusGroup')) {
+      dashboardWidgetIds.push(`modbusGroup::real-${Date.now()}`);
+      saveWidgetLayout();
+    }
   }
 
   function renderModbusLive(realTelemetry) {
@@ -2411,6 +2695,20 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     };
 
     try {
+      localStorage.setItem(
+        `tayu_real_modbus_config_${deviceKey}`,
+        JSON.stringify({
+          baudrate: body.modbus_config.baudrate,
+          slave_id: body.modbus_config.slave_id,
+          parity: body.modbus_config.parity,
+          stop_bits: body.modbus_config.stop_bits,
+          params: body.modbus_config.params,
+          equipment_type: document.getElementById('mbApplicationType')?.value || 'Variador de frecuencia',
+          equipment_name: document.getElementById('mbApplicationName')?.value || 'Equipo Modbus',
+          application_area: document.getElementById('mbApplicationArea')?.value || 'Monitoreo'
+        })
+      );
+
       if (status) status.textContent = 'Enviando configuración al NOVA EDGE…';
       await apiPost('/devices/modbus-config', body);
       if (status) status.textContent = 'Configuración enviada. Esperando telemetría…';
@@ -2423,24 +2721,43 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     }
   };
 
-  async function refreshRealData() {
-    setStatus('Actualizando datos reales…');
-    const [realDevices, realTelemetry, organizationModules] = await Promise.all([
-      api('/devices'),
-      api('/telemetry/latest'),
-      api('/modules')
-    ]);
+  let refreshBusy = false;
 
-    applyModulePermissions(organizationModules);
-    applyRealData(realDevices, realTelemetry);
+  async function refreshRealData(silent = false) {
+    if (refreshBusy) return;
+    refreshBusy = true;
+    try {
+      if (!silent) setStatus('Actualizando datos reales…');
 
-    setStatus('Conectado a la API: datos reales cargados.');
+      const [realDevices, realTelemetry, organizationModules] = await Promise.all([
+        api('/devices'),
+        api('/telemetry/latest'),
+        api('/modules')
+      ]);
+
+      applyModulePermissions(organizationModules);
+      applyRealData(realDevices, realTelemetry);
+
+      if (!silent) setStatus('Conectado a la API: datos reales cargados.');
+    } finally {
+      refreshBusy = false;
+    }
   }
 
-  window.refreshRealData = () => refreshRealData().catch(error => {
+  window.refreshRealData = () => refreshRealData(false).catch(error => {
     console.error(error);
     setStatus(`No se pudo actualizar: ${error.message}`);
   });
+
+  function startRealtimeRefresh() {
+    if (window.__tayuRealtimeTimer) clearInterval(window.__tayuRealtimeTimer);
+    window.__tayuRealtimeTimer = setInterval(() => {
+      if (document.hidden) return;
+      refreshRealData(true).catch(error => {
+        console.error('Actualización automática:', error);
+      });
+    }, 3000);
+  }
 
   setStatus('Iniciando sesión segura…');
   keycloak.init({
@@ -2463,6 +2780,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     applyRolePermissions();
     startPlatform();
     await refreshRealData();
+    startRealtimeRefresh();
   }).catch(error => {
     console.error('No se pudo iniciar el dashboard seguro:', error);
     const loginError = document.getElementById('loginError');
