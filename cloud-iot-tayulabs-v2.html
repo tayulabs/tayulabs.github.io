@@ -1723,7 +1723,7 @@ function syncAssetsToModules(){
  irrigationTanks=assetInventory.filter(a=>['tankWater','tankDiesel'].includes(a.type)).map(a=>({id:a.id,name:a.name,fluid:a.type==='tankDiesel'?'Diésel':'Agua',capacity:a.capacity||0,level:a.level||0,sensor:'Sensor asociado',location:a.zone||a.farm}));
  irrigationPumps=assetInventory.filter(a=>['pumpWater','pumpDiesel'].includes(a.type)).map(a=>({id:a.id,name:a.name,type:a.type==='pumpDiesel'?'Diésel':'Agua',sourceTank:a.sourceTank||irrigationTanks[0]?.id||'',online:a.status==='Online',running:a.running||false,mode:a.mode||'manual',levelControl:a.mode==='level',startBelow:a.startBelow||30,stopAbove:a.stopAbove||85,start:a.start||'06:00',stop:a.stop||'08:00'}));
  saveShrimp();saveIrrigation();localStorage.setItem('tayu_sensors',JSON.stringify(platformSensors));
- renderShrimpEquipment();renderSensors();renderIrrigationSystem();
+ renderShrimpEquipment();renderSensorTable();renderIrrigationSystem();
 }
 
 function openWidgetLibrary(){renderWidgetLibrary();document.getElementById('widgetModal').classList.add('open')}
