@@ -870,7 +870,7 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
       </span>
     </summary>
     <div class="accordion-body">
-      <div class="chart-helper"><b>Cómo agregar una gráfica:</b> selecciona el equipo → selecciona la variable → revisa la vista previa → pulsa <b>Agregar al dashboard</b>.</div>
+      <div class="chart-helper"><b>Cómo funciona:</b> selecciona equipo y variable. Si esa variable ya tiene una gráfica en el Dashboard, cambiar título, eje Y, ventana X o detalle <b>actualiza la misma gráfica automáticamente</b>. Usa “Agregar al dashboard” solo cuando quieras crear la gráfica de una variable nueva.</div>
       <div class="chart-steps">
         <div class="chart-step"><b>1. Equipo</b><span class="hint">El NOVA EDGE o equipo Modbus que quieres visualizar.</span></div>
         <div class="chart-step"><b>2. Variable</b><span class="hint">Voltaje, corriente, frecuencia, potencia, etc.</span></div>
@@ -879,12 +879,13 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
       <div class="module-header"><div><h3 style="margin:0">Vista previa</h3><p class="hint">Configura periodo, tipo y rango del eje Y.</p></div><button class="btn" onclick="addModbusChartWidget()">＋ Agregar gráfica al dashboard</button></div>
     <div class="modbus-builder">
       <div><label>Equipo</label><select id="mbChartDevice" onchange="refreshMbVariables()"></select></div>
-      <div><label>Variable</label><select id="mbChartVariable"></select></div>
+      <div><label>Variable</label><select id="mbChartVariable" onchange="loadMbChartFormFromSelection();updateMbPreview()"></select></div>
       <div><label>Tipo</label><select id="mbChartType" onchange="updateMbPreview()"><option value="line">Línea</option><option value="bar">Barras</option></select></div>
-      <div><label>Periodo</label><select id="mbChartPeriod"><option value="15">15 minutos</option><option value="60">1 hora</option><option value="1440">24 horas</option></select></div>
+      <div><label>Ventana eje X</label><select id="mbChartPeriod" onchange="updateMbPreview()"><option value="0.5">30 segundos</option><option value="1">1 minuto</option><option value="5" selected>5 minutos</option><option value="15">15 minutos</option><option value="60">1 hora</option><option value="1440">24 horas</option></select></div>
+      <div><label>Detalle de la gráfica</label><select id="mbChartPoints" onchange="updateMbPreview()"><option value="20">20 puntos</option><option value="50" selected>50 puntos</option><option value="100">100 puntos</option><option value="200">200 puntos</option><option value="400">400 puntos</option></select></div>
       <div><label>Mínimo eje Y</label><input id="mbChartMin" type="number" placeholder="Automático" oninput="updateMbPreview()"></div>
       <div><label>Máximo eje Y</label><input id="mbChartMax" type="number" placeholder="Automático" oninput="updateMbPreview()"></div>
-      <div class="full"><label>Título</label><input id="mbChartTitle" placeholder="Ej: Frecuencia del motor"></div>
+      <div class="full"><label>Título</label><input id="mbChartTitle" placeholder="Ej: Frecuencia del motor" oninput="updateMbPreview()"></div>
     </div>
     <div class="modbus-chart-box" style="margin-top:16px"><canvas id="mbPreviewChart"></canvas></div>
     </div>
@@ -1533,7 +1534,22 @@ let assetInventory=[];
 
 let modbusDevices=[];
 let modbusHistories={};
-let modbusChartConfig=JSON.parse(localStorage.getItem('tayu_modbus_chart_config')||'null')||null;
+let modbusChartConfigs={};
+try{modbusChartConfigs=JSON.parse(localStorage.getItem('tayu_modbus_chart_configs')||'{}')||{}}catch(e){modbusChartConfigs={}}
+const legacyModbusChartConfig=JSON.parse(localStorage.getItem('tayu_modbus_chart_config')||'null')||null;
+if(!Object.keys(modbusChartConfigs).length && legacyModbusChartConfig){
+  const oldCharts=dashboardWidgetIds.filter(id=>String(id).startsWith('modbusChart::'));
+  if(oldCharts.length){
+    modbusChartConfigs[oldCharts[0]]=legacyModbusChartConfig;
+    // La versión anterior podía crear duplicados de la misma gráfica.
+    if(oldCharts.length>1){
+      const keep=oldCharts[0];
+      dashboardWidgetIds=dashboardWidgetIds.filter(id=>!String(id).startsWith('modbusChart::') || id===keep);
+      localStorage.setItem('tayu_dashboard_widgets',JSON.stringify(dashboardWidgetIds));
+    }
+    localStorage.setItem('tayu_modbus_chart_configs',JSON.stringify(modbusChartConfigs));
+  }
+}
 
 let irrigationTanks=[];
 let irrigationPumps=[];
@@ -1751,6 +1767,81 @@ function addIrrigationPump(){
 }
 
 
+
+function saveModbusChartConfigs(){
+ localStorage.setItem('tayu_modbus_chart_configs',JSON.stringify(modbusChartConfigs));
+}
+function modbusVariableId(deviceKey,name){
+ return `${deviceKey}-${String(name||'variable').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}`;
+}
+function currentMbChartSelection(){
+ const d=modbusDevices.find(x=>x.id===document.getElementById('mbChartDevice')?.value);
+ const v=d?.variables.find(x=>x.id===document.getElementById('mbChartVariable')?.value);
+ return {d,v};
+}
+function currentMbChartFormConfig(){
+ const {d,v}=currentMbChartSelection();
+ if(!d||!v)return null;
+ return {
+   deviceId:d.id,
+   variableId:v.id,
+   type:document.getElementById('mbChartType')?.value||'line',
+   period:Number(document.getElementById('mbChartPeriod')?.value||5),
+   points:Number(document.getElementById('mbChartPoints')?.value||50),
+   min:document.getElementById('mbChartMin')?.value??'',
+   max:document.getElementById('mbChartMax')?.value??'',
+   title:document.getElementById('mbChartTitle')?.value||`${v.name} · ${d.name}`
+ };
+}
+function findMbChartWidget(deviceId,variableId){
+ return Object.keys(modbusChartConfigs).find(id=>{
+   const c=modbusChartConfigs[id];
+   return c?.deviceId===deviceId && c?.variableId===variableId && dashboardWidgetIds.includes(id);
+ });
+}
+function filterMbHistory(history,cfg){
+ const now=Date.now();
+ const minutes=Number(cfg?.period||5);
+ const maxPoints=Math.max(5,Number(cfg?.points||50));
+ let h=(history||[]).filter(x=>!minutes || x.t.getTime()>=now-minutes*60000);
+ if(h.length>maxPoints){
+   const step=h.length/maxPoints;
+   h=Array.from({length:maxPoints},(_,i)=>h[Math.min(h.length-1,Math.floor(i*step))]);
+ }
+ return h;
+}
+function loadMbChartFormFromSelection(){
+ const {d,v}=currentMbChartSelection();
+ if(!d||!v)return;
+ const widgetId=findMbChartWidget(d.id,v.id);
+ const cfg=widgetId?modbusChartConfigs[widgetId]:null;
+ if(cfg){
+   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val??''};
+   set('mbChartType',cfg.type||'line');
+   set('mbChartPeriod',cfg.period??5);
+   set('mbChartPoints',cfg.points??50);
+   set('mbChartMin',cfg.min??'');
+   set('mbChartMax',cfg.max??'');
+   set('mbChartTitle',cfg.title||`${v.name} · ${d.name}`);
+ }else{
+   const title=document.getElementById('mbChartTitle');
+   if(title)title.value=`${v.name} · ${d.name}`;
+ }
+}
+window.loadMbChartFormFromSelection=loadMbChartFormFromSelection;
+
+function updateExistingMbChartFromForm(){
+ const cfg=currentMbChartFormConfig();
+ if(!cfg)return false;
+ const widgetId=findMbChartWidget(cfg.deviceId,cfg.variableId);
+ if(!widgetId)return false;
+ modbusChartConfigs[widgetId]=cfg;
+ saveModbusChartConfigs();
+ renderDashboardModbusChart();
+ return true;
+}
+
+
 function saveModbus(){localStorage.setItem('tayu_modbus_devices',JSON.stringify(modbusDevices))}
 function mbRegisterTable(d){
  return `<div class="table-wrap"><table class="register-table"><thead><tr><th>Variable</th><th>Registro</th><th>FC</th><th>Tipo</th><th>Escala</th><th>Unidad</th><th></th></tr></thead><tbody>${d.variables.map(v=>`<tr>
@@ -1784,7 +1875,14 @@ function refreshMbDevices(){
  const ds=document.getElementById('mbChartDevice');if(!ds)return;const old=ds.value;ds.innerHTML=modbusDevices.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');if(modbusDevices.some(d=>d.id===old))ds.value=old;refreshMbVariables();
 }
 function refreshMbVariables(){
- const ds=document.getElementById('mbChartDevice'),vs=document.getElementById('mbChartVariable');if(!ds||!vs)return;const d=modbusDevices.find(x=>x.id===ds.value)||modbusDevices[0];vs.innerHTML=(d?.variables||[]).map(v=>`<option value="${v.id}">${v.name} (${v.unit})</option>`).join('');updateMbPreview();
+ const ds=document.getElementById('mbChartDevice'),vs=document.getElementById('mbChartVariable');
+ if(!ds||!vs)return;
+ const old=vs.value;
+ const d=modbusDevices.find(x=>x.id===ds.value)||modbusDevices[0];
+ vs.innerHTML=(d?.variables||[]).map(v=>`<option value="${v.id}">${v.name}${v.unit?` (${v.unit})`:''}</option>`).join('');
+ if((d?.variables||[]).some(v=>v.id===old))vs.value=old;
+ loadMbChartFormFromSelection();
+ updateMbPreview();
 }
 function mbHistory(d,v){
  const key=d.id+'|'+v.id;
@@ -1796,13 +1894,65 @@ function initMbPreview(){
  refreshMbDevices();const c=document.getElementById('mbPreviewChart');if(!c||!window.Chart)return;if(mbPreviewChart)mbPreviewChart.destroy();mbPreviewChart=new Chart(c,{type:'line',data:{labels:[],datasets:[{label:'Variable',data:[],tension:.3}]},options:{responsive:true,maintainAspectRatio:false,animation:false}});updateMbPreview();
 }
 function updateMbPreview(){
- if(!mbPreviewChart)return;const d=modbusDevices.find(x=>x.id===document.getElementById('mbChartDevice')?.value),v=d?.variables.find(x=>x.id===document.getElementById('mbChartVariable')?.value);if(!d||!v)return;const h=mbHistory(d,v);mbPreviewChart.config.type=document.getElementById('mbChartType')?.value||'line';mbPreviewChart.data.labels=h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}));mbPreviewChart.data.datasets[0].label=`${v.name} (${v.unit})`;mbPreviewChart.data.datasets[0].data=h.map(x=>Number(x.v.toFixed(2)));const mn=document.getElementById('mbChartMin')?.value,mx=document.getElementById('mbChartMax')?.value;mbPreviewChart.options.scales={y:{min:mn!==''?Number(mn):undefined,max:mx!==''?Number(mx):undefined}};mbPreviewChart.update();
+ if(!mbPreviewChart)return;
+ const {d,v}=currentMbChartSelection();
+ if(!d||!v)return;
+ const cfg=currentMbChartFormConfig()||{};
+ const h=filterMbHistory(mbHistory(d,v),cfg);
+ mbPreviewChart.config.type=cfg.type||'line';
+ mbPreviewChart.data.labels=h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+ mbPreviewChart.data.datasets[0].label=`${v.name}${v.unit?` (${v.unit})`:''}`;
+ mbPreviewChart.data.datasets[0].data=h.map(x=>Number(Number(x.v).toFixed(3)));
+ mbPreviewChart.options.scales={
+   x:{ticks:{maxTicksLimit:Math.min(12,Number(cfg.points||50))}},
+   y:{min:cfg.min!==''?Number(cfg.min):undefined,max:cfg.max!==''?Number(cfg.max):undefined}
+ };
+ mbPreviewChart.update();
+ // Si esta variable ya existe en el Dashboard, cualquier ajuste del formulario
+ // actualiza esa misma gráfica en lugar de crear otra.
+ updateExistingMbChartFromForm();
 }
 function addModbusChartWidget(){
- const d=modbusDevices.find(x=>x.id===document.getElementById('mbChartDevice')?.value),v=d?.variables.find(x=>x.id===document.getElementById('mbChartVariable')?.value);if(!d||!v)return;modbusChartConfig={deviceId:d.id,variableId:v.id,type:document.getElementById('mbChartType').value,period:Number(document.getElementById('mbChartPeriod').value),min:document.getElementById('mbChartMin').value,max:document.getElementById('mbChartMax').value,title:document.getElementById('mbChartTitle').value||`${v.name} · ${d.name}`};localStorage.setItem('tayu_modbus_chart_config',JSON.stringify(modbusChartConfig));dashboardWidgetIds.push(newWidgetInstance('modbusChart'));saveWidgetLayout();saveWidgetBindings();renderDashboardWidgets();alert('Gráfica agregada al dashboard.');
+ const cfg=currentMbChartFormConfig();
+ if(!cfg)return;
+ let widgetId=findMbChartWidget(cfg.deviceId,cfg.variableId);
+ const existed=Boolean(widgetId);
+ if(!widgetId){
+   widgetId=newWidgetInstance('modbusChart');
+   dashboardWidgetIds.push(widgetId);
+ }
+ modbusChartConfigs[widgetId]=cfg;
+ saveModbusChartConfigs();
+ saveWidgetLayout();
+ renderDashboardWidgets();
+ alert(existed?'Gráfica actualizada en el dashboard.':'Gráfica agregada al dashboard.');
 }
 function renderDashboardModbusChart(){
- setTimeout(()=>document.querySelectorAll('.dashboard-modbus-chart').forEach(c=>{if(c._chart)c._chart.destroy();const cfg=modbusChartConfig||{deviceId:modbusDevices[0]?.id,variableId:modbusDevices[0]?.variables[0]?.id,type:'line',title:'Variable Modbus'};const d=modbusDevices.find(x=>x.id===cfg.deviceId),v=d?.variables.find(x=>x.id===cfg.variableId);if(!d||!v)return;const h=mbHistory(d,v);c._chart=new Chart(c,{type:cfg.type||'line',data:{labels:h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})),datasets:[{label:cfg.title||v.name,data:h.map(x=>x.v),tension:.3}]},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{y:{min:cfg.min!==''?Number(cfg.min):undefined,max:cfg.max!==''?Number(cfg.max):undefined}}}})}),80);
+ setTimeout(()=>document.querySelectorAll('.dashboard-modbus-chart').forEach(c=>{
+   if(c._chart)c._chart.destroy();
+   const widget=c.closest('.dashboard-widget');
+   const instanceId=widget?.dataset.widgetId;
+   const cfg=modbusChartConfigs[instanceId];
+   if(!cfg)return;
+   const d=modbusDevices.find(x=>x.id===cfg.deviceId);
+   const v=d?.variables.find(x=>x.id===cfg.variableId);
+   if(!d||!v)return;
+   const h=filterMbHistory(mbHistory(d,v),cfg);
+   c._chart=new Chart(c,{
+     type:cfg.type||'line',
+     data:{
+       labels:h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'})),
+       datasets:[{label:cfg.title||v.name,data:h.map(x=>x.v),tension:.3}]
+     },
+     options:{
+       responsive:true,maintainAspectRatio:false,animation:false,
+       scales:{
+         x:{ticks:{maxTicksLimit:Math.min(12,Number(cfg.points||50))}},
+         y:{min:cfg.min!==''?Number(cfg.min):undefined,max:cfg.max!==''?Number(cfg.max):undefined}
+       }
+     }
+   });
+ }),80);
 }
 function simulateModbus(){/* Telemetría real: sin simulación */}
 
@@ -2016,7 +2166,10 @@ function addDashboardWidget(type){
 }
 function removeDashboardWidget(instanceId){
  dashboardWidgetIds=dashboardWidgetIds.filter(item=>item!==instanceId);
- localStorage.removeItem('tayu_widget_size_'+instanceId);delete widgetBindings[instanceId];saveWidgetBindings();
+ localStorage.removeItem('tayu_widget_size_'+instanceId);
+ delete widgetBindings[instanceId];
+ if(modbusChartConfigs[instanceId]){delete modbusChartConfigs[instanceId];saveModbusChartConfigs();}
+ saveWidgetBindings();
  saveWidgetLayout();renderDashboardWidgets();renderWidgetLibrary();
 }
 function cycleWidgetSize(instanceId){
@@ -2581,11 +2734,14 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
           saved = JSON.parse(localStorage.getItem(`tayu_real_modbus_config_${d.device_key}`) || '{}');
         } catch (_) {}
 
-        const params = Array.isArray(saved.params) ? saved.params : [];
-        const variables = entries.map(([name, value], index) => {
-          const p = params.find(x => String(x.name) === String(name)) || params[index] || {};
+        const params = Array.isArray(saved.params) ? saved.params.filter(p=>p.enabled!==false && p.name) : [];
+        const sourceEntries = params.length
+          ? params.filter(p=>Object.prototype.hasOwnProperty.call(values,p.name)).map(p=>[p.name,values[p.name],p])
+          : Object.entries(values).map(([name,value])=>[name,value,{}]);
+
+        const variables = sourceEntries.map(([name, value, p], index) => {
           return {
-            id: `${d.device_key}-${index}`,
+            id: modbusVariableId(d.device_key,name),
             name,
             register: p.reg ?? index,
             fc: String(p.fc ?? 3).padStart(2, '0'),
@@ -2631,6 +2787,24 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     // Only real Modbus devices are used for the live dashboard.
     modbusDevices = real;
 
+    // Si se elimina una variable Modbus, se elimina también su gráfica asociada.
+    let chartLayoutChanged=false;
+    dashboardWidgetIds=[...dashboardWidgetIds].filter(instanceId=>{
+      if(widgetType(instanceId)!=='modbusChart')return true;
+      const cfg=modbusChartConfigs[instanceId];
+      if(!cfg){chartLayoutChanged=true;return false;}
+      const d=modbusDevices.find(x=>x.id===cfg.deviceId);
+      const valid=Boolean(d?.variables.some(v=>v.id===cfg.variableId));
+      if(!valid){delete modbusChartConfigs[instanceId];chartLayoutChanged=true;}
+      return valid;
+    });
+    if(chartLayoutChanged){
+      saveModbusChartConfigs();
+      saveWidgetLayout();
+    }
+
+    refreshMbDevices();
+
     // Automatically place one real Modbus group widget on the dashboard
     // the first time live Modbus data becomes available.
     if (real.length && !dashboardWidgetIds.some(id => widgetType(id) === 'modbusGroup')) {
@@ -2651,14 +2825,24 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
 
     const row = realTelemetry.find(r => r.device_key === deviceKey);
     const modbus = row?.payload?.modbus || {};
-    const entries = Object.entries(modbus);
+
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(`tayu_real_modbus_config_${deviceKey}`) || '{}'); } catch (_) {}
+    const configured = Array.isArray(saved.params) ? saved.params.filter(p=>p.enabled!==false && p.name) : [];
+
+    // Si existe configuración en la plataforma, SOLO se muestran esas variables.
+    // Así desaparecen valores viejos como O2 cuando fueron eliminados.
+    const entries = configured.length
+      ? configured.filter(p=>Object.prototype.hasOwnProperty.call(modbus,p.name)).map(p=>[p.name,modbus[p.name],p.unit||''])
+      : Object.entries(modbus).map(([k,v])=>[k,v,'']);
+
     if (!entries.length) {
-      host.innerHTML = '<div class="nova-empty">Aún no hay valores Modbus disponibles.</div>';
+      host.innerHTML = '<div class="nova-empty">Aún no hay valores Modbus disponibles para la configuración actual.</div>';
       return;
     }
 
-    host.innerHTML = entries.map(([k,v]) => `
-      <div class="modbus-live-card"><span>${k}</span><b>${v}</b></div>
+    host.innerHTML = entries.map(([k,v,unit]) => `
+      <div class="modbus-live-card"><span>${k}</span><b>${v}${unit?` <small>${unit}</small>`:''}</b></div>
     `).join('');
   }
 
@@ -2714,7 +2898,9 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       if (status) status.textContent = 'Configuración enviada. Esperando telemetría…';
       await new Promise(r => setTimeout(r, 1500));
       await refreshRealData();
-      if (status) status.textContent = 'Configuración aplicada.';
+      refreshMbDevices();
+      renderDashboardWidgets();
+      if (status) status.textContent = 'Configuración aplicada. Variables y dashboard sincronizados.';
     } catch (error) {
       console.error(error);
       if (status) status.textContent = `Error: ${error.message}`;
