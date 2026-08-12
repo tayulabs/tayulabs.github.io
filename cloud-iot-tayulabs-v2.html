@@ -1959,11 +1959,20 @@ let mbPreviewChart;
 function initMbPreview(){
  refreshMbDevices();const c=document.getElementById('mbPreviewChart');if(!c||!window.Chart)return;if(mbPreviewChart)mbPreviewChart.destroy();mbPreviewChart=new Chart(c,{type:'line',data:{labels:[],datasets:[{label:'Variable',data:[],tension:.3}]},options:{responsive:true,maintainAspectRatio:false,animation:false}});updateMbPreview();
 }
-function updateMbPreview(){
+async function updateMbPreview(){
  if(!mbPreviewChart)return;
  const {d,v}=currentMbChartSelection();
  if(!d||!v)return;
  const cfg=currentMbChartFormConfig()||{};
+
+ if(String(d.id).startsWith('real-')){
+   const deviceKey=String(d.id).slice(5);
+   try{
+     await loadTelemetryHistoryForDevice(deviceKey, Number(cfg.period||5));
+   }catch(error){
+     console.warn('Histórico vista previa:', error);
+   }
+ }
  const h=filterMbHistory(mbHistory(d,v),cfg);
  mbPreviewChart.config.type=cfg.type||'line';
  mbPreviewChart.data.labels=h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
@@ -1978,7 +1987,7 @@ function updateMbPreview(){
  // actualiza esa misma gráfica en lugar de crear otra.
  updateExistingMbChartFromForm();
 }
-function addModbusChartWidget(){
+async function addModbusChartWidget(){
  const cfg=currentMbChartFormConfig();
  if(!cfg)return;
  let widgetId=findMbChartWidget(cfg.deviceId,cfg.variableId);
@@ -1990,6 +1999,16 @@ function addModbusChartWidget(){
  modbusChartConfigs[widgetId]=cfg;
  saveModbusChartConfigs();
  saveWidgetLayout();
+
+ if(String(cfg.deviceId).startsWith('real-')){
+   const deviceKey=String(cfg.deviceId).slice(5);
+   try{
+     await loadTelemetryHistoryForDevice(deviceKey, Number(cfg.period||5), true);
+   }catch(error){
+     console.warn('No se pudo precargar histórico:', error);
+   }
+ }
+
  renderDashboardWidgets();
  alert(existed?'Gráfica actualizada en el dashboard.':'Gráfica agregada al dashboard.');
 }
@@ -2306,7 +2325,20 @@ function widgetBody(id,instanceId){
  if(id==='tanks')return irrigationTanks.map(t=>`<div class="device"><div><b>${t.fluid==='Diésel'?'🛢️':'💧'} ${t.name}</b><br><small>${t.sensor} · ${t.location}</small></div><span class="${t.level<25?'status off':t.level<40?'status warn':'status'}">${t.level}%</span></div>`).join('')+`<button class="btn ghost" style="margin-top:10px" onclick="goToView('fincas')">Abrir sistema de riego</button>`;
  if(id==='pumps')return irrigationPumps.map(p=>`<div class="device"><div><b>${p.type==='Diésel'?'⛽':'⚙️'} ${p.name}</b><br><small>${p.levelControl?'Automática por nivel':p.mode==='schedule'?'Por horario':'Manual'}</small></div><span><i class="state-dot ${p.running?'on':'off'}"></i>${p.running?'Trabajando':'Apagada'}</span></div>`).join('')+`<button class="btn ghost" style="margin-top:10px" onclick="goToView('fincas')">Configurar bombas</button>`;
  if(id==='modbusValue'){const d=modbusDevices[0],v=d?.variables[0];return d&&v?`<p class="hint">${d.name}</p><div class="modbus-value-big">${v.value} <span style="font-size:17px">${v.unit}</span></div><span class="${d.online?'status':'status off'}">${d.online?'Online':'Offline'}</span><button class="btn ghost" style="margin-top:12px;width:100%" onclick="goToView('modbus')">Configurar</button>`:'Sin equipos Modbus';}
- if(id==='modbusGroup'){const d=modbusDevices[0];return d?`<p class="hint">${d.name}</p><div class="modbus-values">${d.variables.slice(0,4).map(v=>`<div><span>${v.name}</span><b>${v.value} ${v.unit}</b></div>`).join('')}</div><button class="btn ghost" style="margin-top:12px;width:100%" onclick="goToView('modbus')">Abrir equipo</button>`:'Sin equipos Modbus';}
+ if(id==='modbusGroup'){
+   const d=modbusDevices[0];
+   if(!d)return 'Sin equipos Modbus';
+   const vars=Array.isArray(d.variables)?d.variables:[];
+   return `<div class="device" style="margin-bottom:10px">
+     <div><b>${d.name}</b><br><small>${d.type||'Equipo Modbus'} · Slave ${d.slave??'—'}</small></div>
+     <span class="${d.online?'status':'status off'}">${d.online?'Online':'Offline'}</span>
+   </div>
+   <div class="modbus-values">
+     ${vars.length
+       ? vars.map(v=>`<div><span>${v.name}</span><b>${v.value}${v.unit?` ${v.unit}`:''}</b></div>`).join('')
+       : '<p class="hint">Sin variables Modbus activas.</p>'}
+   </div>
+   <button class="btn ghost" style="margin-top:12px;width:100%" onclick="goToView('modbus')">Abrir equipo</button>`;}
  if(id==='modbusChart'){return `<div class="modbus-chart-box"><canvas class="dashboard-modbus-chart"></canvas></div><button class="btn ghost" style="margin-top:10px" onclick="goToView('modbus')">Configurar gráfica</button>`;}
  return '';
 }
@@ -2813,7 +2845,8 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   function addModbusParamRow(data={}) {
     const tbody = document.getElementById('mbParamRows');
     if (!tbody) return;
-    if (tbody.children.length >= 8) return;
+    tbody.querySelector('.mb-empty-row')?.remove();
+    if (tbody.querySelectorAll('tr:not(.mb-empty-row)').length >= 8) return;
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -2832,14 +2865,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   window.addModbusParamRow = addModbusParamRow;
 
   function ensureDefaultModbusRows() {
-    const tbody = document.getElementById('mbParamRows');
-    if (!tbody || tbody.children.length) return;
-    [
-      {name:'Voltaje',fc:3,reg:0,type:'U16',scale:1,offset:0,unit:'V',enabled:true},
-      {name:'Corriente',fc:3,reg:1,type:'U16',scale:1,offset:0,unit:'A',enabled:true},
-      {name:'Frecuencia',fc:3,reg:2,type:'U16',scale:1,offset:0,unit:'Hz',enabled:true},
-      {name:'Potencia',fc:3,reg:3,type:'U16',scale:1,offset:0,unit:'kW',enabled:true}
-    ].forEach(addModbusParamRow);
+    // v3.2: un NOVA EDGE nuevo no hereda parámetros de ejemplo.
   }
 
   const remoteModbusConfigs = {};
@@ -2885,6 +2911,90 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     })));
   }
 
+  const loadedHistoryWindows = {};
+
+  function requiredHistoryMinutesForDevice(deviceKey){
+    const realDeviceId = `real-${deviceKey}`;
+    const configs = Object.values(modbusChartConfigs || {})
+      .filter(cfg => cfg?.deviceId === realDeviceId);
+    if(!configs.length) return 0;
+    return Math.max(...configs.map(cfg => Math.max(1, Number(cfg.period || 5))));
+  }
+
+  function mergeHistoryPoint(history, point){
+    if(!point || !Number.isFinite(point.v) || !(point.t instanceof Date) || Number.isNaN(point.t.getTime())) return;
+    const last = history[history.length - 1];
+    if(last && last.t.getTime() === point.t.getTime()){
+      last.v = point.v;
+      return;
+    }
+    history.push(point);
+  }
+
+  async function loadTelemetryHistoryForDevice(deviceKey, minutes, force=false){
+    minutes = Math.max(1, Math.min(1440, Number(minutes || 5)));
+    const already = Number(loadedHistoryWindows[deviceKey] || 0);
+    if(!force && already >= minutes) return;
+
+    const rows = await api(
+      `/telemetry/history?device_key=${encodeURIComponent(deviceKey)}&minutes=${encodeURIComponent(minutes)}`
+    );
+
+    const cfg = remoteModbusConfigs[deviceKey] || {};
+    const configuredParams = Array.isArray(cfg.params)
+      ? cfg.params.filter(p => p.enabled !== false && p.name)
+      : [];
+
+    const byKey = {};
+
+    (Array.isArray(rows) ? rows : []).forEach(row => {
+      const payload = row?.payload || {};
+      const values = payload.modbus || {};
+      const t = new Date(row.time);
+
+      const names = configuredParams.length
+        ? configuredParams.map(p => p.name)
+        : Object.keys(values);
+
+      names.forEach(name => {
+        if(!Object.prototype.hasOwnProperty.call(values, name)) return;
+        const value = Number(values[name]);
+        if(!Number.isFinite(value)) return;
+
+        const variableId = modbusVariableId(deviceKey, name);
+        const key = `real-${deviceKey}|${variableId}`;
+        byKey[key] ||= [];
+        byKey[key].push({t, v:value});
+      });
+    });
+
+    Object.entries(byKey).forEach(([key, points]) => {
+      points.sort((a,b) => a.t - b.t);
+      const existing = modbusHistories[key] || [];
+      const merged = [...points, ...existing]
+        .sort((a,b) => a.t - b.t)
+        .filter((p, index, arr) =>
+          index === 0 || p.t.getTime() !== arr[index-1].t.getTime()
+        );
+      modbusHistories[key] = merged.slice(-12000);
+    });
+
+    loadedHistoryWindows[deviceKey] = minutes;
+  }
+
+  async function loadDashboardHistories(realDevices, force=false){
+    const nova = realDevices.filter(r => assetType(r) === 'novaEdge');
+    await Promise.all(nova.map(async device => {
+      const minutes = requiredHistoryMinutesForDevice(device.device_key);
+      if(minutes <= 0) return;
+      try{
+        await loadTelemetryHistoryForDevice(device.device_key, minutes, force);
+      }catch(error){
+        console.warn(`No se pudo cargar histórico de ${device.device_key}:`, error);
+      }
+    }));
+  }
+
   function setModbusFormValue(id, value) {
     const el = document.getElementById(id);
     if (el) el.value = value ?? '';
@@ -2916,16 +3026,18 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     setModbusFormValue('mbApplicationArea', cfg.application_area);
 
     tbody.innerHTML = '';
-    const rows = Array.isArray(cfg.params) && cfg.params.length
-      ? cfg.params
-      : [
-          {name:'Voltaje',fc:3,reg:0,type:'U16',scale:1,offset:0,unit:'V',enabled:true},
-          {name:'Corriente',fc:3,reg:1,type:'U16',scale:1,offset:0,unit:'A',enabled:true},
-          {name:'Frecuencia',fc:3,reg:2,type:'U16',scale:1,offset:0,unit:'Hz',enabled:true},
-          {name:'Potencia',fc:3,reg:3,type:'U16',scale:1,offset:0,unit:'kW',enabled:true}
-        ];
+    const rows = Array.isArray(cfg.params) ? cfg.params : [];
 
-    rows.forEach(addModbusParamRow);
+    if(rows.length){
+      rows.forEach(addModbusParamRow);
+    }else{
+      tbody.innerHTML = `<tr class="mb-empty-row">
+        <td colspan="8" style="text-align:center;padding:18px;color:var(--muted)">
+          Sin parámetros Modbus configurados. Pulsa <b>＋ Agregar parámetro</b>.
+        </td>
+      </tr>`;
+    }
+
     sel.dataset.loadedDevice = deviceKey;
   }
 
@@ -3175,9 +3287,12 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
         api('/modules')
       ]);
 
-      // Cargamos una sola vez por sesión la configuración persistente de cada NOVA EDGE.
-      // Así PC, celular y cualquier navegador reconstruyen las mismas variables Modbus.
+      // Configuración persistente de cada NOVA EDGE.
       await loadAllModbusConfigs(realDevices);
+
+      // Las gráficas se reconstruyen con histórico real desde TimescaleDB.
+      // Solo consultamos la ventana temporal que realmente necesita el Dashboard.
+      await loadDashboardHistories(realDevices);
 
       applyModulePermissions(organizationModules);
       applyRealData(realDevices, realTelemetry);
