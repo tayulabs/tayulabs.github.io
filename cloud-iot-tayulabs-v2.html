@@ -1500,6 +1500,43 @@ const widgetCatalog={
 let widgetBindings=JSON.parse(localStorage.getItem('tayu_widget_bindings')||'{}');
 let dashboardWidgetIds=JSON.parse(localStorage.getItem('tayu_dashboard_widgets')||'null')||defaultWidgetIds.map((type,i)=>`${type}::default-${i}`);
 dashboardWidgetIds=dashboardWidgetIds.map((item,i)=>String(item).includes('::')?String(item):`${item}::legacy-${i}`);
+
+let dashboardCloudReady=false;
+let dashboardSaveTimer=null;
+let dashboardSettings={sizes:{},modbus_charts:{}};
+
+function collectDashboardSettings(){
+  const sizes={};
+  dashboardWidgetIds.forEach(id=>{
+    const el=document.querySelector(`[data-widget-id="${CSS.escape(id)}"]`);
+    const size=el?.dataset?.size || localStorage.getItem('tayu_widget_size_'+id);
+    if(size) sizes[id]=size;
+  });
+  return {
+    sizes,
+    modbus_charts: typeof modbusChartConfigs==='object' ? modbusChartConfigs : {}
+  };
+}
+
+function applyDashboardSettings(settings={}){
+  dashboardSettings=settings && typeof settings==='object' ? settings : {};
+  const sizes=dashboardSettings.sizes||{};
+  Object.entries(sizes).forEach(([id,size])=>{
+    localStorage.setItem('tayu_widget_size_'+id,size);
+  });
+
+  if(dashboardSettings.modbus_charts && typeof dashboardSettings.modbus_charts==='object'){
+    modbusChartConfigs=dashboardSettings.modbus_charts;
+    localStorage.setItem('tayu_modbus_chart_configs',JSON.stringify(modbusChartConfigs));
+  }
+}
+
+function scheduleDashboardCloudSave(){
+  if(!dashboardCloudReady || !window.saveDashboardToCloud) return;
+  clearTimeout(dashboardSaveTimer);
+  dashboardSaveTimer=setTimeout(()=>window.saveDashboardToCloud(),500);
+}
+
 let shrimpEquipment=[];
 
 shrimpEquipment=shrimpEquipment.map(x=>({
@@ -1609,7 +1646,35 @@ function initCattleSatelliteMap(){
     return;
   }
   window.cattleSatelliteMap=L.map(el).setView([-2.16,-79.53],13);
-  addSatelliteLayer(cattleSatelliteMap);
+  
+function addSatelliteLayer(map){
+  if(!map || !window.L) return null;
+
+  // Esri World Imagery satellite tiles.
+  const imagery = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {
+      maxZoom: 20,
+      attribution: 'Tiles © Esri'
+    }
+  );
+
+  imagery.on('tileerror', () => {
+    // Fallback to OpenStreetMap if satellite tiles cannot load.
+    if(!map.__tayuFallbackAdded){
+      map.__tayuFallbackAdded = true;
+      L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { maxZoom: 20, attribution: '© OpenStreetMap' }
+      ).addTo(map);
+    }
+  });
+
+  imagery.addTo(map);
+  return imagery;
+}
+
+addSatelliteLayer(cattleSatelliteMap);
   renderCattleSatellite();
 }
 function renderCattleSatellite(){
@@ -1770,6 +1835,7 @@ function addIrrigationPump(){
 
 function saveModbusChartConfigs(){
  localStorage.setItem('tayu_modbus_chart_configs',JSON.stringify(modbusChartConfigs));
+ scheduleDashboardCloudSave();
 }
 function modbusVariableId(deviceKey,name){
  return `${deviceKey}-${String(name||'variable').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}`;
@@ -2029,7 +2095,10 @@ let latestPayloadByDevice={};
 
 
 function saveAssets(){localStorage.setItem('tayu_asset_inventory',JSON.stringify(assetInventory))}
-function saveWidgetBindings(){localStorage.setItem('tayu_widget_bindings',JSON.stringify(widgetBindings))}
+function saveWidgetBindings(){
+ localStorage.setItem('tayu_widget_bindings',JSON.stringify(widgetBindings));
+ scheduleDashboardCloudSave();
+}
 function assetTypeMeta(type){return ASSET_TYPES.find(t=>t.id===type)||{label:type,icon:'📦'}}
 function assetTypesForSelect(){
  return ASSET_TYPES.map(t=>`<option value="${t.id}">${t.icon} ${t.label}</option>`).join('');
@@ -2176,13 +2245,20 @@ function cycleWidgetSize(instanceId){
  const el=document.querySelector(`[data-widget-id="${CSS.escape(instanceId)}"]`);if(!el)return;
  const order=['normal','wide','full'];
  const next=order[(order.indexOf(el.dataset.size)+1)%order.length];
- el.dataset.size=next;localStorage.setItem('tayu_widget_size_'+instanceId,next);
+ el.dataset.size=next;
+ localStorage.setItem('tayu_widget_size_'+instanceId,next);
+ scheduleDashboardCloudSave();
 }
-function saveWidgetLayout(){localStorage.setItem('tayu_dashboard_widgets',JSON.stringify(dashboardWidgetIds))}
+function saveWidgetLayout(){
+ localStorage.setItem('tayu_dashboard_widgets',JSON.stringify(dashboardWidgetIds));
+ scheduleDashboardCloudSave();
+}
 function resetDashboardWidgets(){
  dashboardWidgetIds=defaultWidgetIds.map((type,i)=>`${type}::reset-${Date.now()}-${i}`);
  Object.keys(localStorage).filter(k=>k.startsWith('tayu_widget_size_')).forEach(k=>localStorage.removeItem(k));
- saveWidgetLayout();renderDashboardWidgets();
+ saveWidgetLayout();
+ renderDashboardWidgets();
+ scheduleDashboardCloudSave();
 }
 function renderDashboardWidgets(){
  const box=document.getElementById('dashboardWidgets');if(!box)return;
@@ -2238,18 +2314,47 @@ function equipmentMini(x){return `<div class="device"><div><b>${equipmentIconHtm
 function goToView(id){document.querySelector(`.nav button[data-view="${id}"]`)?.click()}
 function renderDashboardMapWidget(){
  const GYE=[-2.170998,-79.922359];
+
  document.querySelectorAll('.dashboard-device-map').forEach(el=>{
-   if(el._leaflet_id)return;
-   const m=L.map(el,{zoomControl:true}).setView(GYE,13);
-   addSatelliteLayer(m);
-   const gps=devices.filter(d=>Number.isFinite(Number(d.lat))&&Number.isFinite(Number(d.lon))).slice(0,50);
-   if(gps.length){
-     const ms=gps.map(d=>L.circleMarker([Number(d.lat),Number(d.lon)],{radius:7,color:d.status==='Online'?'#55c62b':'#ef4444',fillOpacity:.9}).addTo(m).bindPopup(`<b>${d.name}</b><br>${d.farm||'Sin unidad'}<br>${d.status}`));
-     m.fitBounds(L.featureGroup(ms).getBounds().pad(.25));
-   }else{
-     const ref=L.marker(GYE,{icon:L.divIcon({className:'',html:'<div class="reference-map-label">📍 Guayaquil · ubicación de referencia</div>',iconSize:[220,30],iconAnchor:[110,15]})}).addTo(m);
+   if(el._leaflet_id){
+     try{el._leaflet_map?.invalidateSize()}catch(_){}
+     return;
    }
-   setTimeout(()=>m.invalidateSize(),100);
+
+   const map=L.map(el,{zoomControl:true}).setView(GYE,13);
+   el._leaflet_map=map;
+   addSatelliteLayer(map);
+
+   const gps=devices.filter(d=>
+     Number.isFinite(Number(d.lat)) &&
+     Number.isFinite(Number(d.lon)) &&
+     !(Number(d.lat)===0 && Number(d.lon)===0)
+   ).slice(0,50);
+
+   if(gps.length){
+     const markers=gps.map(d=>
+       L.circleMarker(
+         [Number(d.lat),Number(d.lon)],
+         {radius:7,color:d.status==='Online'?'#55c62b':'#ef4444',fillOpacity:.9}
+       )
+       .addTo(map)
+       .bindPopup(`<b>${d.name}</b><br>${d.farm||'Sin unidad'}<br>${d.status}`)
+     );
+     map.fitBounds(L.featureGroup(markers).getBounds().pad(.25));
+   }else{
+     L.marker(GYE,{
+       icon:L.divIcon({
+         className:'',
+         html:'<div class="reference-map-label">📍 Guayaquil · ubicación de referencia</div>',
+         iconSize:[230,34],
+         iconAnchor:[115,17]
+       })
+     }).addTo(map);
+
+     map.setView(GYE,13);
+   }
+
+   setTimeout(()=>map.invalidateSize(),250);
  });
 }
 function initShrimpMap(){const el=document.getElementById('shrimpMap');if(!el||!window.L)return;if(window.shrimpMap){shrimpMap.invalidateSize();renderShrimpMarkers();return}window.shrimpMap=L.map(el).setView([-2.170998,-79.922359],13);L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imágenes © Esri'}).addTo(shrimpMap);renderShrimpMarkers()}
@@ -2354,6 +2459,50 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     if (!response.ok) throw new Error(data.error || `API ${response.status}`);
     return data;
   }
+
+
+  async function loadDashboardFromCloud(){
+    const cloud = await api('/dashboard');
+
+    // First cloud load: if the server has no layout yet, migrate the current
+    // browser layout instead of erasing the user's existing dashboard.
+    if(!Array.isArray(cloud.layout) || cloud.layout.length===0){
+      dashboardCloudReady=true;
+      await saveDashboardToCloud();
+      return;
+    }
+
+    dashboardWidgetIds=cloud.layout.map((item,i)=>
+      String(item).includes('::') ? String(item) : `${item}::cloud-${i}`
+    );
+    widgetBindings=(cloud.widget_bindings && typeof cloud.widget_bindings==='object')
+      ? cloud.widget_bindings : {};
+
+    applyDashboardSettings(cloud.widget_settings||{});
+
+    localStorage.setItem('tayu_dashboard_widgets',JSON.stringify(dashboardWidgetIds));
+    localStorage.setItem('tayu_widget_bindings',JSON.stringify(widgetBindings));
+
+    dashboardCloudReady=true;
+  }
+
+  async function saveDashboardToCloud(){
+    if(!dashboardCloudReady) return;
+
+    const payload={
+      layout: dashboardWidgetIds,
+      widget_bindings: widgetBindings,
+      widget_settings: collectDashboardSettings()
+    };
+
+    try{
+      await apiPost('/dashboard',payload);
+    }catch(error){
+      console.error('No se pudo guardar Dashboard:',error);
+    }
+  }
+
+  window.saveDashboardToCloud=saveDashboardToCloud;
 
   function applyModulePermissions(modules) {
     const allowed = new Set(Array.isArray(modules) ? modules : []);
@@ -2964,9 +3113,16 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     };
 
     applyRolePermissions();
+
+    setStatus('Cargando configuración del Dashboard…');
+    await loadDashboardFromCloud();
+
     startPlatform();
     await refreshRealData();
+    renderDashboardWidgets();
     startRealtimeRefresh();
+
+    setStatus('Conectado a la API: datos reales cargados.');
   }).catch(error => {
     console.error('No se pudo iniciar el dashboard seguro:', error);
     const loginError = document.getElementById('loginError');
