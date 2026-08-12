@@ -1896,6 +1896,38 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     return response.json();
   }
 
+  function applyModulePermissions(modules) {
+    const allowed = new Set(Array.isArray(modules) ? modules : []);
+
+    // Dashboard is the safe landing page. Every other module is shown
+    // only when the authenticated organization has it enabled in PostgreSQL.
+    document.querySelectorAll('.nav button[data-view]').forEach(button => {
+      const view = button.dataset.view;
+      const canView = view === 'dashboard' || allowed.has(view);
+      button.style.display = canView ? '' : 'none';
+
+      const section = document.getElementById(view);
+      if (section && !canView) {
+        section.classList.remove('active');
+        section.style.display = 'none';
+      } else if (section && canView) {
+        section.style.removeProperty('display');
+      }
+    });
+
+    const activeView = document.querySelector('.view.active');
+    if (activeView && activeView.id !== 'dashboard' && !allowed.has(activeView.id)) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+      document.getElementById('dashboard')?.classList.add('active');
+      document.querySelector('.nav button[data-view="dashboard"]')?.classList.add('active');
+      const title = document.getElementById('pageTitle');
+      if (title) title.textContent = 'Dashboard';
+    }
+
+    window.allowedOrganizationModules = [...allowed];
+  }
+
   const n = value => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
@@ -2041,11 +2073,15 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
 
   async function refreshRealData() {
     setStatus('Actualizando datos reales…');
-    const [realDevices, realTelemetry] = await Promise.all([
+    const [realDevices, realTelemetry, organizationModules] = await Promise.all([
       api('/devices'),
-      api('/telemetry/latest')
+      api('/telemetry/latest'),
+      api('/modules')
     ]);
+
+    applyModulePermissions(organizationModules);
     applyRealData(realDevices, realTelemetry);
+
     setStatus('Conectado a la API: datos reales cargados.');
   }
 
