@@ -411,6 +411,29 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 @media(max-width:960px){.asset-toolbar,.asset-form-grid{grid-template-columns:1fr}.asset-form-grid .full{grid-column:auto}}
 
 </style>
+
+<style>
+.nova-edge-panel{margin-top:18px}
+.nova-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.nova-device-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.nova-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);font-size:12px;font-weight:850}
+.nova-dot{width:9px;height:9px;border-radius:50%;background:#94a3b8}
+.nova-dot.online{background:var(--brand);box-shadow:0 0 0 5px rgba(85,198,43,.12)}
+.nova-relay-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}
+.nova-relay-card{background:var(--panel2);border:1px solid var(--border);border-radius:18px;padding:16px}
+.nova-relay-card .relay-state{font-size:20px;font-weight:900;margin-top:9px}
+.nova-relay-card.on{border-color:rgba(85,198,43,.55);background:rgba(85,198,43,.08)}
+.nova-relay-card.on .relay-state{color:var(--brand)}
+.nova-relay-card.off .relay-state{color:var(--muted)}
+.nova-info-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:14px}
+.nova-info-grid>div{background:var(--panel2);border:1px solid var(--border);border-radius:15px;padding:12px}
+.nova-info-grid span{display:block;color:var(--muted);font-size:11px;font-weight:850;margin-bottom:5px}
+.nova-info-grid b{font-size:15px}
+.nova-empty{padding:24px;text-align:center;color:var(--muted);background:var(--panel2);border:1px dashed var(--border);border-radius:18px;margin-top:16px}
+@media(max-width:1000px){.nova-relay-grid{grid-template-columns:repeat(2,1fr)}.nova-info-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.nova-relay-grid,.nova-info-grid{grid-template-columns:1fr}}
+</style>
+
 </head>
 <body>
 <section class="login" id="login">
@@ -634,6 +657,17 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
     <div class="card kpi"><span>Aireadores</span><h3 id="shrimpAeratorCount">0</h3><small>Registrados</small></div>
     <div class="card kpi"><span>Comida disponible</span><h3 id="shrimpFoodTotal">0 kg</h3><small>Total en tolvas</small></div>
     <div class="card kpi"><span>Alarmas activas</span><h3 id="shrimpAlarmCount">0</h3><small>Requieren atención</small></div>
+  </div>
+
+  <div class="card nova-edge-panel">
+    <div class="nova-head">
+      <div>
+        <h3 style="margin:0">NOVA EDGE · Estado en tiempo real</h3>
+        <p class="hint" style="margin:6px 0 0">Telemetría recibida directamente desde los equipos NOVA EDGE asignados a esta organización.</p>
+      </div>
+      <button class="btn ghost" onclick="window.refreshRealData?.()">Actualizar</button>
+    </div>
+    <div id="novaEdgePanel"><div class="nova-empty">Esperando telemetría de NOVA EDGE…</div></div>
   </div>
   <div class="grid dashboard-layout" style="margin-top:18px">
     <div class="card map-card"><div id="shrimpMap"></div></div>
@@ -1335,6 +1369,7 @@ const ASSET_TYPES=[
  {id:'vdf',label:'Variador de frecuencia',icon:'🔌'},
  {id:'energyMeter',label:'Medidor de energía',icon:'⚡'},
  {id:'gateway',label:'Gateway',icon:'📡'},
+ {id:'novaEdge',label:'NOVA EDGE',icon:'🟢'},
  {id:'gpsOrion',label:'ORIÓN GPS',icon:'🍌'},
  {id:'gpsCattle',label:'Collar GPS ganado',icon:'🐄'}
 ];
@@ -1705,7 +1740,7 @@ function renderAssetInventory(){
 }
 function focusAsset(id){
  const a=assetInventory.find(x=>x.id===id);if(!a)return;
- const target=['feeder','aerator','oxygenSensor'].includes(a.type)?'camaroneras':['gpsOrion'].includes(a.type)?'bananeras':['gpsCattle'].includes(a.type)?'ganaderia':['plc','vdf','energyMeter'].includes(a.type)?'modbus':'fincas';
+ const target=['feeder','aerator','oxygenSensor','novaEdge'].includes(a.type)?'camaroneras':['gpsOrion'].includes(a.type)?'bananeras':['gpsCattle'].includes(a.type)?'ganaderia':['plc','vdf','energyMeter'].includes(a.type)?'modbus':'fincas';
  goToView(target);
 }
 function exportAssetsCsv(){
@@ -1943,6 +1978,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
 
   function assetType(row) {
     const value = `${row.device_type || ''} ${row.name || ''}`.toLowerCase();
+    if (value.includes('nova_edge') || value.includes('nova edge')) return 'novaEdge';
     if (value.includes('orion')) return 'gpsOrion';
     if (value.includes('ganado') || value.includes('collar')) return 'gpsCattle';
     if (value.includes('alimentador')) return 'feeder';
@@ -1961,6 +1997,76 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     const lat = n(payload.latitude ?? payload.lat);
     const lon = n(payload.longitude ?? payload.lon ?? payload.lng);
     return { lat, lon };
+  }
+
+  function renderNovaEdgePanel(realDevices, realTelemetry) {
+    const host = document.getElementById('novaEdgePanel');
+    if (!host) return;
+
+    const novaDevices = realDevices.filter(row => assetType(row) === 'novaEdge');
+    if (!novaDevices.length) {
+      host.innerHTML = '<div class="nova-empty">No hay equipos NOVA EDGE asignados a esta organización.</div>';
+      return;
+    }
+
+    const latest = latestTelemetryByDevice(realTelemetry);
+    const esc = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
+    })[ch]);
+
+    const relayCard = (label, value) => {
+      const on = value === true;
+      return `<div class="nova-relay-card ${on ? 'on' : 'off'}">
+        <span class="hint">${label}</span>
+        <div class="relay-state">${on ? '● ENCENDIDO' : '○ APAGADO'}</div>
+      </div>`;
+    };
+
+    host.innerHTML = novaDevices.map(device => {
+      const row = latest.get(device.device_key);
+      const p = row?.payload || {};
+      const lastTime = row?.time ? new Date(row.time) : null;
+      const ageMs = lastTime ? Date.now() - lastTime.getTime() : Infinity;
+      const online = ageMs < 60000;
+      const lastText = lastTime ? lastTime.toLocaleString() : 'Sin telemetría';
+      const rssi = p.wifi_rssi ?? '—';
+      const fw = p.fw ?? '—';
+      const din1 = p.din1 === true ? 'Activo' : p.din1 === false ? 'Inactivo' : '—';
+      const din2 = p.din2 === true ? 'Activo' : p.din2 === false ? 'Inactivo' : '—';
+      const mbOk = p.mb_ok ?? '—';
+      const mbReq = p.mb_requests ?? '—';
+      const mbTimeout = p.mb_timeout ?? '—';
+
+      return `<article style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <div class="nova-head">
+          <div>
+            <h3 style="margin:0">${esc(device.name)}</h3>
+            <div class="nova-device-meta">
+              <span class="nova-pill"><span class="nova-dot ${online ? 'online' : ''}"></span>${online ? 'ONLINE' : 'OFFLINE'}</span>
+              <span class="nova-pill">${esc(device.device_key)}</span>
+              <span class="nova-pill">FW ${esc(fw)}</span>
+            </div>
+          </div>
+          <div class="hint">Última telemetría:<br><b>${esc(lastText)}</b></div>
+        </div>
+
+        <div class="nova-relay-grid">
+          ${relayCard('Relay 1 · GPIO 2', p.relay1)}
+          ${relayCard('Relay 2 · GPIO 1', p.relay2)}
+          ${relayCard('Relay 3 · GPIO 46', p.relay3)}
+          ${relayCard('Relay 4 · GPIO 45', p.relay4)}
+        </div>
+
+        <div class="nova-info-grid">
+          <div><span>WiFi RSSI</span><b>${esc(rssi)} dBm</b></div>
+          <div><span>Entrada DIN1</span><b>${esc(din1)}</b></div>
+          <div><span>Entrada DIN2</span><b>${esc(din2)}</b></div>
+          <div><span>Modbus OK</span><b>${esc(mbOk)}</b></div>
+          <div><span>Modbus solicitudes</span><b>${esc(mbReq)}</b></div>
+          <div><span>Modbus timeout</span><b>${esc(mbTimeout)}</b></div>
+        </div>
+      </article>`;
+    }).join('');
   }
 
   function applyRealData(realDevices, realTelemetry) {
@@ -2053,6 +2159,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     renderDashboardWidgets();
     renderBananaSatellite();
     renderCattleSatellite();
+    renderNovaEdgePanel(realDevices, realTelemetry);
 
     // Real telemetry table.
     const table = document.getElementById('sensorTable');
