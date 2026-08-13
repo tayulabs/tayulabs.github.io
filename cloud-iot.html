@@ -5,6 +5,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>TAYULABS IoT Platform</title>
+<link rel="preload" as="image" href="imagenes/icons/theme-dark.png">
+<link rel="preload" as="image" href="imagenes/icons/theme-light.png">
 <link rel="preload" as="image" href="imagenes/LOGO-COLOR.jpg">
 <link rel="preload" as="image" href="imagenes/LOGO-WHITE.jpg">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -499,6 +501,90 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 </style>
 
 <style>
+/* v4.4.0 · iconos PNG de la barra lateral y selector de tema */
+.nav-icon{
+  width:24px;
+  height:24px;
+  flex:0 0 24px;
+  display:grid;
+  place-items:center;
+  line-height:0;
+  text-align:center;
+}
+.nav-icon .tayu-nav-img{
+  grid-area:1 / 1;
+  width:21px;
+  height:21px;
+  max-width:21px;
+  max-height:21px;
+  object-fit:contain;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:none!important;
+}
+.nav-icon .tayu-nav-img.icon-color{
+  opacity:1;
+  visibility:visible;
+}
+body.dark .nav-icon .tayu-nav-img.icon-color{
+  opacity:0;
+  visibility:hidden;
+}
+body.dark .nav-icon .tayu-nav-img.icon-white{
+  opacity:1;
+  visibility:visible;
+}
+
+/* Al colapsar la barra mantenemos el mismo tamaño del icono. */
+body.sidebar-collapsed .nav-icon{
+  width:24px;
+  height:24px;
+  flex-basis:24px;
+}
+body.sidebar-collapsed .nav-icon .tayu-nav-img{
+  width:22px;
+  height:22px;
+  max-width:22px;
+  max-height:22px;
+}
+
+/* Botón claro / oscuro: ambos PNG están cargados desde el inicio. */
+.theme-icon-stack{
+  width:22px;
+  height:22px;
+  display:grid;
+  place-items:center;
+  line-height:0;
+}
+.theme-icon-stack .theme-icon-img{
+  grid-area:1 / 1;
+  width:20px;
+  height:20px;
+  max-width:20px;
+  max-height:20px;
+  object-fit:contain;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:none!important;
+}
+/* En modo claro mostramos el icono que permite pasar a oscuro. */
+.theme-icon-stack .theme-dark-icon{
+  opacity:1;
+  visibility:visible;
+}
+body.dark .theme-icon-stack .theme-dark-icon{
+  opacity:0;
+  visibility:hidden;
+}
+body.dark .theme-icon-stack .theme-light-icon{
+  opacity:1;
+  visibility:visible;
+}
+</style>
+
+<style>
 /* v4.3.9 · logo lateral precargado, cambio instantáneo */
 .sidebar-logo-stack{
   width:125px;
@@ -661,17 +747,17 @@ const tayuMemoryStore = (() => {
 </div>
 <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Ocultar/mostrar barra lateral" aria-label="Ocultar o mostrar barra lateral" onclick="toggleSidebarCollapse()">❮</button>
 <div class="nav">
-<button class="active" data-view="dashboard"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></button>
-<button data-view="fincas"><span class="nav-icon">🌱</span><span class="nav-label">Fincas</span></button>
-<button data-view="camaroneras"><span class="nav-icon">🦐</span><span class="nav-label">Camaroneras</span></button>
-<button data-view="bananeras"><span class="nav-icon">🍌</span><span class="nav-label">Bananeras</span></button>
-<button data-view="ganaderia"><span class="nav-icon">🐄</span><span class="nav-label">Ganadería</span></button>
-<button data-view="alarmas"><span class="nav-icon">🚨</span><span class="nav-label">Alarmas</span><span class="alarm-badge" id="alarmNavBadge">0</span></button>
-<button data-view="sensores"><span class="nav-icon">🌡️</span><span class="nav-label">Sensores</span></button>
-<button data-view="dispositivos"><span class="nav-icon">📦</span><span class="nav-label">Dispositivos</span></button>
-<button data-view="tramas"><span class="nav-icon">📡</span><span class="nav-label">Tramas</span></button>
-<button data-view="modbus"><span class="nav-icon">🔌</span><span class="nav-label">Equipos Modbus</span></button>
-<button data-view="configuracion"><span class="nav-icon">⚙️</span><span class="nav-label">Configuración</span></button>
+<button class="active" data-view="dashboard"><span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/dashboard-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/dashboard-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Dashboard</span></button>
+<button data-view="fincas"><span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/fincas-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/fincas-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Fincas</span></button>
+<button data-view="camaroneras"><span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/camaroneras-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/camaroneras-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Camaroneras</span></button>
+<button data-view="bananeras"><span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/bananeras-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/bananeras-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Bananeras</span></button>
+<button data-view="ganaderia"><span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/ganaderia-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/ganaderia-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Ganadería</span></button>
+<button data-view="alarmas"><span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/alarmas-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/alarmas-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Alarmas</span><span class="alarm-badge" id="alarmNavBadge">0</span></button>
+<button data-view="sensores"><span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/sensores-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/sensores-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Sensores</span></button>
+<button data-view="dispositivos"><span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/dispositivos-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/dispositivos-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Dispositivos</span></button>
+<button data-view="tramas"><span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/tramas-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/tramas-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Tramas</span></button>
+<button data-view="modbus"><span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/modbus-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/modbus-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Equipos Modbus</span></button>
+<button data-view="configuracion"><span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/configuracion-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/configuracion-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Configuración</span></button>
 </div>
 </aside>
 
@@ -679,7 +765,7 @@ const tayuMemoryStore = (() => {
 <div class="topbar">
 <button class="btn ghost mobile-menu" onclick="toggleMenu()">☰ Menú</button>
 <div class="title"><h2 id="pageTitle">Dashboard</h2><p>Gestión de activos IoT por finca y zona.</p></div>
-<div class="actions"><button class="btn ghost icon-btn" id="themeButton" title="Cambiar tema" aria-label="Cambiar tema" onclick="toggleDark()">🌙</button><button class="btn ghost" onclick="logout()">Salir</button></div>
+<div class="actions"><button class="btn ghost icon-btn" id="themeButton" title="Cambiar tema" aria-label="Cambiar tema" onclick="toggleDark()"><span class="theme-icon-stack"><img class="theme-icon-img theme-dark-icon" src="imagenes/icons/theme-dark.png" alt=""><img class="theme-icon-img theme-light-icon" src="imagenes/icons/theme-light.png" alt="" aria-hidden="true"></span></button><button class="btn ghost" onclick="logout()">Salir</button></div>
 </div>
 
 <section id="dashboard" class="view active">
@@ -1141,8 +1227,6 @@ window.updateSidebarLogo=updateSidebarLogo;
 function toggleDark(){
  document.body.classList.toggle("dark");
  tayuMemoryStore.setItem("tayu_dark",document.body.classList.contains("dark")?"1":"0");
- const b=document.getElementById("themeButton");
- if(b)b.textContent=document.body.classList.contains("dark")?"☀️":"🌙";
  setTimeout(()=>{
    if(window.iotMap)iotMap.invalidateSize();
    if(window.shrimpMap)shrimpMap.invalidateSize();
@@ -1722,7 +1806,7 @@ let platformFrames=[];
 let shrimpMarkers=[];
 function initCustomPlatform(){
  if(tayuMemoryStore.getItem('tayu_sidebar_collapsed')==='1')document.body.classList.add('sidebar-collapsed');
- if(tayuMemoryStore.getItem('tayu_dark')==='1'){document.body.classList.add('dark');const b=document.getElementById('themeButton');if(b)b.textContent='☀️'}
+ if(tayuMemoryStore.getItem('tayu_dark')==='1')document.body.classList.add('dark');
  renderDashboardWidgets();window.renderShrimpEquipment?.();renderSensorTable();renderAlarms();renderFrames();
  setTimeout(()=>{syncAssetsToModules();renderAssetInventory();initShrimpMap();initCattleSatelliteMap();initBananaSatelliteMap();renderIrrigationSystem();renderModbusDevices();initMbPreview();updateAlarmBadge();},250);
 }
@@ -3659,7 +3743,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.3.9 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.4.0 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
