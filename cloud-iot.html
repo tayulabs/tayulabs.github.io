@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TAYULABS IoT Platform v4</title>
+<title>TAYULABS | Plataforma IoT</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
@@ -13,24 +13,64 @@
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}button,input,select{font:inherit}.app{display:none;min-height:100vh}.login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#fff,#eef8e9)}.login-card{width:min(420px,92vw);background:#fff;padding:32px;border-radius:26px;box-shadow:var(--shadow);text-align:center}.logo{font-size:28px;font-weight:900;letter-spacing:.04em}.brand{color:var(--brand)}.sidebar{position:fixed;inset:0 auto 0 0;width:245px;background:#11190f;color:#fff;padding:24px 16px;z-index:30}.sidebar h2{margin:0 8px 24px}.nav{display:grid;gap:8px}.nav button{border:0;background:transparent;color:#d9e5d5;text-align:left;padding:12px 14px;border-radius:14px;cursor:pointer;font-weight:700}.nav button:hover,.nav button.active{background:#253321;color:#fff}.content{margin-left:245px;min-height:100vh}.topbar{position:sticky;top:0;z-index:20;background:rgba(246,248,245,.92);backdrop-filter:blur(10px);padding:18px 26px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:14px;align-items:center}.main{padding:24px;max-width:1600px;margin:auto}.view{display:none}.view.active{display:block}.card{background:var(--panel);border:1px solid var(--border);border-radius:22px;padding:20px;box-shadow:var(--shadow)}.grid{display:grid;gap:16px}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}.summary .card b{font-size:30px}.hint{color:var(--muted);font-size:13px}.btn{border:0;background:var(--brand);color:#10200b;padding:10px 14px;border-radius:12px;font-weight:800;cursor:pointer}.btn.ghost{background:var(--panel2);border:1px solid var(--border)}.btn.danger{background:#fee2e2;color:#991b1b}.btn:disabled{opacity:.55;cursor:not-allowed}.actions{display:flex;gap:10px;flex-wrap:wrap}.status{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;background:#e7f8df;color:#276516;font-size:11px;font-weight:900}.status.off{background:#fee2e2;color:#991b1b}.status.warn{background:#fff1d6;color:#92400e}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:13px;vertical-align:middle}.table input,.table select{width:100%;min-width:110px}.field{display:grid;gap:6px}.field label{font-size:12px;font-weight:800;color:var(--muted)}input,select{border:1px solid var(--border);background:#fff;border-radius:11px;padding:10px;color:var(--text)}.form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 14px}.device-list{display:grid;gap:10px}.device-row{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--panel2);border:1px solid var(--border);border-radius:16px;padding:13px}.channel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.channel{background:var(--panel2);border:1px solid var(--border);border-radius:16px;padding:14px}.channel strong{display:block;margin-bottom:6px}.value-big{font-size:28px;font-weight:900}.dashboard-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}.widget{grid-column:span 4;background:#fff;border:1px solid var(--border);border-radius:20px;padding:16px;box-shadow:var(--shadow);min-width:0}.widget.wide{grid-column:span 8}.widget.full{grid-column:1/-1}.widget-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.widget.dragging{opacity:.45}.widget canvas{width:100%!important;height:260px!important}.map{height:340px;border-radius:16px;overflow:hidden}.gauge{height:16px;background:#e6ece3;border-radius:999px;overflow:hidden}.gauge span{display:block;height:100%;background:var(--brand);border-radius:999px}.alarm-item{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}.alarm-dot{width:11px;height:11px;border-radius:50%;background:var(--warning);margin-top:4px}.alarm-dot.critical{background:var(--danger)}.alarm-dot.info{background:var(--info)}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;place-items:center;padding:18px}.modal.open{display:grid}.modal-card{width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:24px;padding:22px}.toast{position:fixed;right:18px;bottom:18px;z-index:200;background:#11190f;color:#fff;padding:12px 15px;border-radius:14px;max-width:420px;display:none}.toast.show{display:block}.row-hidden{display:none!important}.asset-card{border:1px solid var(--border);border-radius:16px;padding:14px;background:var(--panel2);margin-bottom:10px}.modbus-live{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.modbus-live .channel{background:#fff}.spacer{height:10px}
 @media(max-width:1100px){.summary,.grid-4{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:repeat(2,1fr)}.widget,.widget.wide{grid-column:span 6}}
 @media(max-width:760px){.sidebar{position:static;width:auto}.content{margin-left:0}.topbar{position:static}.app{display:block}.app.shell{display:block}.sidebar .nav{grid-template-columns:repeat(4,1fr)}.nav button{text-align:center;padding:10px 6px;font-size:12px}.main{padding:14px}.summary,.grid-2,.grid-3,.grid-4,.form-grid{grid-template-columns:1fr}.dashboard-grid{grid-template-columns:1fr}.widget,.widget.wide,.widget.full{grid-column:1}.topbar{padding:14px}.channel-grid{grid-template-columns:1fr}}
+
+/* v4.1 — interfaz restaurada: conserva el estilo visual anterior de TAYULABS */
+:root{--brand:#5BC12F;--bg:#f7f9f6;--panel:#fff;--panel2:#f8faf7;--text:#101510;--muted:#657080;--border:#e1e6df;--shadow:0 10px 28px rgba(20,45,16,.07)}
+body{background:var(--bg)}
+.login-logo img{width:180px;max-width:80%;height:auto}
+.sidebar{width:270px;background:#fff;color:#111;border-right:1px solid var(--border);padding:22px;box-shadow:none}
+.sidebar-brand{display:flex;justify-content:center;align-items:center;margin:2px 0 28px;min-height:105px}
+.sidebar-brand img{width:150px;max-width:100%;height:auto;object-fit:contain}
+.nav{gap:7px}
+.nav button{position:relative;color:#526078;background:transparent;border:0;text-align:left;padding:13px 14px;border-radius:16px;font-weight:800;display:flex;align-items:center;gap:10px;width:100%}
+.nav button:hover{background:#f3f7f1;color:#111}
+.nav button.active{background:#e7f6df;color:#111}
+.nav-icon{width:20px;text-align:center;flex:0 0 20px}
+.content{margin-left:270px}
+.topbar{background:rgba(255,255,255,.94);padding:18px 28px}
+.main{padding:24px 28px;max-width:none}
+.card{border-radius:22px;box-shadow:0 8px 26px rgba(20,45,16,.05)}
+.btn{background:#4fcb25;color:#fff;border-radius:14px;padding:10px 16px}
+.btn.ghost{background:#fff;color:#111;border:1px solid var(--border)}
+.btn.danger{background:#fee2e2;color:#991b1b}
+.summary .card{min-height:98px}
+.section-title h2,.section-title h3,.section-title h4{letter-spacing:-.01em}
+.view{animation:fadeIn .14s ease}
+@keyframes fadeIn{from{opacity:.65}to{opacity:1}}
+.module-empty{padding:34px;text-align:center;border:1px dashed var(--border);border-radius:18px;color:var(--muted);background:#fbfcfb}
+.application-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
+.application-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:16px}
+.application-card .app-state{font-weight:900;font-size:18px;margin:8px 0}
+.frames-json{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;max-width:700px}
+.sensor-grid-real{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.sensor-real-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:16px}
+.sensor-real-card .value-big{font-size:24px}
+.config-anchor{scroll-margin-top:90px}
+@media(max-width:960px){.sidebar{position:fixed;width:82vw;max-width:310px;transform:translateX(-100%);transition:.25s;z-index:80}.sidebar.open{transform:translateX(0)}.content{margin-left:0}.topbar{position:sticky}.mobile-menu-btn{display:inline-flex!important}.main{padding:14px}.nav{display:grid!important;grid-template-columns:1fr!important}.nav button{text-align:left!important}}
+@media(min-width:961px){.mobile-menu-btn{display:none!important}}
+
 </style>
 </head>
 <body>
-<div id="login" class="login"><div class="login-card"><div class="logo">TAYU<span class="brand">LABS</span></div><h2>Plataforma IoT</h2><p class="hint">Inicio de sesión seguro con Keycloak.</p><button class="btn" id="loginBtn">Iniciar sesión</button><p id="loginError" class="hint"></p></div></div>
+<div id="login" class="login"><div class="login-card"><div class="logo login-logo"><img src="imagenes/logo.png" alt="TAYULABS"></div><h2>Plataforma IoT</h2><p class="hint">Inicio de sesión seguro con Keycloak.</p><button class="btn" id="loginBtn">Iniciar sesión</button><p id="loginError" class="hint"></p></div></div>
 
 <div id="app" class="app">
-  <aside class="sidebar">
-    <h2>TAYU<span class="brand">LABS</span></h2>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><img src="imagenes/logo.png" alt="TAYULABS"></div>
     <div class="nav">
-      <button class="active" data-view="dashboard">🏠 Dashboard</button>
-      <button data-view="devices">🧠 Dispositivos</button>
-      <button data-view="modbus">🔌 Modbus RS485</button>
-      <button data-view="alarms">🚨 Alarmas</button>
+      <button class="active" data-view="dashboard"><span class="nav-icon">📊</span>Dashboard</button>
+      <button data-view="shrimp"><span class="nav-icon">🦐</span>Camaroneras</button>
+      <button data-view="alarms"><span class="nav-icon">🚨</span>Alarmas</button>
+      <button data-view="sensors"><span class="nav-icon">🌡️</span>Sensores</button>
+      <button data-view="devices"><span class="nav-icon">📦</span>Dispositivos</button>
+      <button data-view="frames"><span class="nav-icon">📡</span>Tramas</button>
+      <button data-view="modbus"><span class="nav-icon">🔌</span>Equipos Modbus</button>
+      <button data-view="settings"><span class="nav-icon">⚙️</span>Configuración</button>
     </div>
   </aside>
   <div class="content">
     <header class="topbar">
-      <div><b id="pageTitle">Dashboard</b><div class="hint" id="orgLabel">Cargando organización…</div></div>
+      <div style="display:flex;align-items:center;gap:10px"><button class="btn ghost mobile-menu-btn" id="mobileMenuBtn">☰</button><div><b id="pageTitle">Dashboard</b><div class="hint" id="orgLabel">Cargando organización…</div></div></div>
       <div class="actions"><span class="hint" id="userLabel"></span><button class="btn ghost" id="refreshBtn">Actualizar</button><button class="btn ghost" id="logoutBtn">Salir</button></div>
     </header>
     <main class="main">
@@ -41,7 +81,7 @@
           <div class="card"><span class="hint">Alarmas activas</span><br><b id="sumAlarms">0</b></div>
           <div class="card"><span class="hint">Última actualización</span><br><b style="font-size:18px" id="sumUpdate">—</b></div>
         </div>
-        <div class="section-title"><div><h2 style="margin:0">Dashboard</h2><p class="hint">Solo se agregan widgets que tengan una fuente real del VPS.</p></div><button class="btn" id="addWidgetBtn">＋ Agregar widget</button></div>
+        <div class="section-title"><div><h2 style="margin:0">Dashboard</h2><p class="hint">Personaliza la vista con datos reales de tus dispositivos, sensores, activos, mapas y alarmas.</p></div><button class="btn" id="addWidgetBtn">＋ Agregar widget</button></div>
         <div id="dashboardGrid" class="dashboard-grid"></div>
       </section>
 
@@ -57,7 +97,30 @@
           </div>
         </div>
 
-        <div class="card" style="margin-top:16px">
+        
+      </section>
+
+      
+      <section id="shrimp" class="view">
+        <div class="section-title"><div><h2 style="margin:0">Camaroneras</h2><p class="hint">Aplicaciones configuradas en equipos reales: aireadores, alimentadores, bombas, tanques y sensores.</p></div></div>
+        <div id="shrimpApplications" class="application-grid"></div>
+      </section>
+
+      <section id="sensors" class="view">
+        <div class="section-title"><div><h2 style="margin:0">Sensores</h2><p class="hint">Señales reales recibidas desde los dispositivos y configuradas en el VPS.</p></div></div>
+        <div id="realSensors" class="sensor-grid-real"></div>
+      </section>
+
+      <section id="frames" class="view">
+        <div class="card">
+          <div class="section-title"><div><h3 style="margin:0">Últimas tramas</h3><p class="hint">Telemetría real recibida por la API. No se guarda nada en el navegador.</p></div></div>
+          <div class="table-wrap"><table class="table" id="framesTable"></table></div>
+        </div>
+      </section>
+
+      <section id="settings" class="view">
+        <div class="section-title"><div><h2 style="margin:0">Configuración</h2><p class="hint">Asignación de salidas, sensores, GPIO y activos. Toda la configuración se guarda en PostgreSQL.</p></div></div>
+        <div class="card config-anchor" id="deviceConfigurationCard">
           <div class="section-title"><div><h3 style="margin:0">Asignaciones y sensores</h3><p class="hint">Todo se guarda en PostgreSQL. Puedes mapear relés, GPIO, sensores y variables Modbus.</p></div><button class="btn" id="saveDeviceConfigBtn">Guardar configuración</button></div>
           <div class="field" style="max-width:420px;margin-bottom:14px"><label>Dispositivo</label><select id="configDeviceSelect"></select></div>
 
@@ -72,7 +135,7 @@
         </div>
       </section>
 
-      <section id="modbus" class="view">
+<section id="modbus" class="view">
         <div class="card">
           <div class="section-title"><div><h3 style="margin:0">Modbus RS485</h3><p class="hint">Mantiene el flujo que ya funciona con NOVA EDGE y guarda la configuración en PostgreSQL.</p></div><button class="btn" id="saveModbusBtn">Guardar y enviar al equipo</button></div>
           <div class="form-grid">
@@ -483,7 +546,7 @@ function renderDashboard(){
   renderSummary();
   const grid=$('dashboardGrid');
   if(!dashboard.layout.length){
-    grid.innerHTML='<div class="card" style="grid-column:1/-1"><h3>Dashboard vacío</h3><p class="hint">Pulsa “Agregar widget”. Solo aparecerán opciones que tengan datos reales.</p></div>';
+    grid.innerHTML='<div class="card" style="grid-column:1/-1"><h3>Personaliza tu Dashboard</h3><p class="hint">Pulsa “Agregar widget” y selecciona un dispositivo, una señal, una gráfica, un activo, el mapa o las alarmas. La configuración se guardará en el VPS.</p></div>';
     return;
   }
   grid.innerHTML=dashboard.layout.map(id=>{
@@ -605,6 +668,17 @@ function setupDashboardDrag(){
 }
 
 function openWidgetModal(){
+  const type=$('widgetType');
+  const options=[
+    ['device','Dispositivo',devices.length>0],
+    ['signal','Valor de señal',devices.some(d=>signalSources(d).length>0)],
+    ['chart','Gráfica histórica',devices.some(d=>numericSignalSources(d).length>0)],
+    ['asset','Activo / tanque',devices.some(d=>(d.configuration?.assets||[]).length>0)],
+    ['map','Mapa GPS',devices.some(d=>d.capabilities?.location?.supported)],
+    ['alarms','Alarmas activas',true]
+  ];
+  type.innerHTML=options.filter(x=>x[2]).map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('');
+  if(!type.options.length)return toast('No hay fuentes reales disponibles para crear widgets.');
   $('widgetModal').classList.add('open');
   $('widgetDevice').innerHTML=devices.map(d=>`<option value="${esc(d.device_key)}">${esc(d.name)}</option>`).join('');
   updateWidgetForm();
@@ -682,6 +756,66 @@ function renderMbLive(){
   $('mbLive').innerHTML=entries.map(([k,v,u])=>`<div class="channel"><strong>${esc(k)}</strong><div class="value-big">${v===undefined?'—':esc(v)}${u?` <small>${esc(u)}</small>`:''}</div></div>`).join('')||'<p class="hint">Sin lecturas Modbus.</p>';
 }
 
+
+function renderRealSensors(){
+  const host=$('realSensors'); if(!host)return;
+  const cards=[];
+  devices.forEach(d=>{
+    const p=latestPayload(d.device_key);
+    const sources=signalSources(d);
+    sources.forEach(path=>{
+      const meta=signalMeta(d,path);
+      const value=atPath(p,path);
+      // No mostrar salidas como sensores; sí Modbus, entradas, GPIO, analógicas, etc.
+      if(/^relay\d+$/.test(path))return;
+      cards.push(`<article class="sensor-real-card">
+        <div class="device-row" style="padding:0;background:transparent;border:0"><div><b>${esc(meta.name||path)}</b><br><small class="hint">${esc(d.name)} · ${esc(path)}</small></div><span class="status ${value===undefined?'off':''}">${value===undefined?'Sin dato':'Dato real'}</span></div>
+        <div class="value-big" style="margin-top:12px">${esc(formatValue(value,meta))}</div>
+        <div class="hint">Aplicación: ${esc(meta.application||'Genérico')}</div>
+      </article>`);
+    });
+  });
+  host.innerHTML=cards.join('')||'<div class="module-empty">Todavía no hay señales/sensores disponibles. Configura una entrada, un GPIO, un sensor o una variable Modbus en “Configuración”.</div>';
+}
+
+function renderFrames(){
+  const table=$('framesTable'); if(!table)return;
+  table.innerHTML=`<tr><th>Fecha / hora</th><th>Dispositivo</th><th>Payload</th></tr>`+
+    telemetry.slice(0,100).map(row=>`<tr><td>${new Date(row.time).toLocaleString('es-EC')}</td><td><b>${esc(row.device_name||row.device_key)}</b><br><small class="hint">${esc(row.device_key)}</small></td><td><div class="frames-json">${esc(JSON.stringify(row.payload))}</div></td></tr>`).join('');
+  if(!telemetry.length)table.innerHTML+='<tr><td colspan="3" class="hint">Sin tramas recibidas.</td></tr>';
+}
+
+function renderShrimpApplications(){
+  const host=$('shrimpApplications'); if(!host)return;
+  const cards=[];
+  const labels={aerator:'Aireador',feeder:'Alimentador',pump:'Bomba',irrigation:'Riego',valve:'Válvula',tank_level:'Tanque'};
+  devices.forEach(d=>{
+    const p=latestPayload(d.device_key);
+    const outputGroups=expandGroups(d.capabilities?.outputs,'output');
+    outputGroups.forEach(ch=>{
+      const cfg=d.configuration?.outputs?.[ch.key];
+      if(!cfg || !['aerator','feeder','pump','irrigation','valve'].includes(cfg.application))return;
+      const value=p[ch.key],on=value===true;
+      cards.push(`<article class="application-card">
+        <div class="device-row" style="padding:0;background:transparent;border:0"><div><b>${esc(cfg.name||`${labels[cfg.application]||'Salida'} ${ch.index}`)}</b><br><small class="hint">${esc(d.name)} · ${esc(ch.key)}</small></div><span class="status ${on?'':'off'}">${value===undefined?'—':on?'ENCENDIDO':'APAGADO'}</span></div>
+        <div class="hint" style="margin:10px 0">${esc(labels[cfg.application]||cfg.application)}</div>
+        ${ch.controllable===false?'':`<button class="btn shrimp-output" data-device="${esc(d.device_key)}" data-output="${esc(ch.key)}" data-value="${on?'false':'true'}">${on?'APAGAR':'ENCENDER'}</button>`}
+      </article>`);
+    });
+    (d.configuration?.assets||[]).forEach(a=>{
+      if(!['tank','pond','reservoir'].includes(a.type))return;
+      const v=atPath(p,a.source);
+      const num=Number(v),min=Number(a.min??0),max=Number(a.max??100),pct=Number.isFinite(num)&&max>min?Math.max(0,Math.min(100,(num-min)/(max-min)*100)):0;
+      cards.push(`<article class="application-card"><b>${esc(a.name)}</b><div class="hint">${esc(d.name)} · ${esc(a.source)}</div><div class="value-big" style="margin:12px 0">${typeof v==='boolean'?esc(v?(a.true_label||'Activo'):(a.false_label||'Inactivo')):Number.isFinite(num)?esc(`${num}${a.unit?` ${a.unit}`:''}`):'—'}</div>${typeof v==='boolean'?'':`<div class="gauge"><span style="width:${pct}%"></span></div><div class="hint">${pct.toFixed(1)}%</div>`}</article>`);
+    });
+  });
+  host.innerHTML=cards.join('')||'<div class="module-empty" style="grid-column:1/-1">No hay aplicaciones de camaronera configuradas todavía. Ve a “Configuración” y asigna una salida como Aireador/Alimentador/Bomba o crea un activo de tipo tanque.</div>';
+  host.querySelectorAll('.shrimp-output').forEach(btn=>btn.onclick=async()=>{
+    btn.disabled=true;
+    try{await apiPost('/devices/output',{device_key:btn.dataset.device,output_key:btn.dataset.output,value:btn.dataset.value==='true'});toast('Comando enviado');setTimeout(()=>refreshAll(true),900)}catch(e){toast(e.message)}finally{btn.disabled=false}
+  });
+}
+
 async function loadAlarms(){
   [alarmRules,alarmEvents]=await Promise.all([
     api('/alarms/rules'),
@@ -741,7 +875,7 @@ async function refreshAll(silent=false){
     const [d,t,m]=await Promise.all([api('/devices'),api('/telemetry/latest'),api('/modules')]);
     devices=d;telemetry=t;modules=m;rebuildLatest();
     if(!selectedDeviceKey&&devices[0])selectedDeviceKey=devices[0].device_key;
-    renderDeviceList();renderSummary();renderDashboard();renderMbLive();
+    renderDeviceList();renderSummary();renderDashboard();renderMbLive();renderRealSensors();renderFrames();renderShrimpApplications();
     if(!silent)await loadAlarms();
   }catch(e){toast(`Error: ${e.message}`)}finally{refreshBusy=false}
 }
@@ -751,8 +885,9 @@ function applyModuleVisibility(){
   document.querySelectorAll('.nav button[data-view]').forEach(b=>{
     const v=b.dataset.view;
     if(v==='dashboard')return;
-    const moduleName=v==='devices'?'dispositivos':v==='alarms'?'alarmas':v;
-    b.style.display=allowed.size===0||allowed.has(moduleName)?'block':'none';
+    const moduleMap={devices:'dispositivos',alarms:'alarmas',modbus:'modbus',shrimp:'camaroneras',sensors:'sensores',frames:'tramas',settings:'configuracion'};
+    const moduleName=moduleMap[v]||v;
+    b.style.display=allowed.size===0||allowed.has(moduleName)?'flex':'none';
   });
 }
 function openView(view){
@@ -763,9 +898,15 @@ function openView(view){
   $('pageTitle').textContent=document.querySelector(`.nav button[data-view="${view}"]`)?.textContent.trim()||view;
   if(view==='alarms')loadAlarms();
   if(view==='modbus')renderMbLive();
+  if(view==='sensors')renderRealSensors();
+  if(view==='frames')renderFrames();
+  if(view==='shrimp')renderShrimpApplications();
+  if(view==='settings'){loadWorkingConfig(true);}
+  $('sidebar')?.classList.remove('open');
 }
 
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>openView(b.dataset.view));
+$('mobileMenuBtn').onclick=()=>$('sidebar').classList.toggle('open');
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(`${b.dataset.close}`).classList.remove('open'));
 $('loginBtn').onclick=()=>keycloak.login();
 $('logoutBtn').onclick=()=>keycloak.logout({redirectUri:location.href});
