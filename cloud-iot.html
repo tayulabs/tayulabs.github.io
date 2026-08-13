@@ -2645,6 +2645,32 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   const remoteModbusConfigs={};
   const loadedModbusConfigKeys=new Set();
 
+  // v4.3: protege formularios mientras el usuario está editando.
+  // La telemetría puede seguir llegando, pero no reconstruimos el formulario
+  // y por tanto no se pierde texto, parámetros nuevos ni checks.
+  let modbusFormDirty=false;
+  let modbusEditingDeviceKey='';
+  let novaAppsFormDirty=false;
+
+  function markModbusFormDirty(){
+    modbusFormDirty=true;
+    modbusEditingDeviceKey=document.getElementById('mbDeviceSelect')?.value||modbusEditingDeviceKey;
+    const status=document.getElementById('mbConfigStatus');
+    if(status)status.textContent='Cambios sin guardar.';
+  }
+
+  function isModbusFormFocused(){
+    const el=document.activeElement;
+    return Boolean(el && el.closest && el.closest('#modbus') && el.id!=='mbDeviceSelect');
+  }
+
+  function isNovaAppsFocused(){
+    const el=document.activeElement;
+    return Boolean(el && el.closest && el.closest('#novaApplicationConfig'));
+  }
+
+  window.__tayuHasUnsavedEditorChanges=()=>modbusFormDirty||novaAppsFormDirty;
+
   async function loadRemoteModbusConfig(deviceKey,force=false){
     if(!deviceKey)return null;
     if(!force&&loadedModbusConfigKeys.has(deviceKey))return remoteModbusConfigs[deviceKey]||null;
@@ -2665,29 +2691,43 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     return remoteModbusConfigs[deviceKey];
   }
 
-  function renderRemoteModbusForm(deviceKey){
+  function renderRemoteModbusForm(deviceKey,force=false){
+    if(!force && (modbusFormDirty || isModbusFormFocused())) return;
     const cfg=remoteModbusConfigs[deviceKey]||{params:[]};
     const set=(id,value)=>{const el=document.getElementById(id);if(el)el.value=value??''};
     set('mbBaud',cfg.baudrate);set('mbSlave',cfg.slave_id);set('mbParity',cfg.parity);
     set('mbStop',cfg.stop_bits);set('mbTimeout',cfg.timeout_ms);set('mbPoll',cfg.poll_ms);
     set('mbApplicationType',cfg.equipment_type);set('mbApplicationName',cfg.equipment_name);set('mbApplicationArea',cfg.application_area);
     const tbody=document.getElementById('mbParamRows');if(!tbody)return;tbody.innerHTML='';
-    (cfg.params||[]).forEach(addModbusParamRow);
+    (cfg.params||[]).forEach(p=>addModbusParamRow(p,true));
     if(!(cfg.params||[]).length)tbody.innerHTML='<tr class="mb-empty-row"><td colspan="8" style="text-align:center;padding:16px;color:var(--muted)">Sin parámetros Modbus configurados. Pulsa “＋ Agregar parámetro”.</td></tr>';
   }
 
   window.onModbusDeviceChanged=async()=>{
-    const key=document.getElementById('mbDeviceSelect')?.value;if(!key)return;
+    const sel=document.getElementById('mbDeviceSelect');
+    const key=sel?.value;if(!key)return;
+
+    if(modbusFormDirty && modbusEditingDeviceKey && key!==modbusEditingDeviceKey){
+      const discard=confirm('Hay cambios Modbus sin guardar. ¿Descartarlos y cambiar de equipo?');
+      if(!discard){
+        sel.value=modbusEditingDeviceKey;
+        return;
+      }
+    }
+
+    modbusFormDirty=false;
+    modbusEditingDeviceKey=key;
     await loadRemoteModbusConfig(key,true);
-    renderRemoteModbusForm(key);
+    renderRemoteModbusForm(key,true);
     renderModbusLive(window.__tayuLastTelemetry||[]);
   };
 
-  function addModbusParamRow(data={}) {
+  function addModbusParamRow(data={},fromRemote=false) {
     const tbody = document.getElementById('mbParamRows');
     if (!tbody) return;
     tbody.querySelector('.mb-empty-row')?.remove();
     if (tbody.querySelectorAll('tr').length >= 64) return;
+    if(!fromRemote) markModbusFormDirty();
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -2717,7 +2757,9 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     sel.innerHTML=list.length?list.map(r=>`<option value="${r.device_key}">${r.name} · ${r.device_key}</option>`).join(''):'<option value="">No hay equipos Modbus</option>';
     if(list.some(r=>r.device_key===previous))sel.value=previous;
     sel.onchange=()=>window.onModbusDeviceChanged?.();
-    if(sel.value)loadRemoteModbusConfig(sel.value).then(()=>renderRemoteModbusForm(sel.value)).catch(console.error);
+    if(sel.value && !modbusFormDirty && !isModbusFormFocused()){
+      loadRemoteModbusConfig(sel.value).then(()=>renderRemoteModbusForm(sel.value,false)).catch(console.error);
+    }
   }
 
 
@@ -2892,9 +2934,11 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     try {
       if (status) status.textContent = 'Guardando configuración en PostgreSQL y enviando al equipo…';
       await apiPost('/devices/modbus-config', body);
+      modbusFormDirty=false;
+      modbusEditingDeviceKey=deviceKey;
       loadedModbusConfigKeys.delete(deviceKey);
       await loadRemoteModbusConfig(deviceKey,true);
-      renderRemoteModbusForm(deviceKey);
+      renderRemoteModbusForm(deviceKey,true);
       if (status) status.textContent = 'Configuración guardada en PostgreSQL. Esperando telemetría…';
       await new Promise(r => setTimeout(r, 1500));
       await refreshRealData();
@@ -2970,6 +3014,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     if (window.__tayuRealtimeTimer) clearInterval(window.__tayuRealtimeTimer);
     window.__tayuRealtimeTimer = setInterval(() => {
       if (document.hidden) return;
+      if (window.__tayuHasUnsavedEditorChanges?.()) return;
       refreshRealData(true).catch(error => {
         console.error('Actualización automática:', error);
       });
@@ -3029,7 +3074,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.2 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.3 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
@@ -3108,8 +3153,9 @@ if (typeof window.renderShrimpEquipment !== 'function') {
   };
 
   // ----- Asignación de salidas NOVA EDGE -> device_configuration -----
-  window.renderNovaApplicationConfig=function(){
+  window.renderNovaApplicationConfig=function(force=false){
     const host=document.getElementById('novaApplicationConfig');if(!host)return;
+    if(!force && (novaAppsFormDirty || isNovaAppsFocused())) return;
     const novas=assetInventory.filter(a=>a.type==='novaEdge');
     if(!novas.length){host.innerHTML='<div class="nova-empty">No hay NOVA EDGE asignados.</div>';return;}
     host.innerHTML=novas.map(device=>{
@@ -3147,11 +3193,39 @@ if (typeof window.renderShrimpEquipment !== 'function') {
       cfg.outputs={...(cfg.outputs||{}),...outputs};cfg.signals=cfg.signals||{};cfg.assets=Array.isArray(cfg.assets)?cfg.assets:[];
       await window.__tayuApiPost('/devices/configuration',{device_key:deviceKey,configuration:cfg});
     }
+    novaAppsFormDirty=false;
     const msg=document.getElementById('novaApplicationStatus');
     if(msg)msg.textContent='Aplicaciones guardadas en el VPS.';
     await window.refreshRealData?.();
+    window.renderNovaApplicationConfig?.(true);
   };
   window.ensureNovaApplicationsWidget=function(){};
+
+  // v4.3: cualquier edición en estos formularios queda protegida
+  // de la actualización automática hasta Guardar/Descartar.
+  const modbusSection=document.getElementById('modbus');
+  if(modbusSection){
+    const mark=e=>{
+      if(e.target?.id==='mbDeviceSelect') return;
+      if(
+        e.target?.closest?.('#mbParamRows') ||
+        ['mbBaud','mbSlave','mbParity','mbStop','mbTimeout','mbPoll','mbApplicationType','mbApplicationName','mbApplicationArea'].includes(e.target?.id)
+      ) markModbusFormDirty();
+    };
+    modbusSection.addEventListener('input',mark);
+    modbusSection.addEventListener('change',mark);
+  }
+
+  const novaAppsHost=document.getElementById('novaApplicationConfig');
+  if(novaAppsHost){
+    const mark=()=>{
+      novaAppsFormDirty=true;
+      const msg=document.getElementById('novaApplicationStatus');
+      if(msg)msg.textContent='Cambios sin guardar.';
+    };
+    novaAppsHost.addEventListener('input',mark);
+    novaAppsHost.addEventListener('change',mark);
+  }
 
   // ----- Convierte configuración real en módulos visuales existentes -----
   window.syncAssetsToModules=function(){
