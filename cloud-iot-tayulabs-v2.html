@@ -726,12 +726,12 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
   <div class="card nova-edge-panel">
     <div class="nova-head">
       <div>
-        <h3 style="margin:0">NOVA EDGE · Estado en tiempo real</h3>
-        <p class="hint" style="margin:6px 0 0">Telemetría recibida directamente desde los equipos NOVA EDGE asignados a esta organización.</p>
+        <h3 style="margin:0">Controladores · Estado en tiempo real</h3>
+        <p class="hint" style="margin:6px 0 0">La interfaz se genera automáticamente a partir del perfil y las capacidades de cada dispositivo.</p>
       </div>
       <button class="btn ghost" onclick="window.refreshRealData?.()">Actualizar</button>
     </div>
-    <div id="novaEdgePanel"><div class="nova-empty">Esperando telemetría de NOVA EDGE…</div></div>
+    <div id="novaEdgePanel"><div class="nova-empty">Esperando dispositivos y telemetría…</div></div>
   </div>
 
   <details class="config-accordion section-spaced">
@@ -2604,13 +2604,59 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     return { lat, lon };
   }
 
+  function capabilityChannels(groups, fallbackType='channel') {
+    const result = [];
+    (Array.isArray(groups) ? groups : []).forEach(group => {
+      const count = Math.max(0, Number(group?.count || 0));
+      const prefix = String(group?.key_prefix || group?.type || fallbackType);
+      for (let i = 1; i <= count; i++) {
+        result.push({
+          ...group,
+          index: i,
+          key: `${prefix}${i}`
+        });
+      }
+    });
+    return result;
+  }
+
+  function configuredChannelName(device, section, key, fallback) {
+    const cfg = device?.configuration || {};
+    const sectionCfg = cfg?.[section];
+    if (sectionCfg && typeof sectionCfg === 'object') {
+      const item = sectionCfg[key];
+      if (item && typeof item === 'object' && item.name) return item.name;
+      if (typeof item === 'string' && item) return item;
+    }
+    return fallback;
+  }
+
+  function renderCapabilityValue(value, type='') {
+    if (value === true) return '● ACTIVO';
+    if (value === false) return '○ INACTIVO';
+    if (value === null || value === undefined) return '—';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  }
+
   function renderNovaEdgePanel(realDevices, realTelemetry) {
     const host = document.getElementById('novaEdgePanel');
     if (!host) return;
 
-    const novaDevices = realDevices.filter(row => assetType(row) === 'novaEdge');
-    if (!novaDevices.length) {
-      host.innerHTML = '<div class="nova-empty">No hay equipos NOVA EDGE asignados a esta organización.</div>';
+    // Nada de nombres de producto hardcodeados:
+    // cualquier perfil que declare capacidades de control/entrada aparece aquí.
+    const controllers = realDevices.filter(device => {
+      const c = device?.capabilities || {};
+      return (
+        c.category === 'controller' ||
+        (Array.isArray(c.outputs) && c.outputs.length > 0) ||
+        (Array.isArray(c.inputs) && c.inputs.length > 0) ||
+        (Array.isArray(c.analog_inputs) && c.analog_inputs.length > 0)
+      );
+    });
+
+    if (!controllers.length) {
+      host.innerHTML = '<div class="nova-empty">No hay controladores con perfiles de capacidades asignados a esta organización.</div>';
       return;
     }
 
@@ -2619,39 +2665,93 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
     })[ch]);
 
-    const relayCard = (label, value, deviceKey, relayNumber) => {
+    const outputCard = (device, channel, payload) => {
+      const value = payload?.[channel.key];
+      const isBoolean = channel.type === 'relay' || channel.type === 'ssr';
       const on = value === true;
-      const safeDevice = esc(deviceKey).replace(/[^a-zA-Z0-9_-]/g,'_');
-      const control = `<div class="nova-relay-control">
-           <button class="btn ${on ? 'ghost' : ''}"
-             data-nova-relay="${relayNumber}"
-             onclick="window.setNovaRelay?.('${esc(deviceKey)}', ${relayNumber}, ${on ? 'false' : 'true'}, this)">
-             ${on ? 'APAGAR' : 'ENCENDER'}
-           </button>
-         </div>
-         <div class="nova-command-msg" id="novaCmd_${safeDevice}_${relayNumber}"></div>`;
+      const safeDevice = String(device.device_key).replace(/[^a-zA-Z0-9_-]/g,'_');
+      const safeKey = String(channel.key).replace(/[^a-zA-Z0-9_-]/g,'_');
+      const defaultName =
+        channel.type === 'ssr'
+          ? `SSR ${channel.index}`
+          : channel.type === 'relay'
+            ? `Relé ${channel.index}`
+            : `${channel.type || 'Salida'} ${channel.index}`;
+      const label = configuredChannelName(device, 'outputs', channel.key, defaultName);
+
+      const control = channel.controllable !== false && isBoolean
+        ? `<div class="nova-relay-control">
+             <button class="btn ${on ? 'ghost' : ''}"
+               onclick="window.setGenericOutput?.('${esc(device.device_key)}','${esc(channel.key)}',${on ? 'false' : 'true'},this)">
+               ${on ? 'APAGAR' : 'ENCENDER'}
+             </button>
+           </div>
+           <div class="nova-command-msg" id="outputCmd_${safeDevice}_${safeKey}"></div>`
+        : '';
 
       return `<div class="nova-relay-card ${on ? 'on' : 'off'}">
-        <span class="hint">${label}</span>
-        <div class="relay-state">${on ? '● ENCENDIDO' : '○ APAGADO'}</div>
+        <span class="hint">${esc(label)} · ${esc(channel.type || 'output')}</span>
+        <div class="relay-state">${esc(renderCapabilityValue(value, channel.type))}</div>
         ${control}
       </div>`;
     };
 
-    host.innerHTML = novaDevices.map(device => {
+    const inputCard = (device, channel, payload) => {
+      const value = payload?.[channel.key];
+      const defaultName =
+        channel.type === 'digital'
+          ? `Entrada digital ${channel.index}`
+          : `${channel.type || 'Entrada'} ${channel.index}`;
+      const label = configuredChannelName(device, 'inputs', channel.key, defaultName);
+      return `<div>
+        <span>${esc(label)}</span>
+        <b>${esc(renderCapabilityValue(value, channel.type))}</b>
+      </div>`;
+    };
+
+    const analogCard = (device, channel, payload) => {
+      const value = payload?.[channel.key];
+      const defaultName = `Entrada analógica ${channel.index}`;
+      const label = configuredChannelName(device, 'analog_inputs', channel.key, defaultName);
+      const unit =
+        device?.configuration?.analog_inputs?.[channel.key]?.unit ||
+        channel.unit ||
+        '';
+      return `<div>
+        <span>${esc(label)}</span>
+        <b>${esc(renderCapabilityValue(value, channel.type))}${unit ? ` ${esc(unit)}` : ''}</b>
+      </div>`;
+    };
+
+    host.innerHTML = controllers.map(device => {
       const row = latest.get(device.device_key);
       const p = row?.payload || {};
       const lastTime = row?.time ? new Date(row.time) : null;
       const ageMs = lastTime ? Date.now() - lastTime.getTime() : Infinity;
-      const online = ageMs < 60000;
+      const online = String(device.status).toLowerCase() === 'online' && ageMs < 60000;
       const lastText = lastTime ? lastTime.toLocaleString() : 'Sin telemetría';
-      const rssi = p.wifi_rssi ?? '—';
       const fw = p.fw ?? '—';
-      const din1 = p.din1 === true ? 'Activo' : p.din1 === false ? 'Inactivo' : '—';
-      const din2 = p.din2 === true ? 'Activo' : p.din2 === false ? 'Inactivo' : '—';
-      const mbOk = p.mb_ok ?? '—';
-      const mbReq = p.mb_requests ?? '—';
-      const mbTimeout = p.mb_timeout ?? '—';
+
+      const caps = device.capabilities || {};
+      const outputs = capabilityChannels(caps.outputs, 'output');
+      const inputs = capabilityChannels(caps.inputs, 'input');
+      const analogInputs = capabilityChannels(caps.analog_inputs, 'ain');
+
+      const connectivity = (Array.isArray(caps.connectivity) ? caps.connectivity : [])
+        .map(x => x?.type).filter(Boolean);
+      const interfaces = (Array.isArray(caps.interfaces) ? caps.interfaces : [])
+        .map(x => `${x?.type || 'interfaz'}${Number(x?.count || 1) > 1 ? ` ×${x.count}` : ''}`)
+        .filter(Boolean);
+
+      const coords = payloadCoordinates(p);
+      const hasLocation = caps?.location?.supported === true;
+      const locationHtml = hasLocation
+        ? `<div><span>Ubicación</span><b>${
+            coords.lat !== null && coords.lon !== null
+              ? `${esc(coords.lat)}, ${esc(coords.lon)}`
+              : 'Sin posición'
+          }</b></div>`
+        : '';
 
       return `<article style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
         <div class="nova-head">
@@ -2660,27 +2760,27 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
             <div class="nova-device-meta">
               <span class="nova-pill"><span class="nova-dot ${online ? 'online' : ''}"></span>${online ? 'ONLINE' : 'OFFLINE'}</span>
               <span class="nova-pill">${esc(device.device_key)}</span>
+              <span class="nova-pill">${esc(device.profile_name || device.device_type || 'Perfil')}</span>
               <span class="nova-pill">FW ${esc(fw)}</span>
             </div>
           </div>
           <div class="hint">Última telemetría:<br><b>${esc(lastText)}</b></div>
         </div>
 
-        <div class="nova-relay-grid">
-          ${relayCard('Relay 1 · GPIO 2', p.relay1, device.device_key, 1)}
-          ${relayCard('Relay 2 · GPIO 1', p.relay2, device.device_key, 2)}
-          ${relayCard('Relay 3 · GPIO 46', p.relay3, device.device_key, 3)}
-          ${relayCard('Relay 4 · GPIO 45', p.relay4, device.device_key, 4)}
-        </div>
+        ${outputs.length ? `
+          <p class="hint" style="margin-top:16px"><b>Salidas</b> · generadas desde device_profiles.capabilities</p>
+          <div class="nova-relay-grid">
+            ${outputs.map(ch => outputCard(device, ch, p)).join('')}
+          </div>` : ''}
 
-        <div class="nova-info-grid">
-          <div><span>WiFi RSSI</span><b>${esc(rssi)} dBm</b></div>
-          <div><span>Entrada DIN1</span><b>${esc(din1)}</b></div>
-          <div><span>Entrada DIN2</span><b>${esc(din2)}</b></div>
-          <div><span>Modbus OK</span><b>${esc(mbOk)}</b></div>
-          <div><span>Modbus solicitudes</span><b>${esc(mbReq)}</b></div>
-          <div><span>Modbus timeout</span><b>${esc(mbTimeout)}</b></div>
-        </div>
+        ${(inputs.length || analogInputs.length || hasLocation || connectivity.length || interfaces.length) ? `
+          <div class="nova-info-grid">
+            ${inputs.map(ch => inputCard(device, ch, p)).join('')}
+            ${analogInputs.map(ch => analogCard(device, ch, p)).join('')}
+            ${locationHtml}
+            ${connectivity.length ? `<div><span>Conectividad</span><b>${esc(connectivity.join(' · '))}</b></div>` : ''}
+            ${interfaces.length ? `<div><span>Interfaces</span><b>${esc(interfaces.join(' · '))}</b></div>` : ''}
+          </div>` : ''}
       </article>`;
     }).join('');
   }
@@ -2805,34 +2905,33 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     }
   }
 
-  window.setNovaRelay = async (deviceKey, relay, state, button) => {
-    const safeId = String(deviceKey).replace(/[^a-zA-Z0-9_-]/g,'_');
-    const msg = document.getElementById(`novaCmd_${safeId}_${relay}`);
+  window.setGenericOutput = async (deviceKey, outputKey, value, button) => {
+    const safeDevice = String(deviceKey).replace(/[^a-zA-Z0-9_-]/g,'_');
+    const safeKey = String(outputKey).replace(/[^a-zA-Z0-9_-]/g,'_');
+    const msg = document.getElementById(`outputCmd_${safeDevice}_${safeKey}`);
     const previousText = button?.textContent || '';
 
     try {
       if (button) {
         button.disabled = true;
-        button.textContent = state ? 'ENCENDIENDO…' : 'APAGANDO…';
+        button.textContent = value === true ? 'ENCENDIENDO…' : 'APAGANDO…';
       }
-      if (msg) msg.textContent = `Enviando comando a Relay ${relay}…`;
 
-      await apiPost('/devices/relay', {
+      if (msg) msg.textContent = `Enviando comando a ${outputKey}…`;
+
+      await apiPost('/devices/output', {
         device_key: deviceKey,
-        relay: Number(relay),
-        state: Boolean(state)
+        output_key: outputKey,
+        value
       });
 
-      if (msg) msg.textContent = 'Comando enviado. Esperando confirmación del NOVA EDGE…';
+      if (msg) msg.textContent = 'Comando enviado. Esperando confirmación por telemetría…';
 
-      // El firmware confirma inmediatamente por telemetría.
       await new Promise(resolve => setTimeout(resolve, 1200));
       await refreshRealData();
 
-      // El estado visual nunca se fuerza localmente:
-      // siempre proviene de /telemetry/latest.
     } catch (error) {
-      console.error(`Error controlando Relay ${relay}:`, error);
+      console.error(`Error controlando ${outputKey}:`, error);
       if (msg) msg.textContent = `Error: ${error.message}`;
       if (button) {
         button.disabled = false;
@@ -2840,6 +2939,17 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       }
     }
   };
+
+  // Alias temporal para widgets antiguos mientras terminamos la migración.
+  window.setNovaRelay = async (deviceKey, relay, state, button) => {
+    return window.setGenericOutput?.(
+      deviceKey,
+      `relay${Number(relay)}`,
+      Boolean(state),
+      button
+    );
+  };
+
 
 
   function addModbusParamRow(data={}) {
@@ -2865,7 +2975,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   window.addModbusParamRow = addModbusParamRow;
 
   function ensureDefaultModbusRows() {
-    // v3.2: un NOVA EDGE nuevo no hereda parámetros de ejemplo.
+    // v3.3: un NOVA EDGE nuevo no hereda parámetros de ejemplo.
   }
 
   const remoteModbusConfigs = {};
