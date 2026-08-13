@@ -725,19 +725,14 @@ const tayuMemoryStore = (() => {
 })();
 </script>
 
-<section class="login" id="login">
-<div class="login-card">
-<div class="logo login-logo-only"><img src="imagenes/logo.png" alt="TAYULABS"></div>
-<h2 style="margin:0;font-size:28px;text-align:center">Iniciar sesión</h2>
-<p class="hint" style="text-align:center">Plataforma IoT TAYULABS para monitoreo, control y trazabilidad de activos.</p>
-<label>Usuario</label><input id="email" placeholder="correo@tayulabs.com" autocomplete="username">
-<label>Contraseña</label><input id="pass" type="password" placeholder="Contraseña" autocomplete="current-password">
-<button class="btn" style="width:100%;margin-top:20px" onclick="doLogin()">Ingresar</button>
-<div class="error" id="loginError">Usuario o contraseña incorrectos.</div>
-</div>
+<!-- v4.4.1: el login visual pertenece exclusivamente a Keycloak.
+     Este contenedor permanece oculto para conservar compatibilidad con
+     las referencias JS de autenticación sin mostrar una pantalla duplicada. -->
+<section id="login" hidden aria-hidden="true" style="display:none!important">
+  <div id="loginError" hidden></div>
 </section>
 
-<section class="app" id="app">
+<section class="app" id="app" style="display:none">
 <aside class="sidebar" id="sidebar">
 <div class="brand">
   <span class="sidebar-logo-stack" aria-label="TAYULABS">
@@ -3698,8 +3693,10 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   }).then(async authenticated => {
     if (!authenticated) return;
 
-    document.getElementById('login').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
+    const authPlaceholder=document.getElementById('login');
+    if(authPlaceholder)authPlaceholder.style.display='none';
+    const appRoot=document.getElementById('app');
+    if(appRoot)appRoot.style.display='block';
 
     currentUser = {
       role: 'admin',
@@ -3743,7 +3740,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.4.0 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.4.1 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
