@@ -1495,7 +1495,12 @@ const widgetCatalog={
  cattle:{title:'Ganadería GPS',icon:'🐄',fixed:false,size:'normal'},
  orion:{title:'ORIÓN GPS',icon:'🍌',fixed:false,size:'normal'},
  tanks:{title:'Niveles de tanques',icon:'💧',fixed:false,size:'wide'},
- pumps:{title:'Bombas de riego',icon:'⚙️',fixed:false,size:'wide'}, modbusValue:{title:'Variable Modbus',icon:'🔢',fixed:false,size:'normal'}, modbusGroup:{title:'Grupo Modbus',icon:'🧩',fixed:false,size:'wide'}, modbusChart:{title:'Gráfica Modbus',icon:'📈',fixed:false,size:'wide'}
+ pumps:{title:'Bombas de riego',icon:'⚙️',fixed:false,size:'wide'},
+ genericDevice:{title:'Dispositivo dinámico',icon:'🧠',fixed:false,size:'wide'},
+ genericChart:{title:'Gráfica de telemetría',icon:'📈',fixed:false,size:'wide'},
+ modbusValue:{title:'Variable Modbus',icon:'🔢',fixed:false,size:'normal'},
+ modbusGroup:{title:'Grupo Modbus',icon:'🧩',fixed:false,size:'wide'},
+ modbusChart:{title:'Gráfica Modbus',icon:'📈',fixed:false,size:'wide'}
 };
 let widgetBindings=JSON.parse(localStorage.getItem('tayu_widget_bindings')||'{}');
 let dashboardWidgetIds=JSON.parse(localStorage.getItem('tayu_dashboard_widgets')||'null')||defaultWidgetIds.map((type,i)=>`${type}::default-${i}`);
@@ -1514,7 +1519,8 @@ function collectDashboardSettings(){
   });
   return {
     sizes,
-    modbus_charts: typeof modbusChartConfigs==='object' ? modbusChartConfigs : {}
+    modbus_charts: typeof modbusChartConfigs==='object' ? modbusChartConfigs : {},
+    generic_charts: typeof genericChartConfigs==='object' ? genericChartConfigs : {}
   };
 }
 
@@ -1528,6 +1534,11 @@ function applyDashboardSettings(settings={}){
   if(dashboardSettings.modbus_charts && typeof dashboardSettings.modbus_charts==='object'){
     modbusChartConfigs=dashboardSettings.modbus_charts;
     localStorage.setItem('tayu_modbus_chart_configs',JSON.stringify(modbusChartConfigs));
+  }
+
+  if(dashboardSettings.generic_charts && typeof dashboardSettings.generic_charts==='object'){
+    genericChartConfigs=dashboardSettings.generic_charts;
+    localStorage.setItem('tayu_generic_chart_configs',JSON.stringify(genericChartConfigs));
   }
 }
 
@@ -1573,6 +1584,10 @@ let modbusDevices=[];
 let modbusHistories={};
 let modbusChartConfigs={};
 try{modbusChartConfigs=JSON.parse(localStorage.getItem('tayu_modbus_chart_configs')||'{}')||{}}catch(e){modbusChartConfigs={}}
+let genericChartConfigs={};
+let genericTelemetryHistory={};
+let genericHistoryWindow={};
+try{genericChartConfigs=JSON.parse(localStorage.getItem('tayu_generic_chart_configs')||'{}')||{}}catch(e){genericChartConfigs={}}
 const legacyModbusChartConfig=JSON.parse(localStorage.getItem('tayu_modbus_chart_config')||'null')||null;
 if(!Object.keys(modbusChartConfigs).length && legacyModbusChartConfig){
   const oldCharts=dashboardWidgetIds.filter(id=>String(id).startsWith('modbusChart::'));
@@ -2123,6 +2138,9 @@ function assetTypesForSelect(){
  return ASSET_TYPES.map(t=>`<option value="${t.id}">${t.icon} ${t.label}</option>`).join('');
 }
 function getCompatibleAssetsForWidget(type){
+ if(type==='genericDevice' || type==='genericChart'){
+   return assetInventory.filter(a=>a && a.id);
+ }
  const map={
   feeders:['feeder'],aerators:['aerator'],tanks:['tankWater','tankDiesel','levelSensor'],
   pumps:['pumpWater','pumpDiesel'],modbusValue:['plc','vdf','energyMeter'],
@@ -2134,6 +2152,136 @@ function getCompatibleAssetsForWidget(type){
 function widgetBindingLabel(instanceId){
  const asset=assetInventory.find(a=>a.id===widgetBindings[instanceId]);
  return asset?`<div class="widget-bound-label">Vinculado: ${asset.name}</div>`:'';
+}
+
+function flattenTelemetry(payload,prefix='',out={}){
+ if(!payload || typeof payload!=='object') return out;
+ Object.entries(payload).forEach(([key,value])=>{
+   const path=prefix ? `${prefix}.${key}` : key;
+   if(typeof value==='number' && Number.isFinite(value)){
+     out[path]=value;
+   }else if(typeof value==='boolean'){
+     out[path]=value ? 1 : 0;
+   }else if(value && typeof value==='object' && !Array.isArray(value)){
+     flattenTelemetry(value,path,out);
+   }
+ });
+ return out;
+}
+function valueAtPath(obj,path){
+ return String(path||'').split('.').reduce((acc,key)=>acc==null?undefined:acc[key],obj);
+}
+function genericVariableOptions(deviceKey){
+ const flat=flattenTelemetry(latestPayloadByDevice[deviceKey]||{});
+ return Object.keys(flat).sort();
+}
+async function loadGenericTelemetryHistory(deviceKey,minutes=60,force=false){
+ minutes=Math.max(1,Math.min(1440,Number(minutes||60)));
+ if(!force && Number(genericHistoryWindow[deviceKey]||0)>=minutes)return;
+ const rows=await api(`/telemetry/history?device_key=${encodeURIComponent(deviceKey)}&minutes=${encodeURIComponent(minutes)}`);
+ genericTelemetryHistory[deviceKey]=Array.isArray(rows)?rows:[];
+ genericHistoryWindow[deviceKey]=minutes;
+}
+function genericDeviceWidgetBody(instanceId){
+ const deviceKey=widgetBindings[instanceId];
+ const d=assetInventory.find(a=>a.id===deviceKey);
+ if(!d)return '<p class="hint">Selecciona un dispositivo para este widget.</p>';
+ const p=latestPayloadByDevice[deviceKey]||{};
+ const caps=d.capabilities||{};
+ const outputs=capabilityChannels(caps.outputs,'output');
+ const inputs=capabilityChannels(caps.inputs,'input');
+ const analog=capabilityChannels(caps.analog_inputs,'ain');
+ const sensors=capabilityChannels(caps.sensors,'sensor');
+ const esc=v=>String(v??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+ const status=d.status==='Online'?'status':'status off';
+
+ const outputHtml=outputs.map(ch=>{
+   const value=p[ch.key];
+   const on=value===true;
+   const label=configuredChannelName(d,'outputs',ch.key,ch.type==='ssr'?`SSR ${ch.index}`:`Relé ${ch.index}`);
+   const control=(ch.controllable!==false && ['relay','ssr'].includes(ch.type))
+     ? `<button class="btn ghost" style="padding:7px 10px" onclick="window.setGenericOutput?.('${esc(deviceKey)}','${esc(ch.key)}',${on?'false':'true'},this)">${on?'Apagar':'Encender'}</button>`
+     : '';
+   return `<div class="device"><div><b>${esc(label)}</b><br><small>${esc(ch.key)} · ${esc(ch.type||'output')}</small></div><span>${on?'🟢 ON':value===false?'⚪ OFF':esc(value??'—')} ${control}</span></div>`;
+ }).join('');
+
+ const simpleRows=(channels,section)=>channels.map(ch=>{
+   const value=valueAtPath(p,ch.telemetry_key||ch.key);
+   const label=configuredChannelName(d,section,ch.key,`${ch.type||'Canal'} ${ch.index}`);
+   const cfg=d.configuration?.[section]?.[ch.key]||{};
+   const unit=cfg.unit||ch.unit||'';
+   return `<div class="device"><div><b>${esc(label)}</b><br><small>${esc(ch.key)}</small></div><span class="status">${esc(renderCapabilityValue(value,ch.type))}${unit?` ${esc(unit)}`:''}</span></div>`;
+ }).join('');
+
+ const loc=caps?.location?.supported ? payloadCoordinates(p) : {lat:null,lon:null};
+ const locHtml=caps?.location?.supported
+   ? `<div class="device"><div><b>📍 Ubicación</b><br><small>${esc(caps.location.source||'GPS')}</small></div><span class="status">${loc.lat!==null&&loc.lon!==null?`${esc(loc.lat)}, ${esc(loc.lon)}`:'Sin posición'}</span></div>`
+   : '';
+
+ return `<div class="device" style="margin-bottom:12px"><div><b>${esc(d.name)}</b><br><small>${esc(d.profile_name||d.device_type||'Dispositivo')} · ${esc(deviceKey)}</small></div><span class="${status}">${esc(d.status)}</span></div>
+   ${outputHtml}
+   ${simpleRows(inputs,'inputs')}
+   ${simpleRows(analog,'analog_inputs')}
+   ${simpleRows(sensors,'sensors')}
+   ${locHtml}
+   ${(!outputs.length&&!inputs.length&&!analog.length&&!sensors.length&&!caps?.location?.supported)?'<p class="hint">El perfil todavía no declara canales visibles.</p>':''}`;
+}
+function genericChartWidgetBody(instanceId){
+ const cfg=genericChartConfigs[instanceId]||{};
+ if(!cfg.deviceKey || !cfg.variable){
+   return '<p class="hint">Configura dispositivo y variable al agregar esta gráfica.</p>';
+ }
+ return `<div class="modbus-chart-box"><canvas class="dashboard-generic-chart"></canvas></div>
+ <p class="hint" style="margin-top:8px">${cfg.variable} · últimos ${cfg.minutes||60} min</p>`;
+}
+async function renderDashboardGenericCharts(){
+ const canvases=[...document.querySelectorAll('.dashboard-generic-chart')];
+ for(const canvas of canvases){
+   const widget=canvas.closest('.dashboard-widget');
+   const instanceId=widget?.dataset.widgetId;
+   const cfg=genericChartConfigs[instanceId];
+   if(!cfg?.deviceKey || !cfg?.variable)continue;
+   try{
+     await loadGenericTelemetryHistory(cfg.deviceKey,cfg.minutes||60);
+     const rows=genericTelemetryHistory[cfg.deviceKey]||[];
+     const points=rows.map(row=>({
+       t:new Date(row.time),
+       v:valueAtPath(row.payload||{},cfg.variable)
+     })).filter(x=>{
+       if(typeof x.v==='boolean')x.v=x.v?1:0;
+       return Number.isFinite(Number(x.v)) && !Number.isNaN(x.t.getTime());
+     });
+     if(canvas._chart)canvas._chart.destroy();
+     canvas._chart=new Chart(canvas,{
+       type:cfg.type||'line',
+       data:{
+         labels:points.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})),
+         datasets:[{label:cfg.title||cfg.variable,data:points.map(x=>Number(x.v)),tension:.3}]
+       },
+       options:{responsive:true,maintainAspectRatio:false,animation:false}
+     });
+   }catch(error){
+     console.warn('Gráfica genérica:',error);
+   }
+ }
+}
+function configureGenericChart(instanceId,deviceKey){
+ const variables=genericVariableOptions(deviceKey);
+ if(!variables.length){
+   alert('Este dispositivo todavía no tiene variables numéricas en telemetría.');
+   return false;
+ }
+ const choice=prompt(
+   'Selecciona la variable:\\n'+variables.map((v,i)=>`${i+1}. ${v}`).join('\\n'),
+   '1'
+ );
+ const idx=Math.max(0,Math.min(variables.length-1,(Number(choice)||1)-1));
+ const variable=variables[idx];
+ const minutes=Math.max(1,Math.min(1440,Number(prompt('Minutos de histórico (1 a 1440):','60'))||60));
+ const title=prompt('Título de la gráfica:',variable)||variable;
+ genericChartConfigs[instanceId]={deviceKey,variable,minutes,title,type:'line'};
+ localStorage.setItem('tayu_generic_chart_configs',JSON.stringify(genericChartConfigs));
+ return true;
 }
 function openAssetModal(id=''){
  const modal=document.getElementById('assetModal');
@@ -2242,14 +2390,29 @@ function renderWidgetLibrary(){
 function addDashboardWidget(type){
  if(!widgetCatalog[type])return;
  const instanceId=newWidgetInstance(type);
- dashboardWidgetIds.push(instanceId);
  const compatible=getCompatibleAssetsForWidget(type);
+
+ if((type==='genericDevice' || type==='genericChart') && !compatible.length){
+   alert('No hay dispositivos reales disponibles.');
+   return;
+ }
+
+ dashboardWidgetIds.push(instanceId);
+
  if(compatible.length){
    const choice=prompt('Selecciona el número del equipo para vincular:\n'+compatible.map((a,i)=>`${i+1}. ${a.name} · ${a.farm} / ${a.zone}`).join('\n'),'1');
    const idx=Math.max(0,Math.min(compatible.length-1,(Number(choice)||1)-1));
    widgetBindings[instanceId]=compatible[idx].id;
+
+   if(type==='genericChart' && !configureGenericChart(instanceId,compatible[idx].id)){
+     dashboardWidgetIds=dashboardWidgetIds.filter(id=>id!==instanceId);
+     delete widgetBindings[instanceId];
+     return;
+   }
+
    saveWidgetBindings();
  }
+
  saveWidgetLayout();renderDashboardWidgets();renderWidgetLibrary();
 }
 function removeDashboardWidget(instanceId){
@@ -2257,6 +2420,10 @@ function removeDashboardWidget(instanceId){
  localStorage.removeItem('tayu_widget_size_'+instanceId);
  delete widgetBindings[instanceId];
  if(modbusChartConfigs[instanceId]){delete modbusChartConfigs[instanceId];saveModbusChartConfigs();}
+ if(genericChartConfigs[instanceId]){
+   delete genericChartConfigs[instanceId];
+   localStorage.setItem('tayu_generic_chart_configs',JSON.stringify(genericChartConfigs));
+ }
  saveWidgetBindings();
  saveWidgetLayout();renderDashboardWidgets();renderWidgetLibrary();
 }
@@ -2283,7 +2450,7 @@ function renderDashboardWidgets(){
  const box=document.getElementById('dashboardWidgets');if(!box)return;
  box.innerHTML=dashboardWidgetIds.map(instanceId=>widgetHtml(instanceId)).join('');
  if(window.Sortable)new Sortable(box,{animation:180,handle:'.widget-handle',ghostClass:'drag-ghost',onEnd:()=>{dashboardWidgetIds=[...box.querySelectorAll('.dashboard-widget')].map(x=>x.dataset.widgetId);saveWidgetLayout()}});
- setTimeout(()=>{renderDashboardMapWidget();renderDashboardModbusChart();},150);
+ setTimeout(()=>{renderDashboardMapWidget();renderDashboardModbusChart();renderDashboardGenericCharts();},150);
 }
 function widgetHtml(instanceId){
  const type=widgetType(instanceId),w=widgetCatalog[type];if(!w)return'';
@@ -2296,6 +2463,8 @@ function widgetHtml(instanceId){
 }
 function widgetBody(id,instanceId){
  const feeders=shrimpEquipment.filter(x=>x.type==='feeder'),aerators=shrimpEquipment.filter(x=>x.type==='aerator');
+ if(id==='genericDevice')return genericDeviceWidgetBody(instanceId);
+ if(id==='genericChart')return genericChartWidgetBody(instanceId);
  if(id==='novaApplications'){
    const novas=assetInventory.filter(a=>a.type==='novaEdge');
    if(!novas.length)return '<p class="hint">No hay NOVA EDGE registrados.</p>';
@@ -2599,8 +2768,11 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   }
 
   function payloadCoordinates(payload={}) {
-    const lat = n(payload.latitude ?? payload.lat);
-    const lon = n(payload.longitude ?? payload.lon ?? payload.lng);
+    const location = payload.location && typeof payload.location === 'object'
+      ? payload.location
+      : {};
+    const lat = n(payload.latitude ?? payload.lat ?? location.latitude ?? location.lat);
+    const lon = n(payload.longitude ?? payload.lon ?? payload.lng ?? location.longitude ?? location.lon ?? location.lng);
     return { lat, lon };
   }
 
@@ -2843,7 +3015,11 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
         min: n(p.min) ?? 0,
         max: n(p.max) ?? 100,
         battery: n(p.battery_pct ?? p.battery ?? p.bateria),
-        points: n(p.points ?? p.puntos) ?? 0
+        points: n(p.points ?? p.puntos) ?? 0,
+        device_type: row.device_type,
+        profile_name: row.profile_name || row.device_type,
+        capabilities: row.capabilities || {},
+        configuration: row.configuration || {}
       };
     });
 
@@ -2882,7 +3058,6 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     renderCattleSatellite();
     renderNovaEdgePanel(realDevices, realTelemetry);
     renderNovaApplicationConfig();
-    ensureNovaApplicationsWidget();
     updateModbusDeviceSelect(realDevices);
     renderModbusLive(realTelemetry);
     syncRealModbusToDashboard(realDevices, realTelemetry);
@@ -2975,7 +3150,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   window.addModbusParamRow = addModbusParamRow;
 
   function ensureDefaultModbusRows() {
-    // v3.3: un NOVA EDGE nuevo no hereda parámetros de ejemplo.
+    // v3.4: un NOVA EDGE nuevo no hereda parámetros de ejemplo.
   }
 
   const remoteModbusConfigs = {};
