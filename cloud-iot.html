@@ -498,6 +498,22 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 
 
 <style>
+/* v4.3.8 · modos de operación de salidas NOVA EDGE */
+.relay-mode-panel{margin-top:12px;padding:13px;border:1px solid var(--border);border-radius:15px;background:var(--panel)}
+.relay-mode-panel[hidden]{display:none!important}
+.relay-rule-grid{display:grid;grid-template-columns:1.2fr .7fr .8fr;gap:9px;align-items:end}
+.relay-timer-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.relay-days{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.relay-day{display:inline-flex;align-items:center;gap:5px;padding:6px 8px;border:1px solid var(--border);background:var(--panel2);border-radius:10px;font-size:11px;font-weight:850;cursor:pointer}
+.relay-day input{width:auto;margin:0}
+.relay-mode-badge{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 8px;border-radius:999px;background:var(--panel);border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:900}
+.relay-mode-badge.auto{color:var(--blue);border-color:rgba(37,99,235,.24);background:rgba(37,99,235,.08)}
+.relay-mode-badge.timer{color:var(--warning);border-color:rgba(245,158,11,.28);background:rgba(245,158,11,.08)}
+.relay-source-reading{margin-top:8px;color:var(--muted);font-size:12px;font-weight:750}
+@media(max-width:760px){.relay-rule-grid,.relay-timer-grid{grid-template-columns:1fr}}
+</style>
+
+<style>
 .nova-relay-control{margin-top:12px;display:flex;gap:8px;align-items:center}
 .nova-relay-control .btn{width:100%}
 .nova-relay-control .btn:disabled{opacity:.55;cursor:wait}
@@ -596,7 +612,7 @@ const tayuMemoryStore = (() => {
 
 <section class="app" id="app">
 <aside class="sidebar" id="sidebar">
-<div class="brand"><img src="imagenes/logo.png" alt="TAYULABS"></div>
+<div class="brand"><img id="sidebarLogo" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"></div>
 <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Ocultar/mostrar barra lateral" aria-label="Ocultar o mostrar barra lateral" onclick="toggleSidebarCollapse()">❮</button>
 <div class="nav">
 <button class="active" data-view="dashboard"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></button>
@@ -819,16 +835,16 @@ const tayuMemoryStore = (() => {
   <details class="config-accordion section-spaced">
     <summary>
       <span>🧩 Aplicaciones del NOVA EDGE
-        <span class="accordion-subtitle">Asigna cada relay a la función real que controla</span>
+        <span class="accordion-subtitle">Asigna aplicación y modo Manual / Automático / Timer a cada salida</span>
       </span>
     </summary>
     <div class="accordion-body">
       <div class="module-header" style="margin-top:16px">
         <div>
-          <h3 style="margin:0">Asignación de salidas</h3>
-          <p class="hint">Ejemplo: Relay 1 = Aireador Piscina 1, Relay 2 = Bomba de riego. El Dashboard usará estos nombres y aplicaciones.</p>
+          <h3 style="margin:0">Configuración de salidas</h3>
+          <p class="hint">Manual permite operar desde el botón. Automático vincula la salida a una señal. Timer usa un horario de encendido y apagado.</p>
         </div>
-        <button class="btn" onclick="saveNovaApplicationConfig()">Guardar aplicaciones</button>
+        <button class="btn" onclick="saveNovaApplicationConfig()">Guardar configuración</button>
       </div>
       <div id="novaApplicationConfig" class="app-mapping-grid"></div>
       <div id="novaApplicationStatus" class="hint" style="margin-top:10px"></div>
@@ -1070,11 +1086,21 @@ function logout(){
   document.getElementById("app").style.display="none";
   document.getElementById("login").style.display="grid";
 }
+function updateSidebarLogo(){
+ const logo=document.getElementById("sidebarLogo");
+ if(!logo)return;
+ logo.src=document.body.classList.contains("dark")
+   ?"imagenes/LOGO-WHITE.jpg"
+   :"imagenes/LOGO-COLOR.jpg";
+}
+window.updateSidebarLogo=updateSidebarLogo;
+
 function toggleDark(){
  document.body.classList.toggle("dark");
  tayuMemoryStore.setItem("tayu_dark",document.body.classList.contains("dark")?"1":"0");
  const b=document.getElementById("themeButton");
  if(b)b.textContent=document.body.classList.contains("dark")?"☀️":"🌙";
+ updateSidebarLogo();
  setTimeout(()=>{
    if(window.iotMap)iotMap.invalidateSize();
    if(window.shrimpMap)shrimpMap.invalidateSize();
@@ -2968,10 +2994,25 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
         const value=readPath(p,ch.telemetry_key||ch.key),on=value===true;
         const meta=cfg.outputs?.[ch.key]||{};
         const name=meta.name||(ch.type==='ssr'?`SSR ${ch.index}`:`Relay ${ch.index}`);
+        const mode=meta.mode||'manual';
+        const modeInfo=mode==='automatic'?{label:'AUTOMÁTICO',cls:'auto',icon:'⚙️'}:mode==='timer'?{label:'TIMER',cls:'timer',icon:'🕒'}:{label:'MANUAL',cls:'',icon:'👆'};
+        const autoSource=meta.automatic?.source||'';
+        const autoValue=autoSource?readPath(p,autoSource):undefined;
+        const detail=mode==='automatic'
+          ?`<div class="hint" style="margin-top:8px">Sensor: <b>${esc(autoSource||'Sin asignar')}</b>${autoValue!==undefined?` · ${esc(autoValue)}`:''}</div>`
+          :mode==='timer'
+            ?`<div class="hint" style="margin-top:8px">Horario: <b>${esc(meta.timer?.on||'--:--')} → ${esc(meta.timer?.off||'--:--')}</b></div>`
+            :'';
+        const manual=mode==='manual';
+
         return `<div class="nova-relay-card ${on?'on':'off'}">
           <span class="hint">${esc(name)} · ${esc(ch.key)}</span>
           <div class="relay-state">${value===undefined?'—':on?'● ENCENDIDO':'○ APAGADO'}</div>
-          ${ch.controllable===false?'':`<div class="nova-relay-control"><button class="btn ${on?'ghost':''}" onclick="window.setGenericOutput?.('${esc(device.device_key)}','${esc(ch.key)}',${on?'false':'true'},this)">${on?'APAGAR':'ENCENDER'}</button></div>`}
+          <span class="relay-mode-badge ${modeInfo.cls}">${modeInfo.icon} ${modeInfo.label}</span>
+          ${detail}
+          ${ch.controllable===false?'':manual
+            ?`<div class="nova-relay-control"><button class="btn ${on?'ghost':''}" onclick="window.setGenericOutput?.('${esc(device.device_key)}','${esc(ch.key)}',${on?'false':'true'},this)">${on?'APAGAR':'ENCENDER'}</button></div>`
+            :`<div class="nova-relay-control"><button class="btn ghost" disabled>${mode==='automatic'?'CONTROL AUTOMÁTICO':'CONTROL POR TIMER'}</button></div>`}
         </div>`;
       }).join('');
       const info=[...inputs,...analog].map(ch=>{
@@ -3576,7 +3617,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.3.6 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.3.8 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
@@ -3664,27 +3705,162 @@ if (typeof window.renderShrimpEquipment !== 'function') {
   };
 
   // ----- Asignación de salidas NOVA EDGE -> device_configuration -----
+  function relaySignalPaths(device){
+    const configured=Object.keys(device.configuration?.signals||{});
+    const payload=latestPayloadByDevice?.[device.uuid]||{};
+    const found=[];
+    const walk=(obj,prefix='')=>{
+      Object.entries(obj||{}).forEach(([key,value])=>{
+        const path=prefix?`${prefix}.${key}`:key;
+        if(value && typeof value==='object' && !Array.isArray(value)){walk(value,path);return;}
+        if((typeof value==='number'||typeof value==='boolean') && !/^relay\d+$/.test(path))found.push(path);
+      });
+    };
+    walk(payload);
+    return [...new Set([...configured,...found])].filter(x=>x&&x!=='fw').sort((a,b)=>a.localeCompare(b));
+  }
+
+  function relaySignalOptions(device,selected=''){
+    const paths=relaySignalPaths(device);
+    const payload=latestPayloadByDevice?.[device.uuid]||{};
+    const options=['<option value="">Seleccionar señal…</option>'];
+    paths.forEach(path=>{
+      const meta=device.configuration?.signals?.[path];
+      const label=meta?.name?`${meta.name} · ${path}`:path;
+      const value=atPath(payload,path);
+      const suffix=value===undefined?'':` · actual: ${value}${meta?.unit?` ${meta.unit}`:''}`;
+      options.push(`<option value="${String(path).replace(/"/g,'&quot;')}" ${selected===path?'selected':''}>${label}${suffix}</option>`);
+    });
+    return options.join('');
+  }
+
+  function relayModeLabel(mode){
+    if(mode==='automatic')return {label:'AUTOMÁTICO',cls:'auto',icon:'⚙️'};
+    if(mode==='timer')return {label:'TIMER',cls:'timer',icon:'🕒'};
+    return {label:'MANUAL',cls:'',icon:'👆'};
+  }
+
+  window.updateRelayModeUi=function(el){
+    const card=el?.closest?.('[data-relay-config-card]');
+    if(!card)return;
+    const mode=card.querySelector('[data-config-role="mode"]')?.value||'manual';
+    card.querySelectorAll('[data-relay-mode-panel]').forEach(panel=>{
+      panel.hidden=panel.dataset.relayModePanel!==mode;
+    });
+    const badge=card.querySelector('[data-relay-mode-badge]');
+    const meta=relayModeLabel(mode);
+    if(badge){
+      badge.className=`relay-mode-badge ${meta.cls}`;
+      badge.textContent=`${meta.icon} ${meta.label}`;
+    }
+  };
+
   window.renderNovaApplicationConfig=function(force=false){
     const host=document.getElementById('novaApplicationConfig');if(!host)return;
     if(!force && ((window.__tayuGetNovaAppsDirty?.()||false) || (window.__tayuIsNovaAppsFocused?.()||false))) return;
     const novas=assetInventory.filter(a=>a.type==='novaEdge');
     if(!novas.length){host.innerHTML='<div class="nova-empty">No hay NOVA EDGE asignados.</div>';return;}
+
+    const dayNames=[['L',1],['M',2],['X',3],['J',4],['V',5],['S',6],['D',7]];
+
     host.innerHTML=novas.map(device=>{
       const outputs=expandGroups(device.capabilities?.outputs||[]);
       const cfg=device.configuration?.outputs||{};
       const p=latestPayloadByDevice?.[device.uuid]||{};
+
       return outputs.map(ch=>{
-        const r=cfg[ch.key]||{application:'generic',name:ch.type==='ssr'?`SSR ${ch.index}`:`Relay ${ch.index}`};
+        const saved=cfg[ch.key]||{};
+        const r={
+          application:saved.application||saved.type||'generic',
+          name:saved.name||(ch.type==='ssr'?`SSR ${ch.index}`:`Relay ${ch.index}`),
+          mode:saved.mode||'manual',
+          automatic:{
+            source:saved.automatic?.source||'',
+            on_operator:saved.automatic?.on_operator||'<=',
+            on_value:saved.automatic?.on_value??'',
+            off_operator:saved.automatic?.off_operator||'>=',
+            off_value:saved.automatic?.off_value??'',
+            fail_safe:saved.automatic?.fail_safe===true
+          },
+          timer:{
+            on:saved.timer?.on||'07:00',
+            off:saved.timer?.off||'07:10',
+            days:Array.isArray(saved.timer?.days)&&saved.timer.days.length?saved.timer.days:[1,2,3,4,5,6,7]
+          }
+        };
+
         const state=atPath(p,ch.telemetry_key||ch.key)===true;
-        return `<div class="app-mapping-card">
-          <h4>${device.name} · ${r.name||ch.key}</h4>
+        const modeMeta=relayModeLabel(r.mode);
+        const sourceValue=r.automatic.source?atPath(p,r.automatic.source):undefined;
+        const sourceMeta=device.configuration?.signals?.[r.automatic.source];
+
+        return `<div class="app-mapping-card" data-relay-config-card data-vps-app-device="${device.uuid}" data-vps-app-output="${ch.key}">
+          <h4>${device.name} · ${r.name}</h4>
           <span class="hint">${ch.key} · ${ch.type||'salida'}</span>
           <div class="app-state"><i class="state-dot ${state?'on':'off'}"></i>${state?'ENCENDIDO':'APAGADO'}</div>
+          <span class="relay-mode-badge ${modeMeta.cls}" data-relay-mode-badge>${modeMeta.icon} ${modeMeta.label}</span>
+
           <div class="app-mapping-row">
-            <div><label>Aplicación</label><select data-vps-app-device="${device.uuid}" data-vps-app-output="${ch.key}" data-field="application">
-              ${NOVA_APP_TYPES.map(t=>`<option value="${t.id}" ${(r.application||r.type)==t.id?'selected':''}>${t.icon} ${t.label}</option>`).join('')}
+            <div><label>Aplicación</label><select data-config-role="application">
+              ${NOVA_APP_TYPES.map(t=>`<option value="${t.id}" ${r.application===t.id?'selected':''}>${t.icon} ${t.label}</option>`).join('')}
             </select></div>
-            <div><label>Nombre en plataforma</label><input data-vps-app-device="${device.uuid}" data-vps-app-output="${ch.key}" data-field="name" value="${String(r.name||'').replace(/"/g,'&quot;')}"></div>
+            <div><label>Nombre en plataforma</label><input data-config-role="name" value="${String(r.name||'').replace(/"/g,'&quot;')}"></div>
+          </div>
+
+          <label>Modo de operación</label>
+          <select data-config-role="mode" onchange="window.updateRelayModeUi?.(this)">
+            <option value="manual" ${r.mode==='manual'?'selected':''}>👆 Manual</option>
+            <option value="automatic" ${r.mode==='automatic'?'selected':''}>⚙️ Automático</option>
+            <option value="timer" ${r.mode==='timer'?'selected':''}>🕒 Timer</option>
+          </select>
+
+          <div class="relay-mode-panel" data-relay-mode-panel="automatic" ${r.mode==='automatic'?'':'hidden'}>
+            <b>⚙️ Control automático por sensor</b>
+            <p class="hint" style="margin:5px 0 0">Configura cuándo encender y apagar esta salida según una señal del NOVA EDGE.</p>
+
+            <label>Sensor / señal</label>
+            <select data-config-role="automatic.source">${relaySignalOptions(device,r.automatic.source)}</select>
+            <div class="relay-source-reading">Lectura actual: <b>${sourceValue===undefined?'—':sourceValue}${sourceMeta?.unit?` ${sourceMeta.unit}`:''}</b></div>
+
+            <div class="relay-rule-grid">
+              <div><label>Acción</label><input value="ENCENDER" disabled></div>
+              <div><label>Condición</label><select data-config-role="automatic.on_operator">
+                ${['<=','<','>=','>','=='].map(op=>`<option value="${op}" ${r.automatic.on_operator===op?'selected':''}>${op}</option>`).join('')}
+              </select></div>
+              <div><label>Valor</label><input type="number" step="any" data-config-role="automatic.on_value" value="${r.automatic.on_value}"></div>
+            </div>
+
+            <div class="relay-rule-grid" style="margin-top:9px">
+              <div><label>Acción</label><input value="APAGAR" disabled></div>
+              <div><label>Condición</label><select data-config-role="automatic.off_operator">
+                ${['>=','>','<=','<','=='].map(op=>`<option value="${op}" ${r.automatic.off_operator===op?'selected':''}>${op}</option>`).join('')}
+              </select></div>
+              <div><label>Valor</label><input type="number" step="any" data-config-role="automatic.off_value" value="${r.automatic.off_value}"></div>
+            </div>
+
+            <label>Si el sensor falla o deja de responder</label>
+            <select data-config-role="automatic.fail_safe">
+              <option value="false" ${!r.automatic.fail_safe?'selected':''}>Apagar salida</option>
+              <option value="true" ${r.automatic.fail_safe?'selected':''}>Encender salida</option>
+            </select>
+          </div>
+
+          <div class="relay-mode-panel" data-relay-mode-panel="timer" ${r.mode==='timer'?'':'hidden'}>
+            <b>🕒 Horario</b>
+            <p class="hint" style="margin:5px 0 0">Define una hora de encendido y una de apagado. La ejecución local con RTC se habilitará en el firmware.</p>
+            <div class="relay-timer-grid">
+              <div><label>Encender</label><input type="time" data-config-role="timer.on" value="${r.timer.on}"></div>
+              <div><label>Apagar</label><input type="time" data-config-role="timer.off" value="${r.timer.off}"></div>
+            </div>
+            <label>Días</label>
+            <div class="relay-days">
+              ${dayNames.map(([label,day])=>`<label class="relay-day"><input type="checkbox" data-timer-day="${day}" ${r.timer.days.includes(day)?'checked':''}>${label}</label>`).join('')}
+            </div>
+          </div>
+
+          <div class="relay-mode-panel" data-relay-mode-panel="manual" ${r.mode==='manual'?'':'hidden'}>
+            <b>👆 Control manual</b>
+            <p class="hint" style="margin:5px 0 0">Usa ENCENDER / APAGAR desde la tarjeta de estado del NOVA EDGE.</p>
           </div>
         </div>`;
       }).join('');
@@ -3694,22 +3870,66 @@ if (typeof window.renderShrimpEquipment !== 'function') {
   window.saveNovaApplicationConfig=async function(){
     if(!window.__tayuApiPost)return;
     const grouped={};
-    document.querySelectorAll('[data-vps-app-device][data-vps-app-output]').forEach(el=>{
-      const dev=el.dataset.vpsAppDevice,key=el.dataset.vpsAppOutput,field=el.dataset.field;
-      grouped[dev]??={};grouped[dev][key]??={};grouped[dev][key][field]=el.value;
+
+    document.querySelectorAll('[data-relay-config-card]').forEach(card=>{
+      const deviceKey=card.dataset.vpsAppDevice;
+      const outputKey=card.dataset.vpsAppOutput;
+      if(!deviceKey||!outputKey)return;
+
+      const get=role=>card.querySelector(`[data-config-role="${role}"]`)?.value??'';
+      const numberOrNull=value=>{
+        if(value===''||value===null||value===undefined)return null;
+        const n=Number(value);return Number.isFinite(n)?n:null;
+      };
+
+      grouped[deviceKey]??={};
+      grouped[deviceKey][outputKey]={
+        application:get('application')||'generic',
+        name:get('name')||outputKey,
+        mode:get('mode')||'manual',
+        automatic:{
+          source:get('automatic.source')||'',
+          on_operator:get('automatic.on_operator')||'<=',
+          on_value:numberOrNull(get('automatic.on_value')),
+          off_operator:get('automatic.off_operator')||'>=',
+          off_value:numberOrNull(get('automatic.off_value')),
+          fail_safe:get('automatic.fail_safe')==='true'
+        },
+        timer:{
+          on:get('timer.on')||'07:00',
+          off:get('timer.off')||'07:10',
+          days:[...card.querySelectorAll('[data-timer-day]:checked')].map(x=>Number(x.dataset.timerDay))
+        }
+      };
     });
-    for(const [deviceKey,outputs] of Object.entries(grouped)){
-      const asset=assetInventory.find(a=>a.uuid===deviceKey);if(!asset)continue;
-      const cfg=clone(asset.configuration||{});
-      cfg.outputs={...(cfg.outputs||{}),...outputs};cfg.signals=cfg.signals||{};cfg.assets=Array.isArray(cfg.assets)?cfg.assets:[];
-      await window.__tayuApiPost('/devices/configuration',{device_key:deviceKey,configuration:cfg});
+
+    const status=document.getElementById('novaApplicationStatus');
+    if(status)status.textContent='Guardando configuración en el VPS…';
+
+    try{
+      for(const [deviceKey,outputs] of Object.entries(grouped)){
+        const asset=assetInventory.find(a=>a.uuid===deviceKey);if(!asset)continue;
+        const cfg=clone(asset.configuration||{});
+        cfg.outputs={...(cfg.outputs||{}),...outputs};
+        cfg.signals=cfg.signals||{};
+        cfg.assets=Array.isArray(cfg.assets)?cfg.assets:[];
+
+        await window.__tayuApiPost('/devices/configuration',{
+          device_key:deviceKey,
+          configuration:cfg
+        });
+      }
+
+      window.__tayuSetNovaAppsDirty?.(false);
+      if(status)status.textContent='Configuración guardada en PostgreSQL y enviada por MQTT al NOVA EDGE.';
+      await window.refreshRealData?.();
+      window.renderNovaApplicationConfig?.(true);
+    }catch(error){
+      console.error(error);
+      if(status)status.textContent=`Error al guardar: ${error?.message||error}`;
     }
-    window.__tayuSetNovaAppsDirty?.(false);
-    const msg=document.getElementById('novaApplicationStatus');
-    if(msg)msg.textContent='Aplicaciones guardadas en el VPS.';
-    await window.refreshRealData?.();
-    window.renderNovaApplicationConfig?.(true);
   };
+
   window.ensureNovaApplicationsWidget=function(){};
 
   // v4.3: cualquier edición en estos formularios queda protegida
@@ -3886,6 +4106,13 @@ if (typeof window.renderShrimpEquipment !== 'function') {
     return legacyWidgetBody(id,instanceId);
   };
 })();
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  window.updateSidebarLogo?.();
+});
 </script>
 
 </body>
