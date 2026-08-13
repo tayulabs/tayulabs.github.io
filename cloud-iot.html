@@ -5,6 +5,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>TAYULABS IoT Platform</title>
+<link rel="preload" as="image" href="imagenes/LOGO-COLOR.jpg">
+<link rel="preload" as="image" href="imagenes/LOGO-WHITE.jpg">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -496,6 +498,45 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 }
 </style>
 
+<style>
+/* v4.3.9 · logo lateral precargado, cambio instantáneo */
+.sidebar-logo-stack{
+  width:125px;
+  display:grid;
+  place-items:center;
+  line-height:0;
+}
+.sidebar-logo-stack .sidebar-logo{
+  grid-area:1 / 1;
+  width:125px!important;
+  max-width:100%!important;
+  height:auto!important;
+  object-fit:contain;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:none!important;
+}
+.sidebar-logo-stack .sidebar-logo-color{
+  opacity:1;
+  visibility:visible;
+}
+body.dark .sidebar-logo-stack .sidebar-logo-color{
+  opacity:0;
+  visibility:hidden;
+}
+body.dark .sidebar-logo-stack .sidebar-logo-white{
+  opacity:1;
+  visibility:visible;
+}
+body.sidebar-collapsed .sidebar-logo-stack{
+  width:44px;
+}
+body.sidebar-collapsed .sidebar-logo-stack .sidebar-logo{
+  width:44px!important;
+}
+</style>
+
 
 <style>
 /* v4.3.8 · modos de operación de salidas NOVA EDGE */
@@ -612,7 +653,12 @@ const tayuMemoryStore = (() => {
 
 <section class="app" id="app">
 <aside class="sidebar" id="sidebar">
-<div class="brand"><img id="sidebarLogo" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"></div>
+<div class="brand">
+  <span class="sidebar-logo-stack" aria-label="TAYULABS">
+    <img class="sidebar-logo sidebar-logo-color" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS">
+    <img class="sidebar-logo sidebar-logo-white" src="imagenes/LOGO-WHITE.jpg" alt="" aria-hidden="true">
+  </span>
+</div>
 <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Ocultar/mostrar barra lateral" aria-label="Ocultar o mostrar barra lateral" onclick="toggleSidebarCollapse()">❮</button>
 <div class="nav">
 <button class="active" data-view="dashboard"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></button>
@@ -1087,11 +1133,8 @@ function logout(){
   document.getElementById("login").style.display="grid";
 }
 function updateSidebarLogo(){
- const logo=document.getElementById("sidebarLogo");
- if(!logo)return;
- logo.src=document.body.classList.contains("dark")
-   ?"imagenes/LOGO-WHITE.jpg"
-   :"imagenes/LOGO-COLOR.jpg";
+ // v4.3.9: ambos logos permanecen precargados en el DOM.
+ // El cambio claro/oscuro es únicamente CSS, sin petición de imagen ni cambio de src.
 }
 window.updateSidebarLogo=updateSidebarLogo;
 
@@ -1100,7 +1143,6 @@ function toggleDark(){
  tayuMemoryStore.setItem("tayu_dark",document.body.classList.contains("dark")?"1":"0");
  const b=document.getElementById("themeButton");
  if(b)b.textContent=document.body.classList.contains("dark")?"☀️":"🌙";
- updateSidebarLogo();
  setTimeout(()=>{
    if(window.iotMap)iotMap.invalidateSize();
    if(window.shrimpMap)shrimpMap.invalidateSize();
@@ -3617,7 +3659,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.3.8 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.3.9 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
@@ -4108,12 +4150,6 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 })();
 </script>
 
-
-<script>
-document.addEventListener('DOMContentLoaded',()=>{
-  window.updateSidebarLogo?.();
-});
-</script>
 
 </body>
 </html>
