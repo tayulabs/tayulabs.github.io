@@ -435,6 +435,20 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 @media(max-width:520px){.nova-relay-grid,.nova-info-grid{grid-template-columns:1fr}}
 </style>
 
+<style>
+/* v4.3.4 · gráficas estables tipo Grafana */
+.dashboard-widget .chart-box,
+.dashboard-widget .modbus-chart-box{
+  position:relative;
+  overflow:hidden;
+}
+.dashboard-widget canvas{
+  opacity:1!important;
+  transition:none!important;
+  animation:none!important;
+}
+</style>
+
 
 <style>
 .nova-relay-control{margin-top:12px;display:flex;gap:8px;align-items:center}
@@ -1978,9 +1992,9 @@ function addModbusChartWidget(){
 function tayuChartTheme(){
  const dark=document.body.classList.contains('dark');
  return {
-   text:dark?'#cbd5c0':'#667085',
-   grid:dark?'rgba(255,255,255,.14)':'rgba(17,24,39,.10)',
-   border:dark?'rgba(255,255,255,.22)':'rgba(17,24,39,.18)'
+   text:dark?'#e5e7eb':'#667085',
+   grid:dark?'rgba(255,255,255,.22)':'rgba(17,24,39,.10)',
+   border:dark?'rgba(255,255,255,.34)':'rgba(17,24,39,.18)'
  };
 }
 window.tayuChartTheme=tayuChartTheme;
@@ -2007,6 +2021,21 @@ function applyTayuChartTheme(){
  });
 }
 window.applyTayuChartTheme=applyTayuChartTheme;
+
+const tayuDashboardChartSignatures=new Map();
+
+function tayuChartSignature(cfg,labels,values,theme){
+ return JSON.stringify({
+   type:cfg.type||'line',
+   title:cfg.title||'',
+   min:cfg.min??'',
+   max:cfg.max??'',
+   points:Number(cfg.points||50),
+   labels,
+   values,
+   theme
+ });
+}
 
 function renderDashboardModbusChart(){
  setTimeout(()=>document.querySelectorAll('.dashboard-modbus-chart').forEach(async c=>{
@@ -2041,6 +2070,12 @@ function renderDashboardModbusChart(){
    const labels=h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
    const values=h.map(x=>x.v);
    const theme=tayuChartTheme();
+   const signature=tayuChartSignature(cfg,labels,values,theme);
+   const signatureKey=instanceId||c.id||'chart';
+
+   // Si no llegó un punto nuevo y no cambió la configuración/tema,
+   // no se repinta ni siquiera el canvas.
+   if(c._chart && tayuDashboardChartSignatures.get(signatureKey)===signature)return;
 
    // Si el canvas y el tipo son los mismos, solo se actualizan datos/ejes.
    // No se destruye el Chart, por eso no parpadea.
@@ -2069,6 +2104,7 @@ function renderDashboardModbusChart(){
        color:theme.text
      };
      chart.update('none');
+     tayuDashboardChartSignatures.set(signatureKey,signature);
      return;
    }
 
@@ -2087,7 +2123,15 @@ function renderDashboardModbusChart(){
        responsive:true,
        maintainAspectRatio:false,
        animation:false,
+       responsiveAnimationDuration:0,
+       resizeDelay:120,
        normalized:true,
+       transitions:{
+         active:{animation:{duration:0}},
+         resize:{animation:{duration:0}},
+         show:{animations:{x:{duration:0},y:{duration:0}}},
+         hide:{animations:{x:{duration:0},y:{duration:0}}}
+       },
        plugins:{
          legend:{labels:{color:theme.text}}
        },
@@ -2107,6 +2151,7 @@ function renderDashboardModbusChart(){
        }
      }
    });
+   tayuDashboardChartSignatures.set(signatureKey,signature);
  }),80);
 }
 
@@ -2986,10 +3031,13 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
           if(!modbusHistories[key])modbusHistories[key]=[];
           const h=modbusHistories[key];
           const val=Number(v.value);
-          if(Number.isFinite(val)){
+          const pointTime=row?.time?new Date(row.time):null;
+          if(Number.isFinite(val) && pointTime && !Number.isNaN(pointTime.getTime())){
             const last=h[h.length-1];
-            if(!last || last.v!==val || Date.now()-last.t.getTime()>2500){
-              h.push({t:new Date(),v:val});
+            // Un refresh de la web no crea un punto ficticio.
+            // Solo agregamos cuando el servidor entrega una telemetría con timestamp nuevo.
+            if(!last || last.t.getTime()!==pointTime.getTime() || last.v!==val){
+              h.push({t:pointTime,v:val});
               if(h.length>600)h.shift();
             }
           }
@@ -3103,7 +3151,8 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       await new Promise(r => setTimeout(r, 1500));
       await refreshRealData();
       refreshMbDevices();
-      renderDashboardWidgets();
+      // No reconstruimos el Dashboard: los widgets/gráficas existentes permanecen montados.
+      refreshDashboardWidgetsInPlace();
       if (status) status.textContent = 'Configuración aplicada. Variables y dashboard sincronizados.';
     } catch (error) {
       console.error(error);
@@ -3113,12 +3162,25 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
 
   window.__tayuLastTelemetry=[];
 
+  function refreshAlarmWidgetsOnly(){
+    ['alarms','summary'].forEach(type=>{
+      document.querySelectorAll(`.dashboard-widget[data-widget-type="${type}"]`).forEach(widget=>{
+        const body=widget.querySelector('.widget-live-body');
+        if(!body)return;
+        const next=widgetBody(type,widget.dataset.widgetId);
+        if(body.innerHTML!==next)body.innerHTML=next;
+      });
+    });
+  }
+
   async function loadAlarmEventsFromVps(){
     try{
       const events=await api('/alarms/events');
       platformAlarms=Array.isArray(events)?events:[];
       window.__tayuAlarmEvents=platformAlarms;
-      renderAlarms();updateAlarmBadge();renderDashboardWidgets();
+      renderAlarms();
+      updateAlarmBadge();
+      refreshAlarmWidgetsOnly();
     }catch(error){console.error('Alarmas VPS:',error)}
   }
   window.tayuLoadAlarmEvents=loadAlarmEventsFromVps;
@@ -3143,21 +3205,25 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     try {
       if (!silent) setStatus('Actualizando datos reales…');
 
-      const [realDevices, realTelemetry, organizationModules] = await Promise.all([
+      const [realDevices, realTelemetry, organizationModules, alarmEvents] = await Promise.all([
         api('/devices'),
         api('/telemetry/latest'),
-        api('/modules')
+        api('/modules'),
+        api('/alarms/events')
       ]);
       window.__tayuLastTelemetry=realTelemetry;
+      platformAlarms=Array.isArray(alarmEvents)?alarmEvents:[];
+      window.__tayuAlarmEvents=platformAlarms;
 
       await Promise.all(realDevices
         .filter(r=>(r.capabilities?.protocols||[]).some(p=>p.type==='modbus_rtu'))
         .map(r=>loadRemoteModbusConfig(r.device_key).catch(()=>null)));
 
       applyModulePermissions(organizationModules);
+      renderAlarms();
+      updateAlarmBadge();
       applyRealData(realDevices, realTelemetry);
       telemetryToFrames(realTelemetry);
-      await loadAlarmEventsFromVps();
 
       if (!silent) setStatus('Conectado a la API: datos reales cargados.');
     } finally {
@@ -3234,7 +3300,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.3.3 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.3.4 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
