@@ -703,8 +703,114 @@ body.sidebar-collapsed .sidebar-logo-stack .sidebar-logo{
 }
 </style>
 
+
+<style id="tayu-auth-gate-css">
+/* v4.4.2 · puerta visual de autenticación.
+   Evita mostrar cualquier contenido legado o dashboard antes de Keycloak. */
+html.tayu-auth-pending,
+html.tayu-auth-pending body{
+  overflow:hidden!important;
+}
+html.tayu-auth-pending #app{
+  display:none!important;
+}
+#authBootScreen{
+  position:fixed;
+  inset:0;
+  z-index:2147483647;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:
+    radial-gradient(circle at 8% 5%,rgba(91,193,47,.12),rgba(91,193,47,.035) 24%,transparent 42%),
+    #fff;
+}
+#authBootScreen[hidden]{display:none!important}
+.auth-boot-inner{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:18px;
+  padding:24px;
+  text-align:center;
+}
+.auth-boot-logo-stack{
+  width:118px;
+  height:64px;
+  display:grid;
+  place-items:center;
+}
+.auth-boot-logo-stack img{
+  grid-area:1/1;
+  width:118px;
+  max-height:64px;
+  object-fit:contain;
+  transition:none!important;
+}
+.auth-boot-logo-white{display:none}
+.auth-boot-spinner{
+  width:25px;
+  height:25px;
+  border:3px solid rgba(91,193,47,.18);
+  border-top-color:#55c92b;
+  border-radius:50%;
+  animation:tayuAuthSpin .7s linear infinite;
+}
+.auth-boot-text{
+  color:#697366;
+  font:700 12px/1.4 Arial,"Segoe UI",sans-serif;
+  letter-spacing:.1px;
+}
+.auth-boot-text.error{color:#b42318}
+@keyframes tayuAuthSpin{to{transform:rotate(360deg)}}
+</style>
+<script>
+/* Se ejecuta antes del primer paint del body. */
+document.documentElement.classList.add('tayu-auth-pending');
+</script>
+
 </head>
 <body>
+<div id="authBootScreen" role="status" aria-live="polite">
+  <div class="auth-boot-inner">
+    <span class="auth-boot-logo-stack">
+      <img src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS">
+    </span>
+    <span class="auth-boot-spinner" aria-hidden="true"></span>
+    <span class="auth-boot-text" id="authBootText">Verificando sesión segura…</span>
+  </div>
+</div>
+<script>
+window.showAuthBootScreen=function(text){
+  document.documentElement.classList.add('tayu-auth-pending');
+  const gate=document.getElementById('authBootScreen');
+  const label=document.getElementById('authBootText');
+  const app=document.getElementById('app');
+  if(app)app.style.display='none';
+  if(label){
+    label.textContent=text||'Verificando sesión segura…';
+    label.classList.remove('error');
+  }
+  if(gate)gate.hidden=false;
+};
+window.hideAuthBootScreen=function(){
+  const gate=document.getElementById('authBootScreen');
+  if(gate)gate.hidden=true;
+  document.documentElement.classList.remove('tayu-auth-pending');
+};
+window.showAuthBootError=function(text){
+  const gate=document.getElementById('authBootScreen');
+  const label=document.getElementById('authBootText');
+  const spinner=gate?.querySelector('.auth-boot-spinner');
+  document.documentElement.classList.add('tayu-auth-pending');
+  if(gate)gate.hidden=false;
+  if(spinner)spinner.style.display='none';
+  if(label){
+    label.textContent=text||'No se pudo iniciar la sesión segura.';
+    label.classList.add('error');
+  }
+};
+</script>
 
 <script>
 /* ===== TAYULABS VPS v4.2 compatibility layer =====
@@ -724,13 +830,6 @@ const tayuMemoryStore = (() => {
   return api;
 })();
 </script>
-
-<!-- v4.4.1: el login visual pertenece exclusivamente a Keycloak.
-     Este contenedor permanece oculto para conservar compatibilidad con
-     las referencias JS de autenticación sin mostrar una pantalla duplicada. -->
-<section id="login" hidden aria-hidden="true" style="display:none!important">
-  <div id="loginError" hidden></div>
-</section>
 
 <section class="app" id="app" style="display:none">
 <aside class="sidebar" id="sidebar">
@@ -1194,24 +1293,17 @@ let vdf=[
 ];
 let mapStarted=false,chartsStarted=false,markers=[],pieChart,barChart,lineChart,vdfLineChart,vdfBarChart,vdfHistory=[]; let vdfMiniCharts={}; let vdfMiniHistory={}; let vdfChartConfig={}; let vdfLastLogged={};
 function doLogin(){
-  if(window.secureLogin){
-    window.secureLogin();
-    return;
-  }
-  const error=document.getElementById("loginError");
-  if(error){
-    error.textContent="Inicializando inicio de sesión seguro…";
-    error.style.display="block";
-  }
+  window.showAuthBootScreen?.('Abriendo inicio de sesión seguro…');
+  if(window.secureLogin)window.secureLogin();
 }
 function logout(){
+  window.showAuthBootScreen?.('Cerrando sesión segura…');
+  currentUser=null;
   if(window.secureLogout){
     window.secureLogout();
     return;
   }
-  currentUser=null;
-  document.getElementById("app").style.display="none";
-  document.getElementById("login").style.display="grid";
+  window.location.reload();
 }
 function updateSidebarLogo(){
  // v4.3.9: ambos logos permanecen precargados en el DOM.
@@ -2983,10 +3075,11 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
 
   const integrationStatus = document.createElement('div');
   integrationStatus.style.cssText =
-    'position:fixed;right:16px;bottom:16px;z-index:9999;max-width:360px;padding:12px 14px;border-radius:12px;background:#172554;color:#fff;font:600 14px system-ui;box-shadow:0 8px 24px rgba(0,0,0,.25)';
+    'display:none;position:fixed;right:16px;bottom:16px;z-index:9999;max-width:360px;padding:12px 14px;border-radius:12px;background:#172554;color:#fff;font:600 14px system-ui;box-shadow:0 8px 24px rgba(0,0,0,.25)';
   document.body.appendChild(integrationStatus);
 
   const setStatus = text => integrationStatus.textContent = text;
+  const showIntegrationStatus = () => { integrationStatus.style.display='block'; };
   const keycloak = new Keycloak({
     url: AUTH_URL,
     realm: 'tayu-platform',
@@ -2994,8 +3087,14 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   });
   window.__tayuKeycloak=keycloak;
 
-  window.secureLogin = () => keycloak.login();
-  window.secureLogout = () => keycloak.logout({ redirectUri: window.location.href });
+  window.secureLogin = () => {
+    window.showAuthBootScreen?.('Abriendo inicio de sesión seguro…');
+    return keycloak.login();
+  };
+  window.secureLogout = () => {
+    window.showAuthBootScreen?.('Cerrando sesión segura…');
+    return keycloak.logout({ redirectUri: window.location.href });
+  };
 
   async function api(path) {
     await keycloak.updateToken(30);
@@ -3693,8 +3792,6 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   }).then(async authenticated => {
     if (!authenticated) return;
 
-    const authPlaceholder=document.getElementById('login');
-    if(authPlaceholder)authPlaceholder.style.display='none';
     const appRoot=document.getElementById('app');
     if(appRoot)appRoot.style.display='block';
 
@@ -3710,13 +3807,13 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     startPlatform();
     await refreshRealData();
     startRealtimeRefresh();
+
+    // El Dashboard ya está listo: recién ahora quitamos la puerta visual.
+    window.hideAuthBootScreen?.();
+    showIntegrationStatus();
   }).catch(error => {
     console.error('No se pudo iniciar el dashboard seguro:', error);
-    const loginError = document.getElementById('loginError');
-    if (loginError) {
-      loginError.textContent = 'No se pudo iniciar la sesión segura.';
-      loginError.style.display = 'block';
-    }
+    window.showAuthBootError?.('No se pudo iniciar la sesión segura. Recarga la página para intentar nuevamente.');
     setStatus(`No se pudo cargar la plataforma: ${error.message}`);
   });
 })();
@@ -3740,7 +3837,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.4.1 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.4.2 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
