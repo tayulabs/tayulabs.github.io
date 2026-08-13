@@ -436,7 +436,7 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 </style>
 
 <style>
-/* v4.3.4 · gráficas estables tipo Grafana */
+/* v4.3.5 · gráficas estables + consulta histórica */
 .dashboard-widget .chart-box,
 .dashboard-widget .modbus-chart-box{
   position:relative;
@@ -446,6 +446,53 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
   opacity:1!important;
   transition:none!important;
   animation:none!important;
+}
+.chart-history-toolbar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:0 0 10px;
+}
+.chart-mode-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:7px 10px;
+  border-radius:999px;
+  background:rgba(85,198,43,.12);
+  color:var(--brand);
+  border:1px solid rgba(85,198,43,.24);
+  font-size:11px;
+  font-weight:900;
+}
+.chart-mode-pill.history{
+  background:rgba(37,99,235,.10);
+  color:var(--blue);
+  border-color:rgba(37,99,235,.22);
+}
+.chart-history-panel{
+  display:none;
+  grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) auto auto;
+  gap:10px;
+  align-items:end;
+  margin:0 0 12px;
+  padding:12px;
+  border:1px solid var(--border);
+  background:var(--panel2);
+  border-radius:16px;
+}
+.chart-history-panel.open{display:grid}
+.chart-history-panel label{margin-top:0}
+.chart-history-status{
+  grid-column:1/-1;
+  min-height:18px;
+  font-size:12px;
+  color:var(--muted);
+}
+@media(max-width:760px){
+  .chart-history-panel{grid-template-columns:1fr}
+  .chart-history-status{grid-column:auto}
 }
 </style>
 
@@ -2023,6 +2070,157 @@ function applyTayuChartTheme(){
 window.applyTayuChartTheme=applyTayuChartTheme;
 
 const tayuDashboardChartSignatures=new Map();
+const tayuDashboardChartHistoryState={};
+
+function tayuDateTimeLocalValue(date){
+ const d=date instanceof Date?date:new Date(date);
+ if(Number.isNaN(d.getTime()))return '';
+ const pad=n=>String(n).padStart(2,'0');
+ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function getDashboardChartHistoryState(instanceId){
+ return tayuDashboardChartHistoryState[instanceId] ||= {
+   mode:'live',
+   from:null,
+   to:null,
+   history:[],
+   loading:false,
+   error:''
+ };
+}
+
+function toggleDashboardChartHistoryPanel(instanceId,forceOpen){
+ const widget=document.querySelector(`.dashboard-widget[data-widget-id="${CSS.escape(instanceId)}"]`);
+ const panel=widget?.querySelector('.chart-history-panel');
+ if(!panel)return;
+ const shouldOpen=forceOpen===true || (forceOpen!==false && !panel.classList.contains('open'));
+ panel.classList.toggle('open',shouldOpen);
+ if(shouldOpen){
+   const state=getDashboardChartHistoryState(instanceId);
+   const now=new Date();
+   const from=state.from||new Date(now.getTime()-60*60*1000);
+   const to=state.to||now;
+   const fromInput=panel.querySelector('[data-history-from]');
+   const toInput=panel.querySelector('[data-history-to]');
+   if(fromInput && !fromInput.value)fromInput.value=tayuDateTimeLocalValue(from);
+   if(toInput && !toInput.value)toInput.value=tayuDateTimeLocalValue(to);
+ }
+}
+window.toggleDashboardChartHistoryPanel=toggleDashboardChartHistoryPanel;
+
+function updateDashboardChartHistoryUi(instanceId){
+ const state=getDashboardChartHistoryState(instanceId);
+ const widget=document.querySelector(`.dashboard-widget[data-widget-id="${CSS.escape(instanceId)}"]`);
+ if(!widget)return;
+ const pill=widget.querySelector('.chart-mode-pill');
+ const status=widget.querySelector('.chart-history-status');
+
+ if(pill){
+   if(state.mode==='history'){
+     pill.classList.add('history');
+     pill.innerHTML='📅 HISTÓRICO';
+   }else{
+     pill.classList.remove('history');
+     pill.innerHTML='<span class="pulse"></span> EN VIVO';
+   }
+ }
+
+ if(status){
+   if(state.loading) status.textContent='Consultando datos históricos…';
+   else if(state.error) status.textContent=state.error;
+   else if(state.mode==='history' && state.from && state.to){
+     status.textContent=`Mostrando ${state.history.length.toLocaleString('es-EC')} registros entre ${state.from.toLocaleString('es-EC')} y ${state.to.toLocaleString('es-EC')}.`;
+   }else status.textContent='En vivo: la gráfica se actualiza cuando llega una telemetría nueva.';
+ }
+}
+
+async function loadMbHistoryRangeFromVps(d,v,from,to){
+ const deviceKey=String(d?.id||'').startsWith('real-')?String(d.id).slice(5):null;
+ if(!deviceKey||!window.__tayuApi)throw new Error('El equipo no está vinculado a telemetría real.');
+ const url=`/telemetry/history?device_key=${encodeURIComponent(deviceKey)}&from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`;
+ const rows=await window.__tayuApi(url);
+ return (rows||[])
+   .map(row=>({
+     t:new Date(row.time),
+     v:Number(row.payload?.modbus?.[v.name])
+   }))
+   .filter(x=>Number.isFinite(x.v)&&!Number.isNaN(x.t.getTime()));
+}
+
+function sampleDashboardHistory(history,maxPoints){
+ const h=[...(history||[])];
+ const limit=Math.max(5,Math.min(2000,Number(maxPoints||400)));
+ if(h.length<=limit)return h;
+ const step=h.length/limit;
+ return Array.from({length:limit},(_,i)=>h[Math.min(h.length-1,Math.floor(i*step))]);
+}
+
+async function queryDashboardChartHistory(instanceId){
+ const state=getDashboardChartHistoryState(instanceId);
+ const widget=document.querySelector(`.dashboard-widget[data-widget-id="${CSS.escape(instanceId)}"]`);
+ const cfg=modbusChartConfigs[instanceId];
+ const d=modbusDevices.find(x=>x.id===cfg?.deviceId);
+ const v=d?.variables.find(x=>x.id===cfg?.variableId);
+ const fromInput=widget?.querySelector('[data-history-from]');
+ const toInput=widget?.querySelector('[data-history-to]');
+
+ if(!cfg||!d||!v){
+   state.error='No se encontró la variable Modbus vinculada a esta gráfica.';
+   updateDashboardChartHistoryUi(instanceId);
+   return;
+ }
+
+ const from=new Date(fromInput?.value||'');
+ const to=new Date(toInput?.value||'');
+
+ if(Number.isNaN(from.getTime())||Number.isNaN(to.getTime())){
+   state.error='Selecciona una fecha y hora inicial y final válidas.';
+   updateDashboardChartHistoryUi(instanceId);
+   return;
+ }
+ if(from>=to){
+   state.error='La fecha inicial debe ser anterior a la fecha final.';
+   updateDashboardChartHistoryUi(instanceId);
+   return;
+ }
+
+ state.loading=true;
+ state.error='';
+ updateDashboardChartHistoryUi(instanceId);
+
+ try{
+   const history=await loadMbHistoryRangeFromVps(d,v,from,to);
+   state.mode='history';
+   state.from=from;
+   state.to=to;
+   state.history=history;
+   state.loading=false;
+   state.error=history.length?'':'No hay registros para ese intervalo.';
+   tayuDashboardChartSignatures.delete(instanceId);
+   updateDashboardChartHistoryUi(instanceId);
+   renderDashboardModbusChart();
+ }catch(error){
+   state.loading=false;
+   state.error=`No se pudo consultar el histórico: ${error?.message||error}`;
+   updateDashboardChartHistoryUi(instanceId);
+ }
+}
+window.queryDashboardChartHistory=queryDashboardChartHistory;
+
+function returnDashboardChartLive(instanceId){
+ const state=getDashboardChartHistoryState(instanceId);
+ state.mode='live';
+ state.from=null;
+ state.to=null;
+ state.history=[];
+ state.loading=false;
+ state.error='';
+ tayuDashboardChartSignatures.delete(instanceId);
+ updateDashboardChartHistoryUi(instanceId);
+ renderDashboardModbusChart();
+}
+window.returnDashboardChartLive=returnDashboardChartLive;
 
 function tayuChartSignature(cfg,labels,values,theme){
  return JSON.stringify({
@@ -2033,7 +2231,10 @@ function tayuChartSignature(cfg,labels,values,theme){
    points:Number(cfg.points||50),
    labels,
    values,
-   theme
+   theme,
+   historyMode:cfg.__historyMode||'live',
+   historyFrom:cfg.__historyFrom||'',
+   historyTo:cfg.__historyTo||''
  });
 }
 
@@ -2065,13 +2266,33 @@ function renderDashboardModbusChart(){
    c.style.display='';
    c.parentElement?.querySelector('.modbus-wait-note')?.remove();
 
-   try{await loadMbHistoryFromVps(d,Number(cfg.period||5));}catch(e){console.warn(e)}
-   const h=filterMbHistory(mbHistory(d,v),cfg);
-   const labels=h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+   const historyState=getDashboardChartHistoryState(instanceId);
+   let h=[];
+   let labels=[];
+
+   if(historyState.mode==='history'){
+     h=sampleDashboardHistory(historyState.history,cfg.points||400);
+     const spanMs=(historyState.to?.getTime?.()||0)-(historyState.from?.getTime?.()||0);
+     labels=h.map(x=>spanMs>24*60*60*1000
+       ? x.t.toLocaleString('es-EC',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+       : x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+   }else{
+     try{await loadMbHistoryFromVps(d,Number(cfg.period||5));}catch(e){console.warn(e)}
+     h=filterMbHistory(mbHistory(d,v),cfg);
+     labels=h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+   }
+
    const values=h.map(x=>x.v);
    const theme=tayuChartTheme();
-   const signature=tayuChartSignature(cfg,labels,values,theme);
+   const signatureCfg={
+     ...cfg,
+     __historyMode:historyState.mode,
+     __historyFrom:historyState.from?.toISOString?.()||'',
+     __historyTo:historyState.to?.toISOString?.()||''
+   };
+   const signature=tayuChartSignature(signatureCfg,labels,values,theme);
    const signatureKey=instanceId||c.id||'chart';
+   updateDashboardChartHistoryUi(instanceId);
 
    // Si no llegó un punto nuevo y no cambió la configuración/tema,
    // no se repinta ni siquiera el canvas.
@@ -2473,7 +2694,21 @@ function widgetBody(id,instanceId){
  if(id==='pumps')return irrigationPumps.map(p=>`<div class="device"><div><b>${p.type==='Diésel'?'⛽':'⚙️'} ${p.name}</b><br><small>${p.levelControl?'Automática por nivel':p.mode==='schedule'?'Por horario':'Manual'}</small></div><span><i class="state-dot ${p.running?'on':'off'}"></i>${p.running?'Trabajando':'Apagada'}</span></div>`).join('')+`<button class="btn ghost" style="margin-top:10px" onclick="goToView('fincas')">Configurar bombas</button>`;
  if(id==='modbusValue'){const d=modbusDevices[0],v=d?.variables[0];return d&&v?`<p class="hint">${d.name}</p><div class="modbus-value-big">${v.value} <span style="font-size:17px">${v.unit}</span></div><span class="${d.online?'status':'status off'}">${d.online?'Online':'Offline'}</span><button class="btn ghost" style="margin-top:12px;width:100%" onclick="goToView('modbus')">Configurar</button>`:'Sin equipos Modbus';}
  if(id==='modbusGroup'){const d=modbusDevices[0];return d?`<p class="hint">${d.name}</p><div class="modbus-values">${d.variables.slice(0,4).map(v=>`<div><span>${v.name}</span><b>${v.value} ${v.unit}</b></div>`).join('')}</div><button class="btn ghost" style="margin-top:12px;width:100%" onclick="goToView('modbus')">Abrir equipo</button>`:'Sin equipos Modbus';}
- if(id==='modbusChart'){return `<div class="modbus-chart-box"><canvas class="dashboard-modbus-chart"></canvas></div><button class="btn ghost" style="margin-top:10px" onclick="goToView('modbus')">Configurar gráfica</button>`;}
+ if(id==='modbusChart'){
+   return `<div class="chart-history-toolbar">
+     <span class="chart-mode-pill"><span class="pulse"></span> EN VIVO</span>
+     <button class="btn ghost" style="padding:8px 11px" onclick="toggleDashboardChartHistoryPanel('${instanceId}')">📅 Consultar fechas</button>
+   </div>
+   <div class="chart-history-panel">
+     <div><label>Desde</label><input type="datetime-local" data-history-from></div>
+     <div><label>Hasta</label><input type="datetime-local" data-history-to></div>
+     <button class="btn" onclick="queryDashboardChartHistory('${instanceId}')">Consultar</button>
+     <button class="btn ghost" onclick="returnDashboardChartLive('${instanceId}')">● En vivo</button>
+     <div class="chart-history-status">En vivo: la gráfica se actualiza cuando llega una telemetría nueva.</div>
+   </div>
+   <div class="modbus-chart-box"><canvas class="dashboard-modbus-chart"></canvas></div>
+   <button class="btn ghost" style="margin-top:10px" onclick="goToView('modbus')">Configurar gráfica</button>`;
+ }
  return '';
 }
 function equipmentMini(x){return `<div class="device"><div><b>${equipmentIconHtml(x.type,'small')} ${x.name}</b><br><small>${x.pond}</small></div><span><i class="state-dot ${x.running?'on':'off'}"></i>${x.running?'Trabajando':'Apagado'}</span></div>`}
@@ -3300,7 +3535,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.3.4 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.3.5 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
