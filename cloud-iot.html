@@ -436,7 +436,7 @@ body.sidebar-collapsed .alarm-badge{position:absolute;right:2px;top:3px;margin:0
 </style>
 
 <style>
-/* v4.3.5 · gráficas estables + consulta histórica */
+/* v4.3.6 · gráficas persistentes tipo Grafana + consulta histórica */
 .dashboard-widget .chart-box,
 .dashboard-widget .modbus-chart-box{
   position:relative;
@@ -1808,7 +1808,8 @@ function renderIrrigationSystem(){
    <div class="timer-row"><div><label>Capacidad (L)</label><input class="small-input" type="number" value="${t.capacity}" onchange="updateIrrigationTank('${t.id}','capacity',this.value)"></div><div><label>Nivel actual (%)</label><input class="small-input" type="number" min="0" max="100" value="${t.level}" onchange="updateIrrigationTank('${t.id}','level',this.value)"></div></div></article>`;
  }).join('');
  if(pumpGrid)pumpGrid.innerHTML=irrigationPumps.map(p=>pumpCard(p)).join('');
- renderDashboardWidgets();
+ // v4.3.6: NUNCA reconstruir el Dashboard desde el módulo de riego.
+ // Este render se ejecuta también durante la actualización de telemetría.
 }
 function pumpCard(p){
  const tank=irrigationTanks.find(t=>t.id===p.sourceTank);
@@ -2071,6 +2072,7 @@ window.applyTayuChartTheme=applyTayuChartTheme;
 
 const tayuDashboardChartSignatures=new Map();
 const tayuDashboardChartHistoryState={};
+const tayuLiveChartBootstrapped=new Set();
 
 function tayuDateTimeLocalValue(date){
  const d=date instanceof Date?date:new Date(date);
@@ -2277,7 +2279,17 @@ function renderDashboardModbusChart(){
        ? x.t.toLocaleString('es-EC',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
        : x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
    }else{
-     try{await loadMbHistoryFromVps(d,Number(cfg.period||5));}catch(e){console.warn(e)}
+     // Carga inicial de la ventana histórica una sola vez.
+     // Después el chart vive de los puntos nuevos que llegan por telemetría.
+     const liveKey=`${d.id}|${v.id}|${Number(cfg.period||5)}`;
+     if(!tayuLiveChartBootstrapped.has(liveKey)){
+       try{
+         await loadMbHistoryFromVps(d,Number(cfg.period||5),true);
+         tayuLiveChartBootstrapped.add(liveKey);
+       }catch(e){
+         console.warn('Carga inicial de histórico:',e);
+       }
+     }
      h=filterMbHistory(mbHistory(d,v),cfg);
      labels=h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
    }
@@ -2324,7 +2336,17 @@ function renderDashboardModbusChart(){
        ...(chart.options.plugins.legend.labels||{}),
        color:theme.text
      };
-     chart.update('none');
+
+     // v4.3.6: el canvas permanece montado.
+     // En vivo hacemos una transición corta y lineal, no un repintado brusco.
+     if(historyState.mode==='live'){
+       chart.options.animation={duration:280,easing:'linear'};
+       chart.update();
+     }else{
+       chart.options.animation=false;
+       chart.update('none');
+     }
+
      tayuDashboardChartSignatures.set(signatureKey,signature);
      return;
    }
@@ -2343,16 +2365,10 @@ function renderDashboardModbusChart(){
      options:{
        responsive:true,
        maintainAspectRatio:false,
-       animation:false,
+       animation:{duration:280,easing:'linear'},
        responsiveAnimationDuration:0,
        resizeDelay:120,
        normalized:true,
-       transitions:{
-         active:{animation:{duration:0}},
-         resize:{animation:{duration:0}},
-         show:{animations:{x:{duration:0},y:{duration:0}}},
-         hide:{animations:{x:{duration:0},y:{duration:0}}}
-       },
        plugins:{
          legend:{labels:{color:theme.text}}
        },
@@ -2608,7 +2624,32 @@ function resetDashboardWidgets(){
 }
 function renderDashboardWidgets(){
  const box=document.getElementById('dashboardWidgets');if(!box)return;
+
+ // Preserva el estado visual del selector histórico si el usuario está usándolo.
+ const historyUi={};
+ box.querySelectorAll('.dashboard-widget[data-widget-type="modbusChart"]').forEach(widget=>{
+   const id=widget.dataset.widgetId;
+   const panel=widget.querySelector('.chart-history-panel');
+   historyUi[id]={
+     open:Boolean(panel?.classList.contains('open')),
+     from:panel?.querySelector('[data-history-from]')?.value||'',
+     to:panel?.querySelector('[data-history-to]')?.value||''
+   };
+ });
+
  box.innerHTML=dashboardWidgetIds.map(instanceId=>widgetHtml(instanceId)).join('');
+
+ Object.entries(historyUi).forEach(([id,state])=>{
+   const widget=box.querySelector(`.dashboard-widget[data-widget-id="${CSS.escape(id)}"]`);
+   const panel=widget?.querySelector('.chart-history-panel');
+   if(!panel)return;
+   panel.classList.toggle('open',state.open);
+   const from=panel.querySelector('[data-history-from]');
+   const to=panel.querySelector('[data-history-to]');
+   if(from)from.value=state.from;
+   if(to)to.value=state.to;
+ });
+
  if(window.Sortable)new Sortable(box,{animation:180,handle:'.widget-handle',ghostClass:'drag-ghost',onEnd:()=>{dashboardWidgetIds=[...box.querySelectorAll('.dashboard-widget')].map(x=>x.dataset.widgetId);saveWidgetLayout()}});
  setTimeout(()=>{
    renderDashboardMapWidget();
@@ -3535,7 +3576,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.3.5 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.3.6 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
