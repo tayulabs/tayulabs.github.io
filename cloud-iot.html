@@ -2670,6 +2670,10 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   }
 
   window.__tayuHasUnsavedEditorChanges=()=>modbusFormDirty||novaAppsFormDirty;
+  window.__tayuMarkModbusFormDirty=markModbusFormDirty;
+  window.__tayuIsNovaAppsFocused=isNovaAppsFocused;
+  window.__tayuGetNovaAppsDirty=()=>novaAppsFormDirty;
+  window.__tayuSetNovaAppsDirty=value=>{novaAppsFormDirty=Boolean(value);};
 
   async function loadRemoteModbusConfig(deviceKey,force=false){
     if(!deviceKey)return null;
@@ -3074,7 +3078,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.3 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.3.1 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
@@ -3155,7 +3159,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
   // ----- Asignación de salidas NOVA EDGE -> device_configuration -----
   window.renderNovaApplicationConfig=function(force=false){
     const host=document.getElementById('novaApplicationConfig');if(!host)return;
-    if(!force && (novaAppsFormDirty || isNovaAppsFocused())) return;
+    if(!force && ((window.__tayuGetNovaAppsDirty?.()||false) || (window.__tayuIsNovaAppsFocused?.()||false))) return;
     const novas=assetInventory.filter(a=>a.type==='novaEdge');
     if(!novas.length){host.innerHTML='<div class="nova-empty">No hay NOVA EDGE asignados.</div>';return;}
     host.innerHTML=novas.map(device=>{
@@ -3193,7 +3197,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
       cfg.outputs={...(cfg.outputs||{}),...outputs};cfg.signals=cfg.signals||{};cfg.assets=Array.isArray(cfg.assets)?cfg.assets:[];
       await window.__tayuApiPost('/devices/configuration',{device_key:deviceKey,configuration:cfg});
     }
-    novaAppsFormDirty=false;
+    window.__tayuSetNovaAppsDirty?.(false);
     const msg=document.getElementById('novaApplicationStatus');
     if(msg)msg.textContent='Aplicaciones guardadas en el VPS.';
     await window.refreshRealData?.();
@@ -3210,7 +3214,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
       if(
         e.target?.closest?.('#mbParamRows') ||
         ['mbBaud','mbSlave','mbParity','mbStop','mbTimeout','mbPoll','mbApplicationType','mbApplicationName','mbApplicationArea'].includes(e.target?.id)
-      ) markModbusFormDirty();
+      ) window.__tayuMarkModbusFormDirty?.();
     };
     modbusSection.addEventListener('input',mark);
     modbusSection.addEventListener('change',mark);
@@ -3219,7 +3223,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
   const novaAppsHost=document.getElementById('novaApplicationConfig');
   if(novaAppsHost){
     const mark=()=>{
-      novaAppsFormDirty=true;
+      window.__tayuSetNovaAppsDirty?.(true);
       const msg=document.getElementById('novaApplicationStatus');
       if(msg)msg.textContent='Cambios sin guardar.';
     };
