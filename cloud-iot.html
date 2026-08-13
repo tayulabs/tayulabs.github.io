@@ -1009,7 +1009,17 @@ function logout(){
   document.getElementById("app").style.display="none";
   document.getElementById("login").style.display="grid";
 }
-function toggleDark(){document.body.classList.toggle("dark");tayuMemoryStore.setItem("tayu_dark",document.body.classList.contains("dark")?"1":"0");const b=document.getElementById("themeButton");if(b)b.textContent=document.body.classList.contains("dark")?"☀️":"🌙";setTimeout(()=>{if(window.iotMap)iotMap.invalidateSize();if(window.shrimpMap)shrimpMap.invalidateSize()},200)}
+function toggleDark(){
+ document.body.classList.toggle("dark");
+ tayuMemoryStore.setItem("tayu_dark",document.body.classList.contains("dark")?"1":"0");
+ const b=document.getElementById("themeButton");
+ if(b)b.textContent=document.body.classList.contains("dark")?"☀️":"🌙";
+ setTimeout(()=>{
+   if(window.iotMap)iotMap.invalidateSize();
+   if(window.shrimpMap)shrimpMap.invalidateSize();
+   window.applyTayuChartTheme?.();
+ },80);
+}
 function toggleMenu(){sidebar.classList.toggle("open")}
 function applyRolePermissions(){
   const allowedOperatorViews=["dashboard","fincas","camaroneras","bananeras","ganaderia","alarmas","sensores"];
@@ -1965,18 +1975,141 @@ function addModbusChartWidget(){
  renderDashboardWidgets();
  alert(existed?'Gráfica actualizada en el dashboard.':'Gráfica agregada al dashboard.');
 }
+function tayuChartTheme(){
+ const dark=document.body.classList.contains('dark');
+ return {
+   text:dark?'#cbd5c0':'#667085',
+   grid:dark?'rgba(255,255,255,.14)':'rgba(17,24,39,.10)',
+   border:dark?'rgba(255,255,255,.22)':'rgba(17,24,39,.18)'
+ };
+}
+window.tayuChartTheme=tayuChartTheme;
+
+function applyTayuChartTheme(){
+ if(!window.Chart)return;
+ const theme=tayuChartTheme();
+ const charts=Object.values(Chart.instances||{});
+ charts.forEach(chart=>{
+   if(chart?.options?.scales){
+     Object.values(chart.options.scales).forEach(scale=>{
+       scale.ticks={...(scale.ticks||{}),color:theme.text};
+       scale.grid={...(scale.grid||{}),color:theme.grid};
+       scale.border={...(scale.border||{}),color:theme.border};
+     });
+   }
+   if(chart?.options?.plugins?.legend){
+     chart.options.plugins.legend.labels={
+       ...(chart.options.plugins.legend.labels||{}),
+       color:theme.text
+     };
+   }
+   chart.update('none');
+ });
+}
+window.applyTayuChartTheme=applyTayuChartTheme;
+
 function renderDashboardModbusChart(){
  setTimeout(()=>document.querySelectorAll('.dashboard-modbus-chart').forEach(async c=>{
-   if(c._chart)c._chart.destroy();
-   const widget=c.closest('.dashboard-widget'),instanceId=widget?.dataset.widgetId,cfg=modbusChartConfigs[instanceId];
+   const widget=c.closest('.dashboard-widget');
+   const instanceId=widget?.dataset.widgetId;
+   const cfg=modbusChartConfigs[instanceId];
    if(!cfg)return;
-   const d=modbusDevices.find(x=>x.id===cfg.deviceId),v=d?.variables.find(x=>x.id===cfg.variableId);
-   if(!d||!v)return;
+
+   const d=modbusDevices.find(x=>x.id===cfg.deviceId);
+   const v=d?.variables.find(x=>x.id===cfg.variableId);
+
+   if(!d||!v){
+     const parent=c.parentElement;
+     if(parent){
+       c.style.display='none';
+       if(!parent.querySelector('.modbus-wait-note')){
+         const note=document.createElement('div');
+         note.className='hint modbus-wait-note';
+         note.style.cssText='padding:18px;text-align:center';
+         note.textContent='Esperando la variable Modbus. La gráfica permanece guardada en el Dashboard.';
+         parent.appendChild(note);
+       }
+     }
+     return;
+   }
+
+   c.style.display='';
+   c.parentElement?.querySelector('.modbus-wait-note')?.remove();
+
    try{await loadMbHistoryFromVps(d,Number(cfg.period||5));}catch(e){console.warn(e)}
    const h=filterMbHistory(mbHistory(d,v),cfg);
-   c._chart=new Chart(c,{type:cfg.type||'line',data:{labels:h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'})),datasets:[{label:cfg.title||v.name,data:h.map(x=>x.v),tension:.3}]},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{x:{ticks:{maxTicksLimit:Math.min(12,Number(cfg.points||50))}},y:{min:cfg.min!==''?Number(cfg.min):undefined,max:cfg.max!==''?Number(cfg.max):undefined}}}});
+   const labels=h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+   const values=h.map(x=>x.v);
+   const theme=tayuChartTheme();
+
+   // Si el canvas y el tipo son los mismos, solo se actualizan datos/ejes.
+   // No se destruye el Chart, por eso no parpadea.
+   if(c._chart && c._chart.config.type===(cfg.type||'line')){
+     const chart=c._chart;
+     chart.data.labels=labels;
+     chart.data.datasets[0].label=cfg.title||v.name;
+     chart.data.datasets[0].data=values;
+     chart.data.datasets[0].tension=.3;
+
+     chart.options.scales.x.ticks={
+       ...(chart.options.scales.x.ticks||{}),
+       maxTicksLimit:Math.min(12,Number(cfg.points||50)),
+       color:theme.text
+     };
+     chart.options.scales.x.grid={...(chart.options.scales.x.grid||{}),color:theme.grid};
+     chart.options.scales.x.border={...(chart.options.scales.x.border||{}),color:theme.border};
+
+     chart.options.scales.y.min=cfg.min!==''?Number(cfg.min):undefined;
+     chart.options.scales.y.max=cfg.max!==''?Number(cfg.max):undefined;
+     chart.options.scales.y.ticks={...(chart.options.scales.y.ticks||{}),color:theme.text};
+     chart.options.scales.y.grid={...(chart.options.scales.y.grid||{}),color:theme.grid};
+     chart.options.scales.y.border={...(chart.options.scales.y.border||{}),color:theme.border};
+     chart.options.plugins.legend.labels={
+       ...(chart.options.plugins.legend.labels||{}),
+       color:theme.text
+     };
+     chart.update('none');
+     return;
+   }
+
+   if(c._chart)c._chart.destroy();
+   c._chart=new Chart(c,{
+     type:cfg.type||'line',
+     data:{
+       labels,
+       datasets:[{
+         label:cfg.title||v.name,
+         data:values,
+         tension:.3
+       }]
+     },
+     options:{
+       responsive:true,
+       maintainAspectRatio:false,
+       animation:false,
+       normalized:true,
+       plugins:{
+         legend:{labels:{color:theme.text}}
+       },
+       scales:{
+         x:{
+           ticks:{maxTicksLimit:Math.min(12,Number(cfg.points||50)),color:theme.text},
+           grid:{color:theme.grid},
+           border:{color:theme.border}
+         },
+         y:{
+           min:cfg.min!==''?Number(cfg.min):undefined,
+           max:cfg.max!==''?Number(cfg.max):undefined,
+           ticks:{color:theme.text},
+           grid:{color:theme.grid},
+           border:{color:theme.border}
+         }
+       }
+     }
+   });
  }),80);
 }
+
 function simulateModbus(){/* Telemetría real: sin simulación */}
 
 
@@ -2211,7 +2344,11 @@ function renderDashboardWidgets(){
  const box=document.getElementById('dashboardWidgets');if(!box)return;
  box.innerHTML=dashboardWidgetIds.map(instanceId=>widgetHtml(instanceId)).join('');
  if(window.Sortable)new Sortable(box,{animation:180,handle:'.widget-handle',ghostClass:'drag-ghost',onEnd:()=>{dashboardWidgetIds=[...box.querySelectorAll('.dashboard-widget')].map(x=>x.dataset.widgetId);saveWidgetLayout()}});
- setTimeout(()=>{renderDashboardMapWidget();renderDashboardModbusChart();},150);
+ setTimeout(()=>{
+   renderDashboardMapWidget();
+   renderDashboardModbusChart();
+   window.applyTayuChartTheme?.();
+ },150);
 }
 function widgetHtml(instanceId){
  const type=widgetType(instanceId),w=widgetCatalog[type];if(!w)return'';
@@ -2219,9 +2356,33 @@ function widgetHtml(instanceId){
  return `<article class="card dashboard-widget" data-widget-id="${instanceId}" data-widget-type="${type}" data-size="${size}">
    <div class="widget-handle"><div><b>${w.icon} ${w.title}</b>${widgetBindingLabel(instanceId)}</div>
    <div class="widget-actions"><button title="Cambiar tamaño" onclick="cycleWidgetSize('${instanceId}')">↔</button><button title="Quitar" onclick="removeDashboardWidget('${instanceId}')">×</button></div></div>
-   ${widgetBody(type,instanceId)}
+   <div class="widget-live-body">${widgetBody(type,instanceId)}</div>
  </article>`;
 }
+function refreshDashboardWidgetsInPlace(){
+ const box=document.getElementById('dashboardWidgets');
+ if(!box || !box.children.length){
+   renderDashboardWidgets();
+   return;
+ }
+
+ box.querySelectorAll('.dashboard-widget').forEach(widget=>{
+   const instanceId=widget.dataset.widgetId;
+   const type=widget.dataset.widgetType;
+   if(type==='modbusChart' || type==='map') return;
+
+   const body=widget.querySelector('.widget-live-body');
+   if(!body) return;
+   const next=widgetBody(type,instanceId);
+   if(body.innerHTML!==next) body.innerHTML=next;
+ });
+
+ // Map keeps its Leaflet instance. Modbus charts update their data in place.
+ renderDashboardMapWidget();
+ renderDashboardModbusChart();
+}
+window.refreshDashboardWidgetsInPlace=refreshDashboardWidgetsInPlace;
+
 function widgetBody(id,instanceId){
  const feeders=shrimpEquipment.filter(x=>x.type==='feeder'),aerators=shrimpEquipment.filter(x=>x.type==='aerator');
  if(id==='novaApplications'){
@@ -2250,7 +2411,20 @@ function widgetBody(id,instanceId){
  if(id==='gateways')return '<div class="metric-value">3</div><p class="hint">Gateways LoRaWAN conectados</p>';
  if(id==='cattle')return '<div class="metric-value">25</div><p class="hint">Collares GPS registrados</p><button class="btn ghost" onclick="goToView(\'ganaderia\')">Abrir mapa</button>';
  if(id==='orion')return '<div class="metric-value">20</div><p class="hint">Operadores ORIÓN activos</p><button class="btn ghost" onclick="goToView(\'bananeras\')">Abrir mapa</button>';
- if(id==='tanks')return irrigationTanks.map(t=>`<div class="device"><div><b>${t.fluid==='Diésel'?'🛢️':'💧'} ${t.name}</b><br><small>${t.sensor} · ${t.location}</small></div><span class="${t.level<25?'status off':t.level<40?'status warn':'status'}">${t.level}%</span></div>`).join('')+`<button class="btn ghost" style="margin-top:10px" onclick="goToView('fincas')">Abrir sistema de riego</button>`;
+ if(id==='tanks')return irrigationTanks.length?irrigationTanks.map(t=>`
+   <div class="tank-visual-wrap" style="margin:8px 0 16px">
+     <div class="smart-tank" style="width:86px;height:138px">
+       <div class="smart-tank-liquid ${t.fluid==='Diésel'?'diesel':''}" style="height:${Math.max(0,Math.min(100,Number(t.level)||0))}%"></div>
+       <div class="smart-tank-value">${Math.round(Number(t.level)||0)}%</div>
+     </div>
+     <div class="tank-stats">
+       <div><span><b>${t.fluid==='Diésel'?'🛢️':'💧'} ${t.name}</b></span></div>
+       <div><span>Fuente</span><b>${t.sensor}</b></div>
+       <div><span>Lectura</span><b>${t.rawValue??'—'} ${t.unit||''}</b></div>
+       ${Number(t.capacity)>0?`<div><span>Capacidad</span><b>${Number(t.capacity).toLocaleString('es-EC')} L</b></div>`:''}
+     </div>
+   </div>`).join('')+`<button class="btn ghost" style="margin-top:10px" onclick="goToView('fincas')">Abrir sistema de riego</button>`:
+   '<p class="hint">No hay tanques configurados.</p>';
  if(id==='pumps')return irrigationPumps.map(p=>`<div class="device"><div><b>${p.type==='Diésel'?'⛽':'⚙️'} ${p.name}</b><br><small>${p.levelControl?'Automática por nivel':p.mode==='schedule'?'Por horario':'Manual'}</small></div><span><i class="state-dot ${p.running?'on':'off'}"></i>${p.running?'Trabajando':'Apagada'}</span></div>`).join('')+`<button class="btn ghost" style="margin-top:10px" onclick="goToView('fincas')">Configurar bombas</button>`;
  if(id==='modbusValue'){const d=modbusDevices[0],v=d?.variables[0];return d&&v?`<p class="hint">${d.name}</p><div class="modbus-value-big">${v.value} <span style="font-size:17px">${v.unit}</span></div><span class="${d.online?'status':'status off'}">${d.online?'Online':'Offline'}</span><button class="btn ghost" style="margin-top:12px;width:100%" onclick="goToView('modbus')">Configurar</button>`:'Sin equipos Modbus';}
  if(id==='modbusGroup'){const d=modbusDevices[0];return d?`<p class="hint">${d.name}</p><div class="modbus-values">${d.variables.slice(0,4).map(v=>`<div><span>${v.name}</span><b>${v.value} ${v.unit}</b></div>`).join('')}</div><button class="btn ghost" style="margin-top:12px;width:100%" onclick="goToView('modbus')">Abrir equipo</button>`:'Sin equipos Modbus';}
@@ -2497,6 +2671,8 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     }).join('');
   }
 
+  let dashboardDomInitialized=false;
+
   function applyRealData(realDevices, realTelemetry) {
     const latest = latestTelemetryByDevice(realTelemetry);
     const organizationName = realDevices[0]?.organization_name || 'Mi organización';
@@ -2596,7 +2772,6 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     renderFarmSelectors();
     syncAssetsToModules();
     renderAssetInventory();
-    renderDashboardWidgets();
     renderBananaSatellite();
     renderCattleSatellite();
     renderNovaEdgePanel(realDevices, realTelemetry);
@@ -2605,23 +2780,17 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     ensureDefaultModbusRows();
     renderModbusLive(realTelemetry);
     syncRealModbusToDashboard(realDevices, realTelemetry);
-    renderDashboardWidgets();
 
-    // Real telemetry table.
-    const table = document.getElementById('sensorTable');
-    if (table) {
-      const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({
-        '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
-      })[ch]);
-      table.innerHTML =
-        '<tr><th>Equipo</th><th>Última lectura</th><th>Fecha</th><th>Estado</th></tr>' +
-        realTelemetry.map(row => {
-          const values = Object.entries(row.payload || {})
-            .map(([k,v]) => `${escapeHtml(k)}: ${escapeHtml(v)}`)
-            .join('<br>') || 'Sin valores';
-          return `<tr><td>${escapeHtml(row.device_name || row.device_key)}</td><td>${values}</td><td>${escapeHtml(new Date(row.time).toLocaleString())}</td><td><span class="status">OK</span></td></tr>`;
-        }).join('');
+    if(!dashboardDomInitialized || !document.querySelector('#dashboardWidgets .dashboard-widget')){
+      renderDashboardWidgets();
+      dashboardDomInitialized=true;
+    }else{
+      refreshDashboardWidgetsInPlace();
     }
+
+    // v4.3.3: Sensores muestra las señales configuradas y sus umbrales.
+    // La telemetría cruda sigue disponible en Tramas.
+    renderSensorTable();
   }
 
   window.setGenericOutput = async (deviceKey, outputKey, value, button) => {
@@ -2845,22 +3014,9 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     // Only real Modbus devices are used for the live dashboard.
     modbusDevices = real;
 
-    // Si se elimina una variable Modbus, se elimina también su gráfica asociada.
-    let chartLayoutChanged=false;
-    dashboardWidgetIds=[...dashboardWidgetIds].filter(instanceId=>{
-      if(widgetType(instanceId)!=='modbusChart')return true;
-      const cfg=modbusChartConfigs[instanceId];
-      if(!cfg){chartLayoutChanged=true;return false;}
-      const d=modbusDevices.find(x=>x.id===cfg.deviceId);
-      const valid=Boolean(d?.variables.some(v=>v.id===cfg.variableId));
-      if(!valid){delete modbusChartConfigs[instanceId];chartLayoutChanged=true;}
-      return valid;
-    });
-    if(chartLayoutChanged){
-      saveModbusChartConfigs();
-      saveWidgetLayout();
-    }
-
+    // v4.3.2: una edición Modbus o una ausencia temporal de telemetría
+    // NUNCA modifica el layout del Dashboard.
+    // Las gráficas solo se eliminan cuando el usuario pulsa quitar.
     refreshMbDevices();
 
     // Los widgets no se agregan automáticamente. El usuario decide qué mostrar.
@@ -3078,7 +3234,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.3.1 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.3.3 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
@@ -3145,8 +3301,17 @@ if (typeof window.renderShrimpEquipment !== 'function') {
     const always=new Set(['summary','map','alarms','sensors','frames']);
     const visible=Object.entries(widgetCatalog).filter(([type])=>{
       if(always.has(type))return true;
+
+      if(type==='tanks')return irrigationTanks.length>0;
+      if(type==='pumps')return irrigationPumps.length>0;
+      if(type==='feeders')return shrimpEquipment.some(x=>x.type==='feeder');
+      if(type==='aerators')return shrimpEquipment.some(x=>x.type==='aerator');
+      if(type==='novaApplications')return assetInventory.some(a=>a.type==='novaEdge');
+
+      if(type==='modbusValue')return modbusDevices.some(d=>d.variables?.length);
       if(type==='modbusGroup')return modbusDevices.length>0;
       if(type==='modbusChart')return modbusDevices.some(d=>d.variables?.length);
+
       return getCompatibleAssetsForWidget(type).length>0;
     });
     library.innerHTML=visible.map(([type,w])=>`<div class="widget-option" onclick="addDashboardWidget('${type}')">
