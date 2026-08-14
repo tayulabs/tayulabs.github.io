@@ -3874,7 +3874,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   let refreshBusy = false;
   let liveRefreshBusy = false;
 
-  // v4.4.4: la frecuencia visual es independiente del polling Modbus y del batch MQTT.
+  // v4.4.5: la frecuencia visual es independiente del polling Modbus y del batch MQTT.
   // Se guarda dentro de widget_settings del Dashboard para la organización.
   function normalizeRealtimeRefreshMs(value){
     const allowed=[1000,2000,5000,10000];
@@ -3989,13 +3989,23 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   window.syncIncrementalModbusHistory=syncIncrementalModbusHistory;
 
   async function refreshLiveTelemetry(silent=true){
-    if(liveRefreshBusy || refreshBusy)return;
-    const realDevices=Array.isArray(window.__tayuRealDevices)?window.__tayuRealDevices:[];
-    if(!realDevices.length)return;
+    if(liveRefreshBusy || refreshBusy)return false;
 
     liveRefreshBusy=true;
     try{
       if(!silent)setStatus('Actualizando telemetría…');
+
+      // v4.4.5: el refresco live ya no depende de que el cache de equipos haya
+      // quedado inicializado. Si por cualquier motivo está vacío, lo recupera
+      // una vez desde la API y continúa sin esperar un refresco manual.
+      let realDevices=Array.isArray(window.__tayuRealDevices)?window.__tayuRealDevices:[];
+      if(!realDevices.length){
+        const loadedDevices=await api('/devices');
+        realDevices=Array.isArray(loadedDevices)?loadedDevices:[];
+        window.__tayuRealDevices=realDevices;
+      }
+      if(!realDevices.length)return false;
+
       const realTelemetry=await api('/telemetry/latest');
       window.__tayuLastTelemetry=Array.isArray(realTelemetry)?realTelemetry:[];
 
@@ -4008,7 +4018,9 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       await syncIncrementalModbusHistory(realDevices);
       refreshDashboardWidgetsInPlace();
 
+      window.__tayuLastAutoRefreshOkAt=Date.now();
       if(!silent)setStatus('Telemetría actualizada.');
+      return true;
     }finally{
       liveRefreshBusy=false;
     }
@@ -4060,15 +4072,60 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   });
 
   function startRealtimeRefresh() {
-    if (window.__tayuRealtimeTimer) clearInterval(window.__tayuRealtimeTimer);
+    // v4.4.5: scheduler recursivo. A diferencia de setInterval, nunca solapa
+    // una consulta con la siguiente y siempre vuelve a programarse aunque una
+    // petición falle. También ejecuta una primera actualización inmediata.
+    if (window.__tayuRealtimeTimer) clearTimeout(window.__tayuRealtimeTimer);
     const intervalMs=getRealtimeRefreshMs();
     syncRealtimeRefreshControl();
-    window.__tayuRealtimeTimer = setInterval(() => {
-      if (document.hidden) return;
-      refreshLiveTelemetry(true).catch(error => {
-        console.error('Actualización de telemetría:', error);
-      });
-    }, intervalMs);
+
+    const generation=(window.__tayuRealtimeGeneration||0)+1;
+    window.__tayuRealtimeGeneration=generation;
+    let lastFallbackAt=0;
+
+    const scheduleNext=()=>{
+      if(window.__tayuRealtimeGeneration!==generation)return;
+      window.__tayuRealtimeTimer=setTimeout(run,intervalMs);
+    };
+
+    const run=async()=>{
+      if(window.__tayuRealtimeGeneration!==generation)return;
+      try{
+        // Mientras la pestaña está visible, esta es la ruta normal y ligera.
+        // Si el navegador reporta hidden, simplemente reintentamos al siguiente ciclo.
+        if(!document.hidden){
+          const ok=await refreshLiveTelemetry(true);
+
+          // Watchdog: si la ruta ligera no pudo ejecutarse durante varios ciclos,
+          // usamos de forma puntual la misma rutina que el botón "Actualizar".
+          // Esto evita que el Dashboard quede congelado hasta una acción manual.
+          const lastOk=Number(window.__tayuLastAutoRefreshOkAt||0);
+          const stale=Date.now()-lastOk>Math.max(10000,intervalMs*3);
+          if(ok===false && stale && Date.now()-lastFallbackAt>30000){
+            lastFallbackAt=Date.now();
+            await refreshRealData(true);
+            window.__tayuLastAutoRefreshOkAt=Date.now();
+          }
+        }
+      }catch(error){
+        console.error('Actualización automática de telemetría:',error);
+        const lastOk=Number(window.__tayuLastAutoRefreshOkAt||0);
+        const stale=Date.now()-lastOk>Math.max(10000,intervalMs*3);
+        if(stale && Date.now()-lastFallbackAt>30000){
+          lastFallbackAt=Date.now();
+          try{
+            await refreshRealData(true);
+            window.__tayuLastAutoRefreshOkAt=Date.now();
+          }catch(fallbackError){
+            console.error('Fallback de actualización automática:',fallbackError);
+          }
+        }
+      }finally{
+        scheduleNext();
+      }
+    };
+
+    window.__tayuRealtimeTimer=setTimeout(run,0);
   }
   window.startRealtimeRefresh=startRealtimeRefresh;
 
@@ -4138,7 +4195,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.4.4 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.4.5 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
