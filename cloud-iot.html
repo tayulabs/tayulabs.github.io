@@ -1345,7 +1345,7 @@ document.querySelectorAll(".nav button").forEach(btn=>{btn.onclick=()=>{
   const view=document.getElementById(btn.dataset.view);
   if(view)view.classList.add("active");
   pageTitle.textContent=btn.textContent;
-  sidebar.classList.remove("open");if(view==='ganaderia')setTimeout(()=>{initCattleSatelliteMap();window.cattleSatelliteMap?.invalidateSize()},180);if(view==='bananeras')setTimeout(()=>{initBananaSatelliteMap();window.bananaSatelliteMap?.invalidateSize()},180);if(view==='fincas')setTimeout(()=>renderIrrigationSystem(),80);if(view==='modbus')setTimeout(()=>{renderModbusDevices();initMbPreview();},100);if(view==='dispositivos')setTimeout(renderAssetInventory,60);
+  sidebar.classList.remove("open");if(btn.dataset.view==='dashboard')setTimeout(()=>window.forceVisibleDashboardModbusRedraw?.(),120);if(btn.dataset.view==='ganaderia')setTimeout(()=>{initCattleSatelliteMap();window.cattleSatelliteMap?.invalidateSize()},180);if(btn.dataset.view==='bananeras')setTimeout(()=>{initBananaSatelliteMap();window.bananaSatelliteMap?.invalidateSize()},180);if(btn.dataset.view==='fincas')setTimeout(()=>renderIrrigationSystem(),80);if(btn.dataset.view==='modbus')setTimeout(()=>{renderModbusDevices();initMbPreview();},100);if(btn.dataset.view==='dispositivos')setTimeout(renderAssetInventory,60);
   setTimeout(()=>{if(window.iotMap)iotMap.invalidateSize()},200)
 }})
 function startPlatform(){
@@ -2575,7 +2575,7 @@ function tayuChartSignature(cfg,labels,values,theme){
  });
 }
 
-function renderDashboardModbusChart(){
+function renderDashboardModbusChart(forceRedraw=false){
  setTimeout(()=>document.querySelectorAll('.dashboard-modbus-chart').forEach(async c=>{
    const widget=c.closest('.dashboard-widget');
    const instanceId=widget?.dataset.widgetId;
@@ -2655,7 +2655,7 @@ function renderDashboardModbusChart(){
 
    // Si no llegó un punto nuevo y no cambió la configuración/tema,
    // no se repinta ni siquiera el canvas.
-   if(c._chart && tayuDashboardChartSignatures.get(signatureKey)===signature)return;
+   if(!forceRedraw && c._chart && tayuDashboardChartSignatures.get(signatureKey)===signature)return;
 
    // Si el canvas y el tipo son los mismos, solo se actualizan datos/ejes.
    // No se destruye el Chart, por eso no parpadea.
@@ -2700,8 +2700,14 @@ function renderDashboardModbusChart(){
      // v4.4.3: el canvas permanece montado.
      // En vivo hacemos una transición corta y lineal, no un repintado brusco.
      if(historyState.mode==='live'){
-       chart.options.animation={duration:280,easing:'linear'};
-       chart.update();
+       if(forceRedraw){
+         chart.options.animation=false;
+         chart.resize();
+         chart.update('none');
+       }else{
+         chart.options.animation={duration:280,easing:'linear'};
+         chart.update();
+       }
      }else{
        chart.options.animation=false;
        chart.update('none');
@@ -3061,6 +3067,27 @@ function refreshDashboardWidgetsInPlace(){
  renderDashboardModbusChart();
 }
 window.refreshDashboardWidgetsInPlace=refreshDashboardWidgetsInPlace;
+
+// v4.4.6: fuerza el repintado físico del canvas cuando el Dashboard está visible.
+// Los datos pueden estar actualizados en memoria aunque Chart.js no repinte hasta un resize.
+function forceVisibleDashboardModbusRedraw(){
+  const dash=document.getElementById('dashboard');
+  if(!dash?.classList.contains('active'))return;
+  renderDashboardModbusChart(true);
+  setTimeout(()=>{
+    document.querySelectorAll('#dashboard .dashboard-modbus-chart').forEach(c=>{
+      if(!c._chart)return;
+      try{
+        c._chart.stop();
+        c._chart.resize();
+        c._chart.update('none');
+      }catch(error){
+        console.warn('Repintado gráfica Modbus:',error);
+      }
+    });
+  },220);
+}
+window.forceVisibleDashboardModbusRedraw=forceVisibleDashboardModbusRedraw;
 
 function widgetBody(id,instanceId){
  const feeders=shrimpEquipment.filter(x=>x.type==='feeder'),aerators=shrimpEquipment.filter(x=>x.type==='aerator');
@@ -4017,6 +4044,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       // desde la actualización anterior y los fusiona por timestamp.
       await syncIncrementalModbusHistory(realDevices);
       refreshDashboardWidgetsInPlace();
+      forceVisibleDashboardModbusRedraw();
 
       window.__tayuLastAutoRefreshOkAt=Date.now();
       if(!silent)setStatus('Telemetría actualizada.');
@@ -4059,6 +4087,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       telemetryToFrames(window.__tayuLastTelemetry);
       await syncIncrementalModbusHistory(window.__tayuRealDevices);
       refreshDashboardWidgetsInPlace();
+      forceVisibleDashboardModbusRedraw();
 
       if (!silent) setStatus('Conectado a la API: datos reales cargados.');
     } finally {
