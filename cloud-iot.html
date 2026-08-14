@@ -1219,7 +1219,7 @@ const tayuMemoryStore = (() => {
 <section id="sensores" class="view"><div class="card"><div class="module-header"><div><h3>🌡️ Sensores y umbrales</h3><p class="hint">Configura límites bajos y altos para generar alarmas automáticas.</p></div><button class="btn" onclick="addSensor()">＋ Agregar sensor</button></div><div class="table-wrap"><table class="table" id="sensorTable"></table></div></div></section>
 <section id="reportes" class="view"><div class="grid two"><div class="card"><h3>Reportes por finca</h3><label>Finca</label><select id="reportFarm"></select><label>Fecha</label><input type="date"><br><br><button class="btn">Generar reporte</button></div><div class="card"><h3>Resumen mensual</h3><div class="chart-box"><canvas id="lineChart"></canvas></div></div></div></section>
 <section id="alarmas" class="view"><div class="card"><div class="module-header"><div><h3>🚨 Historial de alarmas</h3><p class="hint">Eventos por fecha, equipo, lectura, severidad y estado.</p></div><button class="btn ghost" onclick="downloadAlarmsCsv()">Descargar CSV</button></div><div class="grid filters" style="margin-top:14px"><div><label>Desde</label><input type="date" id="alarmFrom" onchange="renderAlarms()"></div><div><label>Severidad</label><select id="alarmSeverity" onchange="renderAlarms()"><option value="all">Todas</option><option>Crítica</option><option>Advertencia</option><option>Información</option></select></div><div><label>Estado</label><select id="alarmState" onchange="renderAlarms()"><option value="all">Todos</option><option>Activa</option><option>Reconocida</option><option>Resuelta</option></select></div><button class="btn" onclick="renderAlarms()">Filtrar</button></div><div class="table-wrap"><table class="table" id="alarmList"></table></div></div></section>
-<section id="configuracion" class="view"><div class="grid two"><div class="card"><h3>⚙️ Configuración general</h3><label>Nombre de plataforma</label><input value="TAYULABS IoT Platform"><label>Zona horaria</label><select><option>America/Guayaquil</option></select><label>Confirmar comandos críticos</label><select><option>Sí</option><option>No</option></select><br><br><button class="btn">Guardar cambios</button></div><div class="card"><h3>Widgets y usuarios</h3><p class="hint">La distribución del Dashboard se guarda en el VPS para esta organización y se recupera en cualquier navegador.</p><button class="btn ghost" onclick="resetDashboardWidgets()">Restaurar dashboard</button></div></div></section>
+<section id="configuracion" class="view"><div class="grid two"><div class="card"><h3>⚙️ Configuración general</h3><label>Nombre de plataforma</label><input value="TAYULABS IoT Platform"><label>Zona horaria</label><select><option>America/Guayaquil</option></select><label>Actualización de pantalla</label><select id="realtimeRefreshInterval"><option value="1000">1 segundo</option><option value="2000">2 segundos</option><option value="5000">5 segundos</option><option value="10000">10 segundos</option></select><p class="hint" style="margin:6px 0 0">Controla cada cuánto la interfaz consulta nuevos datos. No cambia la frecuencia de adquisición Modbus ni elimina muestras históricas.</p><label>Confirmar comandos críticos</label><select><option>Sí</option><option>No</option></select><br><br><button class="btn" onclick="window.saveGeneralSettings?.()">Guardar cambios</button></div><div class="card"><h3>Widgets y usuarios</h3><p class="hint">La distribución del Dashboard se guarda en el VPS para esta organización y se recupera en cualquier navegador.</p><button class="btn ghost" onclick="resetDashboardWidgets()">Restaurar dashboard</button></div></div></section>
 <section id="usuarios" class="view"><div class="card"><h3>Usuarios</h3><p class="hint">Los usuarios y permisos se gestionan mediante la autenticación segura de la plataforma.</p><div class="form-row"><div><label>Correo</label><input id="newUser" placeholder="usuario@empresa.com"></div><div><label>Contraseña</label><input id="newPass" placeholder="Contraseña"></div><div><label>Rol</label><select id="newRole"><option>Administrador</option><option>Supervisor de finca</option><option>Operador</option></select></div><button class="btn" onclick="addUser()">Agregar</button></div><br><table class="table" id="usersTable"></table></div></section>
 
 
@@ -2102,8 +2102,18 @@ function addIrrigationPump(){
 
 
 
+let tayuChartConfigSaveTimer=null;
 function saveModbusChartConfigs(){
  tayuMemoryStore.setItem('tayu_modbus_chart_configs',JSON.stringify(modbusChartConfigs));
+
+ // v4.4.3: las configuraciones del gráfico deben persistir también
+ // en /dashboard. Antes esta función solo escribía en memoria.
+ clearTimeout(tayuChartConfigSaveTimer);
+ tayuChartConfigSaveTimer=setTimeout(()=>{
+   if(window.saveDashboardCloud){
+     window.saveDashboardCloud().catch(error=>console.error('Guardar configuración de gráfica:',error));
+   }
+ },350);
 }
 function modbusVariableId(deviceKey,name){
  return `${deviceKey}-${String(name||'variable').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}`;
@@ -2133,16 +2143,65 @@ function findMbChartWidget(deviceId,variableId){
    return c?.deviceId===deviceId && c?.variableId===variableId && dashboardWidgetIds.includes(id);
  });
 }
-function filterMbHistory(history,cfg){
- const now=Date.now();
- const minutes=Number(cfg?.period||5);
- const maxPoints=Math.max(5,Number(cfg?.points||50));
- let h=(history||[]).filter(x=>!minutes || x.t.getTime()>=now-minutes*60000);
- if(h.length>maxPoints){
-   const step=h.length/maxPoints;
-   h=Array.from({length:maxPoints},(_,i)=>h[Math.min(h.length-1,Math.floor(i*step))]);
+function tayuAxisBound(value){
+ if(value==='' || value===null || value===undefined)return undefined;
+ const n=Number(value);
+ return Number.isFinite(n)?n:undefined;
+}
+
+function tayuChartWindowMs(cfg){
+ const minutes=Number(cfg?.period);
+ return Number.isFinite(minutes) && minutes>0 ? minutes*60000 : 5*60000;
+}
+
+function tayuSampleHistory(history,maxPoints){
+ const h=[...(history||[])];
+ const limit=Math.max(5,Math.min(4000,Number(maxPoints||50)));
+ if(h.length<=limit)return h;
+
+ // Conserva siempre primer y último punto y distribuye el resto.
+ const result=[];
+ const step=(h.length-1)/(limit-1);
+ for(let i=0;i<limit;i++){
+   result.push(h[Math.min(h.length-1,Math.round(i*step))]);
  }
- return h;
+ return result;
+}
+
+function filterMbHistory(history,cfg,referenceNow=Date.now()){
+ const windowMs=tayuChartWindowMs(cfg);
+ const from=referenceNow-windowMs;
+
+ // Primero respetamos estrictamente la ventana temporal.
+ const visible=(history||[])
+   .filter(x=>x?.t instanceof Date && !Number.isNaN(x.t.getTime()) && x.t.getTime()>=from && x.t.getTime()<=referenceNow)
+   .sort((a,b)=>a.t-b.t);
+
+ // "Detalle" controla cuántos puntos se dibujan, no cuánto historial se conserva.
+ return tayuSampleHistory(visible,cfg?.points||50);
+}
+
+function mergeMbHistory(target,incoming,retentionMinutes=10080){
+ const merged=new Map();
+
+ [...(target||[]),...(incoming||[])].forEach(point=>{
+   const t=point?.t instanceof Date?point.t:new Date(point?.t);
+   const v=Number(point?.v);
+   if(Number.isNaN(t.getTime())||!Number.isFinite(v))return;
+   // Una lectura por timestamp. La más nueva reemplaza a la anterior.
+   merged.set(t.getTime(),{t,v});
+ });
+
+ const cutoff=Date.now()-Math.max(60,Number(retentionMinutes||10080))*60000;
+ return [...merged.values()]
+   .filter(point=>point.t.getTime()>=cutoff)
+   .sort((a,b)=>a.t-b.t);
+}
+
+function tayuTimeTick(value){
+ const d=new Date(Number(value));
+ if(Number.isNaN(d.getTime()))return '';
+ return d.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
 function loadMbChartFormFromSelection(){
  const {d,v}=currentMbChartSelection();
@@ -2221,15 +2280,43 @@ function refreshMbVariables(){
 async function loadMbHistoryFromVps(d,minutes=60,force=false){
  const deviceKey=String(d?.id||'').startsWith('real-')?String(d.id).slice(5):null;
  if(!deviceKey||!window.__tayuApi)return;
+
+ const requestedMinutes=Math.max(1,Math.min(10080,Number(minutes||60)));
  window.__tayuMbHistoryLoaded=window.__tayuMbHistoryLoaded||{};
- const cacheKey=`${deviceKey}:${minutes}`;
- if(!force&&window.__tayuMbHistoryLoaded[cacheKey]&&Date.now()-window.__tayuMbHistoryLoaded[cacheKey]<30000)return;
- const rows=await window.__tayuApi(`/telemetry/history?device_key=${encodeURIComponent(deviceKey)}&minutes=${Math.max(1,Math.min(10080,Number(minutes||60)))}`);
- const device=modbusDevices.find(x=>x.id===d.id);if(!device)return;
+ const cacheKey=`${deviceKey}:${requestedMinutes}`;
+
+ if(!force &&
+    window.__tayuMbHistoryLoaded[cacheKey] &&
+    Date.now()-window.__tayuMbHistoryLoaded[cacheKey]<30000){
+   return;
+ }
+
+ const rows=await window.__tayuApi(
+   `/telemetry/history?device_key=${encodeURIComponent(deviceKey)}&minutes=${requestedMinutes}`
+ );
+
+ const device=modbusDevices.find(x=>x.id===d.id);
+ if(!device)return;
+
  device.variables.forEach(v=>{
    const key=d.id+'|'+v.id;
-   modbusHistories[key]=(rows||[]).map(row=>({t:new Date(row.time),v:Number(row.payload?.modbus?.[v.name])})).filter(x=>Number.isFinite(x.v)&&!Number.isNaN(x.t.getTime()));
+   const incoming=(rows||[])
+     .map(row=>({
+       t:new Date(row.time),
+       v:Number(row.payload?.modbus?.[v.name])
+     }))
+     .filter(x=>Number.isFinite(x.v)&&!Number.isNaN(x.t.getTime()));
+
+   // v4.4.3:
+   // NO sustituimos modbusHistories[key].
+   // Si una gráfica pide 5 min y otra 1 h, ambas historias conviven.
+   modbusHistories[key]=mergeMbHistory(
+     modbusHistories[key]||[],
+     incoming,
+     Math.max(1440,requestedMinutes)
+   );
  });
+
  window.__tayuMbHistoryLoaded[cacheKey]=Date.now();
 }
 function mbHistory(d,v){
@@ -2247,16 +2334,29 @@ async function updateMbPreview(){
  if(!d||!v)return;
  const cfg=currentMbChartFormConfig()||{};
  try{await loadMbHistoryFromVps(d,Number(cfg.period||5));}catch(e){console.warn('Histórico Modbus:',e)}
- const h=filterMbHistory(mbHistory(d,v),cfg);
+ const now=Date.now();
+ const h=filterMbHistory(mbHistory(d,v),cfg,now);
  mbPreviewChart.config.type=cfg.type||'line';
- mbPreviewChart.data.labels=h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+ mbPreviewChart.data.labels=[];
  mbPreviewChart.data.datasets[0].label=`${v.name}${v.unit?` (${v.unit})`:''}`;
- mbPreviewChart.data.datasets[0].data=h.map(x=>Number(Number(x.v).toFixed(3)));
+ mbPreviewChart.data.datasets[0].data=h.map(x=>({x:x.t.getTime(),y:Number(Number(x.v).toFixed(3))}));
+ mbPreviewChart.options.parsing=false;
  mbPreviewChart.options.scales={
-   x:{ticks:{maxTicksLimit:Math.min(12,Number(cfg.points||50))}},
-   y:{min:cfg.min!==''?Number(cfg.min):undefined,max:cfg.max!==''?Number(cfg.max):undefined}
+   x:{
+     type:'linear',
+     min:now-tayuChartWindowMs(cfg),
+     max:now,
+     ticks:{
+       maxTicksLimit:8,
+       callback:value=>tayuTimeTick(value)
+     }
+   },
+   y:{
+     min:tayuAxisBound(cfg.min),
+     max:tayuAxisBound(cfg.max)
+   }
  };
- mbPreviewChart.update();
+ mbPreviewChart.update('none');
  // Si esta variable ya existe en el Dashboard, cualquier ajuste del formulario
  // actualiza esa misma gráfica en lugar de crear otra.
  updateExistingMbChartFromForm();
@@ -2390,11 +2490,7 @@ async function loadMbHistoryRangeFromVps(d,v,from,to){
 }
 
 function sampleDashboardHistory(history,maxPoints){
- const h=[...(history||[])];
- const limit=Math.max(5,Math.min(2000,Number(maxPoints||400)));
- if(h.length<=limit)return h;
- const step=h.length/limit;
- return Array.from({length:limit},(_,i)=>h[Math.min(h.length-1,Math.floor(i*step))]);
+ return tayuSampleHistory(history,maxPoints||400);
 }
 
 async function queryDashboardChartHistory(instanceId){
@@ -2518,18 +2614,17 @@ function renderDashboardModbusChart(){
        ? x.t.toLocaleString('es-EC',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
        : x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
    }else{
-     // Carga inicial de la ventana histórica una sola vez.
-     // Después el chart vive de los puntos nuevos que llegan por telemetría.
-     const liveKey=`${d.id}|${v.id}|${Number(cfg.period||5)}`;
-     if(!tayuLiveChartBootstrapped.has(liveKey)){
-       try{
-         await loadMbHistoryFromVps(d,Number(cfg.period||5),true);
-         tayuLiveChartBootstrapped.add(liveKey);
-       }catch(e){
-         console.warn('Carga inicial de histórico:',e);
-       }
+     // Cada render puede pedir sincronización, pero loadMbHistoryFromVps
+     // tiene cache de 30 s. Así recuperamos cualquier punto perdido por
+     // suspensión del navegador sin borrar el historial ya mostrado.
+     try{
+       await loadMbHistoryFromVps(d,Number(cfg.period||5),false);
+     }catch(e){
+       console.warn('Sincronización de histórico live:',e);
      }
-     h=filterMbHistory(mbHistory(d,v),cfg);
+
+     const liveNow=Date.now();
+     h=filterMbHistory(mbHistory(d,v),cfg,liveNow);
      labels=h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
    }
 
@@ -2541,7 +2636,20 @@ function renderDashboardModbusChart(){
      __historyFrom:historyState.from?.toISOString?.()||'',
      __historyTo:historyState.to?.toISOString?.()||''
    };
-   const signature=tayuChartSignature(signatureCfg,labels,values,theme);
+   const xMin=historyState.mode==='history'
+     ? historyState.from?.getTime?.()
+     : Date.now()-tayuChartWindowMs(cfg);
+   const xMax=historyState.mode==='history'
+     ? historyState.to?.getTime?.()
+     : Date.now();
+
+   const plotData=h.map(x=>({x:x.t.getTime(),y:x.v}));
+   const signature=tayuChartSignature(
+     signatureCfg,
+     [String(xMin||''),String(xMax||''),...labels],
+     values,
+     theme
+   );
    const signatureKey=instanceId||c.id||'chart';
    updateDashboardChartHistoryUi(instanceId);
 
@@ -2553,21 +2661,26 @@ function renderDashboardModbusChart(){
    // No se destruye el Chart, por eso no parpadea.
    if(c._chart && c._chart.config.type===(cfg.type||'line')){
      const chart=c._chart;
-     chart.data.labels=labels;
+     chart.data.labels=[];
      chart.data.datasets[0].label=cfg.title||v.name;
-     chart.data.datasets[0].data=values;
+     chart.data.datasets[0].data=plotData;
      chart.data.datasets[0].tension=.3;
 
+     chart.options.parsing=false;
+     chart.options.scales.x.type='linear';
+     chart.options.scales.x.min=xMin;
+     chart.options.scales.x.max=xMax;
      chart.options.scales.x.ticks={
        ...(chart.options.scales.x.ticks||{}),
-       maxTicksLimit:Math.min(12,Number(cfg.points||50)),
+       maxTicksLimit:8,
+       callback:value=>tayuTimeTick(value),
        color:theme.text
      };
      chart.options.scales.x.grid={...(chart.options.scales.x.grid||{}),color:theme.grid};
      chart.options.scales.x.border={...(chart.options.scales.x.border||{}),color:theme.border};
 
-     chart.options.scales.y.min=cfg.min!==''?Number(cfg.min):undefined;
-     chart.options.scales.y.max=cfg.max!==''?Number(cfg.max):undefined;
+     chart.options.scales.y.min=tayuAxisBound(cfg.min);
+     chart.options.scales.y.max=tayuAxisBound(cfg.max);
      chart.options.scales.y.ticks={...(chart.options.scales.y.ticks||{}),color:theme.text};
      chart.options.scales.y.grid={...(chart.options.scales.y.grid||{}),color:theme.grid};
      chart.options.scales.y.border={...(chart.options.scales.y.border||{}),color:theme.border};
@@ -2575,8 +2688,16 @@ function renderDashboardModbusChart(){
        ...(chart.options.plugins.legend.labels||{}),
        color:theme.text
      };
+     chart.options.plugins.tooltip=chart.options.plugins.tooltip||{};
+     chart.options.plugins.tooltip.callbacks={
+       ...(chart.options.plugins.tooltip.callbacks||{}),
+       title:items=>{
+         const x=items?.[0]?.parsed?.x;
+         return Number.isFinite(x)?new Date(x).toLocaleString('es-EC'):'';
+       }
+     };
 
-     // v4.3.6: el canvas permanece montado.
+     // v4.4.3: el canvas permanece montado.
      // En vivo hacemos una transición corta y lineal, no un repintado brusco.
      if(historyState.mode==='live'){
        chart.options.animation={duration:280,easing:'linear'};
@@ -2594,14 +2715,15 @@ function renderDashboardModbusChart(){
    c._chart=new Chart(c,{
      type:cfg.type||'line',
      data:{
-       labels,
+       labels:[],
        datasets:[{
          label:cfg.title||v.name,
-         data:values,
+         data:plotData,
          tension:.3
        }]
      },
      options:{
+       parsing:false,
        responsive:true,
        maintainAspectRatio:false,
        animation:{duration:280,easing:'linear'},
@@ -2609,17 +2731,28 @@ function renderDashboardModbusChart(){
        resizeDelay:120,
        normalized:true,
        plugins:{
-         legend:{labels:{color:theme.text}}
+         legend:{labels:{color:theme.text}},
+         tooltip:{
+           callbacks:{
+             title:items=>{
+               const x=items?.[0]?.parsed?.x;
+               return Number.isFinite(x)?new Date(x).toLocaleString('es-EC'):'';
+             }
+           }
+         }
        },
        scales:{
          x:{
-           ticks:{maxTicksLimit:Math.min(12,Number(cfg.points||50)),color:theme.text},
+           type:'linear',
+           min:xMin,
+           max:xMax,
+           ticks:{maxTicksLimit:8,callback:value=>tayuTimeTick(value),color:theme.text},
            grid:{color:theme.grid},
            border:{color:theme.border}
          },
          y:{
-           min:cfg.min!==''?Number(cfg.min):undefined,
-           max:cfg.max!==''?Number(cfg.max):undefined,
+           min:tayuAxisBound(cfg.min),
+           max:tayuAxisBound(cfg.max),
            ticks:{color:theme.text},
            grid:{color:theme.grid},
            border:{color:theme.border}
@@ -3575,7 +3708,11 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
             // Solo agregamos cuando el servidor entrega una telemetría con timestamp nuevo.
             if(!last || last.t.getTime()!==pointTime.getTime() || last.v!==val){
               h.push({t:pointTime,v:val});
-              if(h.length>600)h.shift();
+
+              // Conservamos datos live suficientes para ventanas largas.
+              // "Detalle de la gráfica" limita lo dibujado, no lo almacenado.
+              const cutoff=Date.now()-7*24*60*60*1000;
+              while(h.length && h[0].t.getTime()<cutoff)h.shift();
             }
           }
         });
@@ -3735,6 +3872,151 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   }
 
   let refreshBusy = false;
+  let liveRefreshBusy = false;
+
+  // v4.4.4: la frecuencia visual es independiente del polling Modbus y del batch MQTT.
+  // Se guarda dentro de widget_settings del Dashboard para la organización.
+  function normalizeRealtimeRefreshMs(value){
+    const allowed=[1000,2000,5000,10000];
+    const n=Number(value);
+    return allowed.includes(n)?n:5000;
+  }
+
+  function getRealtimeRefreshMs(){
+    return normalizeRealtimeRefreshMs(cloudDashboardSettings?.refresh_interval_ms);
+  }
+
+  function syncRealtimeRefreshControl(){
+    const el=document.getElementById('realtimeRefreshInterval');
+    if(el)el.value=String(getRealtimeRefreshMs());
+  }
+
+  window.saveGeneralSettings=async function(){
+    const el=document.getElementById('realtimeRefreshInterval');
+    const ms=normalizeRealtimeRefreshMs(el?.value);
+    cloudDashboardSettings={...(cloudDashboardSettings||{}),refresh_interval_ms:ms};
+    try{
+      if(window.saveDashboardCloud)await window.saveDashboardCloud();
+      startRealtimeRefresh();
+      syncRealtimeRefreshControl();
+      setStatus(`Configuración guardada. Pantalla: ${ms/1000} s.`);
+    }catch(error){
+      console.error('Guardar configuración general:',error);
+      setStatus(`No se pudo guardar la configuración: ${error.message}`);
+    }
+  };
+
+  window.__tayuRealDevices=[];
+  window.__tayuOrganizationModules=[];
+  window.__tayuMbIncrementalCursor=window.__tayuMbIncrementalCursor||{};
+
+  function activeLiveModbusDeviceIds(){
+    const ids=new Set();
+
+    Object.values(modbusChartConfigs||{}).forEach(cfg=>{
+      if(cfg?.deviceId && String(cfg.deviceId).startsWith('real-'))ids.add(String(cfg.deviceId));
+    });
+
+    // Si el usuario está trabajando en la sección Modbus, mantenemos también
+    // sincronizada la variable seleccionada aunque todavía no exista un widget.
+    const modbusView=document.getElementById('modbus');
+    if(modbusView?.classList.contains('active')){
+      const selected=document.getElementById('mbChartDevice')?.value;
+      if(selected && String(selected).startsWith('real-'))ids.add(String(selected));
+    }
+
+    return ids;
+  }
+
+  function latestHistoryTimestampForDevice(device){
+    let latest=0;
+    (device?.variables||[]).forEach(v=>{
+      const h=modbusHistories[`${device.id}|${v.id}`]||[];
+      const last=h[h.length-1];
+      const t=last?.t instanceof Date?last.t.getTime():new Date(last?.t||0).getTime();
+      if(Number.isFinite(t))latest=Math.max(latest,t);
+    });
+    return latest;
+  }
+
+  async function syncIncrementalModbusHistory(realDevices){
+    if(!window.__tayuApi)return;
+    const activeIds=activeLiveModbusDeviceIds();
+    if(!activeIds.size)return;
+
+    const jobs=[...activeIds].map(async deviceId=>{
+      const device=modbusDevices.find(x=>x.id===deviceId);
+      if(!device?.variables?.length)return;
+
+      const deviceKey=String(deviceId).slice(5);
+      if(!(realDevices||[]).some(d=>d.device_key===deviceKey))return;
+
+      const known=Math.max(
+        Number(window.__tayuMbIncrementalCursor[deviceKey]||0),
+        latestHistoryTimestampForDevice(device)
+      );
+
+      // 15 s de solape cubren holgadamente el batch normal de 5 s.
+      // Para recuperaciones largas, renderDashboardModbusChart conserva además
+      // su resincronización completa de histórico cada 30 s.
+      const overlapMs=15000;
+      const fromMs=known>0?known-overlapMs:Date.now()-60000;
+      const toMs=Date.now()+5000;
+      const url=`/telemetry/history?device_key=${encodeURIComponent(deviceKey)}&from=${encodeURIComponent(new Date(fromMs).toISOString())}&to=${encodeURIComponent(new Date(toMs).toISOString())}`;
+      const rows=await window.__tayuApi(url);
+
+      let newest=known;
+      (rows||[]).forEach(row=>{
+        const t=new Date(row.time);
+        if(!Number.isNaN(t.getTime()))newest=Math.max(newest,t.getTime());
+      });
+
+      device.variables.forEach(v=>{
+        const key=`${device.id}|${v.id}`;
+        const incoming=(rows||[])
+          .map(row=>({t:new Date(row.time),v:Number(row.payload?.modbus?.[v.name])}))
+          .filter(x=>Number.isFinite(x.v)&&!Number.isNaN(x.t.getTime()));
+        if(incoming.length){
+          modbusHistories[key]=mergeMbHistory(modbusHistories[key]||[],incoming,10080);
+        }
+      });
+
+      if(newest>0)window.__tayuMbIncrementalCursor[deviceKey]=newest;
+    });
+
+    await Promise.all(jobs.map(p=>p.catch(error=>console.warn('Histórico Modbus incremental:',error))));
+  }
+  window.syncIncrementalModbusHistory=syncIncrementalModbusHistory;
+
+  async function refreshLiveTelemetry(silent=true){
+    if(liveRefreshBusy || refreshBusy)return;
+    const realDevices=Array.isArray(window.__tayuRealDevices)?window.__tayuRealDevices:[];
+    if(!realDevices.length)return;
+
+    liveRefreshBusy=true;
+    try{
+      if(!silent)setStatus('Actualizando telemetría…');
+      const realTelemetry=await api('/telemetry/latest');
+      window.__tayuLastTelemetry=Array.isArray(realTelemetry)?realTelemetry:[];
+
+      applyRealData(realDevices,window.__tayuLastTelemetry);
+      telemetryToFrames(window.__tayuLastTelemetry);
+
+      // /telemetry/latest entrega solo el último registro de cada equipo.
+      // Esta consulta incremental trae TODOS los puntos del batch que llegaron
+      // desde la actualización anterior y los fusiona por timestamp.
+      await syncIncrementalModbusHistory(realDevices);
+      refreshDashboardWidgetsInPlace();
+
+      if(!silent)setStatus('Telemetría actualizada.');
+    }finally{
+      liveRefreshBusy=false;
+    }
+  }
+  window.refreshLiveTelemetry=()=>refreshLiveTelemetry(false).catch(error=>{
+    console.error(error);
+    setStatus(`No se pudo actualizar la telemetría: ${error.message}`);
+  });
 
   async function refreshRealData(silent = false) {
     if (refreshBusy) return;
@@ -3748,19 +4030,23 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
         api('/modules'),
         api('/alarms/events')
       ]);
-      window.__tayuLastTelemetry=realTelemetry;
+      window.__tayuRealDevices=Array.isArray(realDevices)?realDevices:[];
+      window.__tayuOrganizationModules=Array.isArray(organizationModules)?organizationModules:[];
+      window.__tayuLastTelemetry=Array.isArray(realTelemetry)?realTelemetry:[];
       platformAlarms=Array.isArray(alarmEvents)?alarmEvents:[];
       window.__tayuAlarmEvents=platformAlarms;
 
-      await Promise.all(realDevices
+      await Promise.all(window.__tayuRealDevices
         .filter(r=>(r.capabilities?.protocols||[]).some(p=>p.type==='modbus_rtu'))
         .map(r=>loadRemoteModbusConfig(r.device_key).catch(()=>null)));
 
-      applyModulePermissions(organizationModules);
+      applyModulePermissions(window.__tayuOrganizationModules);
       renderAlarms();
       updateAlarmBadge();
-      applyRealData(realDevices, realTelemetry);
-      telemetryToFrames(realTelemetry);
+      applyRealData(window.__tayuRealDevices, window.__tayuLastTelemetry);
+      telemetryToFrames(window.__tayuLastTelemetry);
+      await syncIncrementalModbusHistory(window.__tayuRealDevices);
+      refreshDashboardWidgetsInPlace();
 
       if (!silent) setStatus('Conectado a la API: datos reales cargados.');
     } finally {
@@ -3775,14 +4061,28 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
 
   function startRealtimeRefresh() {
     if (window.__tayuRealtimeTimer) clearInterval(window.__tayuRealtimeTimer);
+    const intervalMs=getRealtimeRefreshMs();
+    syncRealtimeRefreshControl();
     window.__tayuRealtimeTimer = setInterval(() => {
       if (document.hidden) return;
-      if (window.__tayuHasUnsavedEditorChanges?.()) return;
-      refreshRealData(true).catch(error => {
-        console.error('Actualización automática:', error);
+      refreshLiveTelemetry(true).catch(error => {
+        console.error('Actualización de telemetría:', error);
       });
-    }, 3000);
+    }, intervalMs);
   }
+  window.startRealtimeRefresh=startRealtimeRefresh;
+
+  // Metadatos, módulos y alarmas no necesitan consultarse cada segundo.
+  // Se mantienen sincronizados en segundo plano cada 30 s.
+  function startMetadataRefresh(){
+    if(window.__tayuMetadataTimer)clearInterval(window.__tayuMetadataTimer);
+    window.__tayuMetadataTimer=setInterval(()=>{
+      if(document.hidden)return;
+      if(window.__tayuHasUnsavedEditorChanges?.())return;
+      refreshRealData(true).catch(error=>console.error('Actualización de metadatos:',error));
+    },30000);
+  }
+  window.startMetadataRefresh=startMetadataRefresh;
 
   setStatus('Iniciando sesión segura…');
   keycloak.init({
@@ -3807,6 +4107,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     startPlatform();
     await refreshRealData();
     startRealtimeRefresh();
+    startMetadataRefresh();
 
     // El Dashboard ya está listo: recién ahora quitamos la puerta visual.
     window.hideAuthBootScreen?.();
@@ -3837,7 +4138,7 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 
 
 <script>
-/* ===== VPS v4.4.2 overrides sobre el frontend visual original ===== */
+/* ===== VPS v4.4.4 overrides sobre el frontend visual original ===== */
 (function(){
   const clone=o=>o&&typeof o==='object'?JSON.parse(JSON.stringify(o)):{};
   const atPath=(obj,path)=>String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
@@ -3892,8 +4193,10 @@ if (typeof window.renderShrimpEquipment !== 'function') {
     el.dataset.size=next;tayuMemoryStore.setItem('tayu_widget_size_'+instanceId,next);saveDashboardCloud().catch(console.error);
   };
   window.resetDashboardWidgets=function(){
+    const refreshInterval=cloudDashboardSettings?.refresh_interval_ms;
     dashboardWidgetIds=[];
-    widgetBindings={};modbusChartConfigs={};cloudDashboardSettings={};
+    widgetBindings={};modbusChartConfigs={};
+    cloudDashboardSettings=refreshInterval?{refresh_interval_ms:refreshInterval}:{};
     tayuMemoryStore.clear();
     saveDashboardCloud().then(()=>renderDashboardWidgets()).catch(console.error);
   };
