@@ -4776,5 +4776,549 @@ if (typeof window.renderShrimpEquipment !== 'function') {
 </script>
 
 
+
+<script>
+/* ===== VPS v4.4.8: gráficas genéricas de señales MQTT/telemetría ===== */
+(function(){
+  const SIGNAL_WIDGET='signalChart';
+  const SIGNAL_SETTINGS_KEY='signal_charts';
+  const SIGNAL_STORE_KEY='tayu_signal_chart_configs';
+  const signalHistoryByDevice={};
+  const signalHistoryLoadedAt={};
+  const signalHistoryWindowMs={};
+  const signalChartHistoryState={};
+  const signalChartSignatures=new Map();
+  let signalChartConfigs={};
+
+  try{
+    signalChartConfigs=JSON.parse(tayuMemoryStore.getItem(SIGNAL_STORE_KEY)||'{}')||{};
+  }catch(_){ signalChartConfigs={}; }
+  window.tayuSignalChartConfigs=signalChartConfigs;
+
+  if(typeof widgetCatalog==='object' && widgetCatalog){
+    widgetCatalog[SIGNAL_WIDGET]={title:'Gráfica de señal',icon:'📈',fixed:false,size:'wide'};
+  }
+
+  const esc=v=>String(v??'').replace(/[&<>\'\"]/g,ch=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
+  }[ch]));
+
+  function signalValueAtPath(obj,path){
+    if(window.tayuValueAtPath)return window.tayuValueAtPath(obj,path);
+    return String(path||'').split('.').reduce((a,k)=>a==null?undefined:a[k],obj);
+  }
+
+  function flattenSignalTelemetry(payload,prefix='',out={}){
+    if(!payload || typeof payload!=='object' || Array.isArray(payload))return out;
+    Object.entries(payload).forEach(([key,value])=>{
+      const path=prefix?`${prefix}.${key}`:key;
+      if(typeof value==='number' && Number.isFinite(value))out[path]=value;
+      else if(typeof value==='boolean')out[path]=value?1:0;
+      else if(value && typeof value==='object' && !Array.isArray(value))flattenSignalTelemetry(value,path,out);
+    });
+    return out;
+  }
+
+  function isUsefulSignalPath(path){
+    const p=String(path||'');
+    if(!p)return false;
+    const leaf=p.split('.').pop()||'';
+    if(leaf.startsWith('_'))return false;
+    return !['fw','batch_id','ts','time','timestamp'].includes(leaf.toLowerCase());
+  }
+
+  function signalVariablesForDevice(deviceKey){
+    const flat=flattenSignalTelemetry(latestPayloadByDevice?.[deviceKey]||{});
+    return Object.keys(flat).filter(isUsefulSignalPath).sort((a,b)=>a.localeCompare(b));
+  }
+
+  function signalMeta(deviceKey,path){
+    const asset=assetInventory.find(a=>a.uuid===deviceKey || a.id===deviceKey);
+    const meta=asset?.configuration?.signals?.[path]||{};
+    return {
+      name:meta.name||path,
+      unit:meta.unit||'',
+      application:meta.application||'generic'
+    };
+  }
+
+  function compatibleSignalDevices(){
+    return assetInventory.filter(a=>{
+      const key=a?.uuid||a?.id;
+      return key && signalVariablesForDevice(key).length>0;
+    });
+  }
+
+  function signalPeriodLabel(period){
+    const n=Number(period||5);
+    if(n===0.5)return '30 s';
+    if(n<60)return `${n} min`;
+    if(n===60)return '1 h';
+    if(n===1440)return '24 h';
+    return `${Math.round(n/60)} h`;
+  }
+
+  function signalPeriodMs(cfg){
+    return Math.max(30000,Number(cfg?.period||5)*60*1000);
+  }
+
+  function latestTelemetryRow(deviceKey){
+    return (window.__tayuLastTelemetry||[]).find(r=>r.device_key===deviceKey)||null;
+  }
+
+  function signalReferenceTime(deviceKey){
+    const asset=assetInventory.find(a=>a.uuid===deviceKey || a.id===deviceKey);
+    if(asset?.status==='Online')return Date.now();
+    const row=latestTelemetryRow(deviceKey);
+    const t=row?.time?new Date(row.time).getTime():NaN;
+    return Number.isFinite(t)?t:Date.now();
+  }
+
+  function mergeSignalRows(current,incoming){
+    const map=new Map();
+    [...(current||[]),...(incoming||[])].forEach(row=>{
+      const time=new Date(row?.time||0);
+      if(Number.isNaN(time.getTime()))return;
+      const sample=row?.payload?._sample_id??row?.payload?.sample_id??'';
+      map.set(`${time.toISOString()}|${sample}`,row);
+    });
+    return [...map.values()].sort((a,b)=>new Date(a.time)-new Date(b.time));
+  }
+
+  async function loadSignalLiveHistory(deviceKey,periodMs,force=false){
+    if(!window.__tayuApi || !deviceKey)return;
+    const now=Date.now();
+    if(!force && now-Number(signalHistoryLoadedAt[deviceKey]||0)<3500 && Number(signalHistoryWindowMs[deviceKey]||0)>=periodMs)return;
+
+    const reference=signalReferenceTime(deviceKey);
+    const overlap=15000;
+    const from=new Date(reference-periodMs-overlap);
+    const to=new Date(reference+5000);
+    const rows=await window.__tayuApi(`/telemetry/history?device_key=${encodeURIComponent(deviceKey)}&from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`);
+    signalHistoryByDevice[deviceKey]=mergeSignalRows(signalHistoryByDevice[deviceKey]||[],Array.isArray(rows)?rows:[]);
+
+    // La caché live conserva como máximo 48 h. El histórico por fechas se guarda aparte.
+    const cutoff=reference-48*60*60*1000;
+    signalHistoryByDevice[deviceKey]=signalHistoryByDevice[deviceKey].filter(r=>new Date(r.time).getTime()>=cutoff);
+    signalHistoryLoadedAt[deviceKey]=now;
+    signalHistoryWindowMs[deviceKey]=Math.max(Number(signalHistoryWindowMs[deviceKey]||0),periodMs);
+  }
+
+  function signalPoints(rows,path){
+    return (rows||[]).map(row=>{
+      let value=signalValueAtPath(row.payload||{},path);
+      if(typeof value==='boolean')value=value?1:0;
+      const n=Number(value),t=new Date(row.time);
+      return {t,v:n};
+    }).filter(x=>Number.isFinite(x.v)&&!Number.isNaN(x.t.getTime()));
+  }
+
+  function displaySample(points,maxPoints){
+    const n=Math.max(20,Math.min(2000,Number(maxPoints||300)));
+    if(typeof sampleDashboardHistory==='function')return sampleDashboardHistory(points,n);
+    if(points.length<=n)return points;
+    const step=Math.ceil(points.length/n);
+    const out=[];
+    for(let i=0;i<points.length;i+=step)out.push(points[i]);
+    if(out[out.length-1]!==points[points.length-1])out.push(points[points.length-1]);
+    return out;
+  }
+
+  function signalHistoryState(instanceId){
+    return signalChartHistoryState[instanceId]||(signalChartHistoryState[instanceId]={mode:'live',from:null,to:null,history:[],loading:false,error:''});
+  }
+
+  window.toggleSignalChartHistoryPanel=function(instanceId){
+    const widget=document.querySelector(`.dashboard-widget[data-widget-id="${CSS.escape(instanceId)}"]`);
+    widget?.querySelector('.chart-history-panel')?.classList.toggle('open');
+  };
+
+  window.querySignalChartHistory=async function(instanceId){
+    const cfg=signalChartConfigs[instanceId];
+    if(!cfg?.deviceKey || !cfg?.path || !window.__tayuApi)return;
+    const widget=document.querySelector(`.dashboard-widget[data-widget-id="${CSS.escape(instanceId)}"]`);
+    const fromValue=widget?.querySelector('[data-history-from]')?.value||'';
+    const toValue=widget?.querySelector('[data-history-to]')?.value||'';
+    const from=new Date(fromValue),to=new Date(toValue);
+    const state=signalHistoryState(instanceId);
+    if(!fromValue||!toValue||Number.isNaN(from.getTime())||Number.isNaN(to.getTime())||to<=from){
+      state.error='Selecciona un rango de fechas válido.';
+      updateSignalHistoryUi(instanceId);
+      return;
+    }
+    state.loading=true;state.error='';updateSignalHistoryUi(instanceId);
+    try{
+      const rows=await window.__tayuApi(`/telemetry/history?device_key=${encodeURIComponent(cfg.deviceKey)}&from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`);
+      state.history=signalPoints(Array.isArray(rows)?rows:[],cfg.path);
+      state.from=from;state.to=to;state.mode='history';state.loading=false;
+      state.error=state.history.length?'':'No hay registros numéricos para esa señal en el intervalo.';
+      signalChartSignatures.delete(instanceId);
+      updateSignalHistoryUi(instanceId);
+      renderDashboardSignalCharts(true);
+    }catch(error){
+      state.loading=false;state.error=`No se pudo consultar el histórico: ${error?.message||error}`;
+      updateSignalHistoryUi(instanceId);
+    }
+  };
+
+  window.returnSignalChartLive=function(instanceId){
+    const state=signalHistoryState(instanceId);
+    state.mode='live';state.from=null;state.to=null;state.history=[];state.loading=false;state.error='';
+    signalChartSignatures.delete(instanceId);
+    updateSignalHistoryUi(instanceId);
+    renderDashboardSignalCharts(true);
+  };
+
+  function updateSignalHistoryUi(instanceId){
+    const widget=document.querySelector(`.dashboard-widget[data-widget-id="${CSS.escape(instanceId)}"]`);
+    if(!widget)return;
+    const state=signalHistoryState(instanceId);
+    const pill=widget.querySelector('.chart-mode-pill');
+    const status=widget.querySelector('.chart-history-status');
+    if(pill){
+      pill.innerHTML=state.mode==='history'?'📅 HISTÓRICO':'<span class="pulse"></span> EN VIVO';
+    }
+    if(status){
+      status.textContent=state.loading?'Consultando histórico…':state.error||(state.mode==='history'
+        ? `${state.history.length} puntos encontrados. La gráfica está pausada en el intervalo consultado.`
+        : 'En vivo: la gráfica se actualiza cuando llega telemetría nueva.');
+    }
+  }
+
+  function signalChartWidgetBody(instanceId){
+    const cfg=signalChartConfigs[instanceId]||{};
+    if(!cfg.deviceKey||!cfg.path)return '<p class="hint">Esta gráfica todavía no está configurada.</p>';
+    const asset=assetInventory.find(a=>a.uuid===cfg.deviceKey || a.id===cfg.deviceKey);
+    const latest=signalValueAtPath(latestPayloadByDevice?.[cfg.deviceKey]||{},cfg.path);
+    const latestText=(typeof latest==='number'&&Number.isFinite(latest))?latest.toLocaleString('es-EC',{maximumFractionDigits:4}):typeof latest==='boolean'?(latest?'1':'0'):'—';
+    return `<div class="chart-history-toolbar">
+      <span class="chart-mode-pill"><span class="pulse"></span> EN VIVO</span>
+      <button class="btn ghost" style="padding:8px 11px" onclick="toggleSignalChartHistoryPanel('${esc(instanceId)}')">📅 Consultar fechas</button>
+    </div>
+    <div class="chart-history-panel">
+      <div><label>Desde</label><input type="datetime-local" data-history-from></div>
+      <div><label>Hasta</label><input type="datetime-local" data-history-to></div>
+      <button class="btn" onclick="querySignalChartHistory('${esc(instanceId)}')">Consultar</button>
+      <button class="btn ghost" onclick="returnSignalChartLive('${esc(instanceId)}')">● En vivo</button>
+      <div class="chart-history-status">En vivo: la gráfica se actualiza cuando llega telemetría nueva.</div>
+    </div>
+    <div class="modbus-chart-box"><canvas class="dashboard-signal-chart"></canvas></div>
+    <div class="device" style="margin-top:10px"><div><b>${esc(cfg.title||cfg.path)}</b><br><small>${esc(asset?.name||cfg.deviceKey)} · ${esc(cfg.path)} · ${esc(signalPeriodLabel(cfg.period))}</small></div><span class="status">${esc(latestText)}${cfg.unit?` ${esc(cfg.unit)}`:''}</span></div>
+    <button class="btn ghost" style="margin-top:10px;width:100%" onclick="configureSignalChart('${esc(instanceId)}','${esc(cfg.deviceKey)}',true)">⚙️ Configurar gráfica</button>`;
+  }
+
+  function chartSignature(instanceId,cfg,points,xMin,xMax,state,theme){
+    return JSON.stringify({
+      instanceId,type:cfg.type||'line',title:cfg.title||cfg.path,unit:cfg.unit||'',min:cfg.min??'',max:cfg.max??'',
+      xMin,xMax,mode:state.mode,theme,
+      points:points.map(x=>[x.t.getTime(),x.v])
+    });
+  }
+
+  function chartTimeTick(value){
+    if(typeof tayuTimeTick==='function')return tayuTimeTick(value);
+    const d=new Date(Number(value));
+    return Number.isNaN(d.getTime())?'':d.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+
+  function axisBound(value){
+    if(typeof tayuAxisBound==='function')return tayuAxisBound(value);
+    if(value===''||value===null||value===undefined)return undefined;
+    const n=Number(value);return Number.isFinite(n)?n:undefined;
+  }
+
+  async function renderDashboardSignalCharts(forceRedraw=false){
+    const canvases=[...document.querySelectorAll('.dashboard-signal-chart')];
+    for(const canvas of canvases){
+      const widget=canvas.closest('.dashboard-widget');
+      const instanceId=widget?.dataset.widgetId;
+      const cfg=signalChartConfigs[instanceId];
+      if(!cfg?.deviceKey||!cfg?.path)continue;
+      const state=signalHistoryState(instanceId);
+      let points=[],xMin,xMax;
+
+      if(state.mode==='history'){
+        points=displaySample(state.history,cfg.points||500);
+        xMin=state.from?.getTime?.();xMax=state.to?.getTime?.();
+      }else{
+        const periodMs=signalPeriodMs(cfg);
+        try{await loadSignalLiveHistory(cfg.deviceKey,periodMs,false);}catch(error){console.warn('Histórico señal live:',error)}
+        const reference=signalReferenceTime(cfg.deviceKey);
+        const raw=signalPoints(signalHistoryByDevice[cfg.deviceKey]||[],cfg.path)
+          .filter(x=>x.t.getTime()>=reference-periodMs && x.t.getTime()<=reference+5000);
+        points=displaySample(raw,cfg.points||300);
+        xMin=reference-periodMs;xMax=reference;
+      }
+
+      const plotData=points.map(x=>({x:x.t.getTime(),y:x.v}));
+      const theme=typeof tayuChartTheme==='function'?tayuChartTheme():{text:'#667085',grid:'rgba(17,24,39,.10)',border:'rgba(17,24,39,.18)'};
+      const signature=chartSignature(instanceId,cfg,points,xMin,xMax,state,theme);
+      updateSignalHistoryUi(instanceId);
+      if(!forceRedraw && canvas._chart && signalChartSignatures.get(instanceId)===signature)continue;
+
+      const datasetLabel=`${cfg.title||cfg.path}${cfg.unit?` (${cfg.unit})`:''}`;
+      if(canvas._chart && canvas._chart.config.type===(cfg.type||'line')){
+        const chart=canvas._chart;
+        chart.data.labels=[];
+        chart.data.datasets[0].label=datasetLabel;
+        chart.data.datasets[0].data=plotData;
+        chart.data.datasets[0].tension=.3;
+        chart.options.parsing=false;
+        chart.options.scales.x.type='linear';chart.options.scales.x.min=xMin;chart.options.scales.x.max=xMax;
+        chart.options.scales.x.ticks={...(chart.options.scales.x.ticks||{}),maxTicksLimit:8,callback:value=>chartTimeTick(value),color:theme.text};
+        chart.options.scales.x.grid={...(chart.options.scales.x.grid||{}),color:theme.grid};
+        chart.options.scales.x.border={...(chart.options.scales.x.border||{}),color:theme.border};
+        chart.options.scales.y.min=axisBound(cfg.min);chart.options.scales.y.max=axisBound(cfg.max);
+        chart.options.scales.y.ticks={...(chart.options.scales.y.ticks||{}),color:theme.text};
+        chart.options.scales.y.grid={...(chart.options.scales.y.grid||{}),color:theme.grid};
+        chart.options.scales.y.border={...(chart.options.scales.y.border||{}),color:theme.border};
+        chart.options.plugins.legend.labels={...(chart.options.plugins.legend.labels||{}),color:theme.text};
+        chart.options.plugins.tooltip.callbacks={title:items=>{const x=items?.[0]?.parsed?.x;return Number.isFinite(x)?new Date(x).toLocaleString('es-EC'):'';}};
+        chart.options.animation=state.mode==='live'&&!forceRedraw?{duration:280,easing:'linear'}:false;
+        if(forceRedraw)chart.resize();
+        chart.update(state.mode==='live'&&!forceRedraw?undefined:'none');
+      }else{
+        if(canvas._chart)canvas._chart.destroy();
+        canvas._chart=new Chart(canvas,{
+          type:cfg.type||'line',
+          data:{labels:[],datasets:[{label:datasetLabel,data:plotData,tension:.3}]},
+          options:{
+            parsing:false,responsive:true,maintainAspectRatio:false,animation:{duration:280,easing:'linear'},responsiveAnimationDuration:0,resizeDelay:120,normalized:true,
+            plugins:{legend:{labels:{color:theme.text}},tooltip:{callbacks:{title:items=>{const x=items?.[0]?.parsed?.x;return Number.isFinite(x)?new Date(x).toLocaleString('es-EC'):'';}}}},
+            scales:{
+              x:{type:'linear',min:xMin,max:xMax,ticks:{maxTicksLimit:8,callback:value=>chartTimeTick(value),color:theme.text},grid:{color:theme.grid},border:{color:theme.border}},
+              y:{min:axisBound(cfg.min),max:axisBound(cfg.max),ticks:{color:theme.text},grid:{color:theme.grid},border:{color:theme.border}}
+            }
+          }
+        });
+      }
+      signalChartSignatures.set(instanceId,signature);
+    }
+  }
+  window.renderDashboardSignalCharts=renderDashboardSignalCharts;
+
+  async function syncSignalChartHistories(force=false){
+    const byDevice=new Map();
+    Object.entries(signalChartConfigs).forEach(([id,cfg])=>{
+      if(signalHistoryState(id).mode!=='live'||!cfg?.deviceKey)return;
+      byDevice.set(cfg.deviceKey,Math.max(byDevice.get(cfg.deviceKey)||0,signalPeriodMs(cfg)));
+    });
+    await Promise.all([...byDevice.entries()].map(([deviceKey,periodMs])=>loadSignalLiveHistory(deviceKey,periodMs,force).catch(error=>console.warn('Sincronización gráfica de señal:',error))));
+  }
+  window.syncSignalChartHistories=syncSignalChartHistories;
+
+  function saveSignalChartConfigs(){
+    tayuMemoryStore.setItem(SIGNAL_STORE_KEY,JSON.stringify(signalChartConfigs));
+    window.tayuSignalChartConfigs=signalChartConfigs;
+    cloudDashboardSettings={...(cloudDashboardSettings||{}),[SIGNAL_SETTINGS_KEY]:signalChartConfigs};
+    if(window.saveDashboardCloud)window.saveDashboardCloud().catch(error=>console.error('Guardar gráfica de señal:',error));
+  }
+
+  function chooseFromList(message,items,defaultIndex=0){
+    const answer=prompt(message+'\n'+items.map((x,i)=>`${i+1}. ${x.label}`).join('\n'),String(defaultIndex+1));
+    if(answer===null)return null;
+    const byText=items.findIndex(x=>x.value===answer);
+    const idx=byText>=0?byText:Math.max(0,Math.min(items.length-1,(Number(answer)||defaultIndex+1)-1));
+    return items[idx]?.value??null;
+  }
+
+  window.configureSignalChart=function(instanceId,deviceKey='',editing=false){
+    let cfg=signalChartConfigs[instanceId]||{};
+    let devicesList=compatibleSignalDevices();
+    if(!devicesList.length){alert('No hay dispositivos con variables numéricas en la telemetría.');return false;}
+
+    if(!deviceKey){
+      const items=devicesList.map(a=>({value:a.uuid||a.id,label:`${a.name} · ${a.uuid||a.id}`}));
+      deviceKey=chooseFromList('Selecciona el dispositivo:',items,Math.max(0,items.findIndex(x=>x.value===cfg.deviceKey)));
+      if(!deviceKey)return false;
+    }
+
+    const vars=signalVariablesForDevice(deviceKey);
+    if(!vars.length){alert('Este dispositivo todavía no tiene variables numéricas en telemetría.');return false;}
+    const variableItems=vars.map(path=>{
+      const meta=signalMeta(deviceKey,path),value=signalValueAtPath(latestPayloadByDevice?.[deviceKey]||{},path);
+      return {value:path,label:`${meta.name}${meta.name!==path?` · ${path}`:''} · actual: ${value}`};
+    });
+    const path=chooseFromList('Selecciona la señal que quieres graficar:',variableItems,Math.max(0,vars.indexOf(cfg.path)));
+    if(!path)return false;
+
+    const meta=signalMeta(deviceKey,path);
+    const title=prompt('Nombre de la gráfica:',editing?(cfg.title||meta.name):meta.name);
+    if(title===null)return false;
+    const unit=prompt('Unidad de la señal (puede quedar vacío):',editing?(cfg.unit??meta.unit):meta.unit);
+    if(unit===null)return false;
+
+    const periods=[
+      {value:'0.5',label:'30 segundos'},{value:'1',label:'1 minuto'},{value:'5',label:'5 minutos'},
+      {value:'15',label:'15 minutos'},{value:'60',label:'1 hora'},{value:'1440',label:'24 horas'}
+    ];
+    const periodValue=chooseFromList('Selecciona la ventana en vivo:',periods,Math.max(0,periods.findIndex(x=>Number(x.value)===Number(cfg.period||5))));
+    if(periodValue===null)return false;
+    const typeAnswer=prompt('Tipo de gráfica: line o bar',cfg.type||'line');
+    if(typeAnswer===null)return false;
+    const type=String(typeAnswer).toLowerCase()==='bar'?'bar':'line';
+    const min=prompt('Mínimo del eje Y (vacío = automático):',cfg.min??'');
+    if(min===null)return false;
+    const max=prompt('Máximo del eje Y (vacío = automático):',cfg.max??'');
+    if(max===null)return false;
+
+    signalChartConfigs[instanceId]={
+      deviceKey,path,title:title||meta.name,unit:unit||'',period:Number(periodValue),type,
+      points:Math.max(50,Math.min(1000,Number(cfg.points||300))),min:min??'',max:max??''
+    };
+    signalChartHistoryState[instanceId]={mode:'live',from:null,to:null,history:[],loading:false,error:''};
+    signalChartSignatures.delete(instanceId);
+    widgetBindings[instanceId]=deviceKey;
+    saveSignalChartConfigs();
+    if(window.saveWidgetBindings)window.saveWidgetBindings();
+    if(window.renderDashboardWidgets)window.renderDashboardWidgets();
+    return true;
+  };
+
+  // Persistencia cloud: conserva las gráficas de señal junto con las Modbus.
+  const previousSaveDashboardCloud=window.saveDashboardCloud;
+  if(previousSaveDashboardCloud){
+    window.saveDashboardCloud=async function(){
+      cloudDashboardSettings={...(cloudDashboardSettings||{}),[SIGNAL_SETTINGS_KEY]:signalChartConfigs};
+      return previousSaveDashboardCloud();
+    };
+  }
+
+  const previousLoadDashboardCloud=window.loadDashboardCloud;
+  if(previousLoadDashboardCloud){
+    window.loadDashboardCloud=async function(){
+      const result=await previousLoadDashboardCloud();
+      const remote=cloudDashboardSettings?.[SIGNAL_SETTINGS_KEY];
+      if(remote&&typeof remote==='object')signalChartConfigs=remote;
+      else{
+        try{signalChartConfigs=JSON.parse(tayuMemoryStore.getItem(SIGNAL_STORE_KEY)||'{}')||{};}catch(_){signalChartConfigs={};}
+      }
+      window.tayuSignalChartConfigs=signalChartConfigs;
+      tayuMemoryStore.setItem(SIGNAL_STORE_KEY,JSON.stringify(signalChartConfigs));
+      return result;
+    };
+  }
+
+  const previousGetCompatible=window.getCompatibleAssetsForWidget;
+  window.getCompatibleAssetsForWidget=function(type){
+    if(type===SIGNAL_WIDGET)return compatibleSignalDevices();
+    return previousGetCompatible?previousGetCompatible(type):[];
+  };
+
+  const previousAddDashboardWidget=window.addDashboardWidget;
+  window.addDashboardWidget=function(type){
+    if(type!==SIGNAL_WIDGET)return previousAddDashboardWidget(type);
+    const compatible=compatibleSignalDevices();
+    if(!compatible.length){alert('No hay dispositivos con señales numéricas disponibles.');return;}
+    const instanceId=newWidgetInstance(SIGNAL_WIDGET);
+    const items=compatible.map(a=>({value:a.uuid||a.id,label:`${a.name} · ${a.uuid||a.id}`}));
+    const deviceKey=chooseFromList('Selecciona el dispositivo:',items,0);
+    if(!deviceKey)return;
+    dashboardWidgetIds.push(instanceId);
+    widgetBindings[instanceId]=deviceKey;
+    if(!window.configureSignalChart(instanceId,deviceKey,false)){
+      dashboardWidgetIds=dashboardWidgetIds.filter(id=>id!==instanceId);delete widgetBindings[instanceId];return;
+    }
+    if(window.renderWidgetLibrary)window.renderWidgetLibrary();
+  };
+
+  const previousRemoveDashboardWidget=window.removeDashboardWidget;
+  window.removeDashboardWidget=function(instanceId){
+    if(signalChartConfigs[instanceId]){
+      delete signalChartConfigs[instanceId];delete signalChartHistoryState[instanceId];signalChartSignatures.delete(instanceId);
+      tayuMemoryStore.setItem(SIGNAL_STORE_KEY,JSON.stringify(signalChartConfigs));
+      cloudDashboardSettings={...(cloudDashboardSettings||{}),[SIGNAL_SETTINGS_KEY]:signalChartConfigs};
+    }
+    return previousRemoveDashboardWidget(instanceId);
+  };
+
+  const previousResetDashboardWidgets=window.resetDashboardWidgets;
+  window.resetDashboardWidgets=function(){
+    signalChartConfigs={};window.tayuSignalChartConfigs=signalChartConfigs;
+    tayuMemoryStore.removeItem(SIGNAL_STORE_KEY);
+    return previousResetDashboardWidgets();
+  };
+
+  const previousWidgetBody=window.widgetBody;
+  window.widgetBody=function(id,instanceId){
+    if(id===SIGNAL_WIDGET)return signalChartWidgetBody(instanceId);
+    return previousWidgetBody(id,instanceId);
+  };
+
+  // Biblioteca: la nueva gráfica aparece solo cuando existe alguna señal numérica real.
+  window.renderWidgetLibrary=function(){
+    const library=document.getElementById('widgetLibrary');if(!library)return;
+    const always=new Set(['summary','map','alarms','sensors','frames']);
+    const visible=Object.entries(widgetCatalog).filter(([type])=>{
+      if(always.has(type))return true;
+      if(type===SIGNAL_WIDGET)return compatibleSignalDevices().length>0;
+      if(type==='tanks')return irrigationTanks.length>0;
+      if(type==='pumps')return irrigationPumps.length>0;
+      if(type==='feeders')return shrimpEquipment.some(x=>x.type==='feeder');
+      if(type==='aerators')return shrimpEquipment.some(x=>x.type==='aerator');
+      if(type==='novaApplications')return assetInventory.some(a=>a.type==='novaEdge');
+      if(type==='modbusValue')return modbusDevices.some(d=>d.variables?.length);
+      if(type==='modbusGroup')return modbusDevices.length>0;
+      if(type==='modbusChart')return modbusDevices.some(d=>d.variables?.length);
+      return window.getCompatibleAssetsForWidget(type).length>0;
+    });
+    library.innerHTML=visible.map(([type,w])=>`<div class="widget-option" onclick="addDashboardWidget('${type}')">
+      <b>${w.icon} ${w.title}</b>
+      <p class="hint">${type===SIGNAL_WIDGET?'Grafica cualquier variable numérica recibida por telemetría.':'Agregar usando datos reales de esta organización.'}</p>
+      <small class="hint">${widgetCount(type)} agregado${widgetCount(type)===1?'':'s'}</small>
+    </div>`).join('')||'<div class="nova-empty">Aún no hay fuentes reales disponibles para widgets.</div>';
+  };
+
+  // Render completo: preserva paneles históricos de Modbus y de señales.
+  window.renderDashboardWidgets=function(){
+    const box=document.getElementById('dashboardWidgets');if(!box)return;
+    const historyUi={};
+    box.querySelectorAll('.dashboard-widget[data-widget-type="modbusChart"],.dashboard-widget[data-widget-type="signalChart"]').forEach(widget=>{
+      const id=widget.dataset.widgetId,panel=widget.querySelector('.chart-history-panel');
+      historyUi[id]={open:Boolean(panel?.classList.contains('open')),from:panel?.querySelector('[data-history-from]')?.value||'',to:panel?.querySelector('[data-history-to]')?.value||''};
+    });
+    box.innerHTML=dashboardWidgetIds.map(instanceId=>widgetHtml(instanceId)).join('');
+    Object.entries(historyUi).forEach(([id,state])=>{
+      const widget=box.querySelector(`.dashboard-widget[data-widget-id="${CSS.escape(id)}"]`),panel=widget?.querySelector('.chart-history-panel');
+      if(!panel)return;panel.classList.toggle('open',state.open);
+      const from=panel.querySelector('[data-history-from]'),to=panel.querySelector('[data-history-to]');if(from)from.value=state.from;if(to)to.value=state.to;
+    });
+    if(window.Sortable)new Sortable(box,{animation:180,handle:'.widget-handle',ghostClass:'drag-ghost',onEnd:()=>{dashboardWidgetIds=[...box.querySelectorAll('.dashboard-widget')].map(x=>x.dataset.widgetId);saveWidgetLayout()}});
+    setTimeout(async()=>{
+      renderDashboardMapWidget();renderDashboardModbusChart();
+      await syncSignalChartHistories(false);await renderDashboardSignalCharts();
+      window.applyTayuChartTheme?.();
+    },150);
+  };
+
+  // Refresco live: no reemplaza el canvas de las gráficas; actualiza datos in-place.
+  window.refreshDashboardWidgetsInPlace=function(){
+    const box=document.getElementById('dashboardWidgets');
+    if(!box||!box.children.length){window.renderDashboardWidgets();return;}
+    box.querySelectorAll('.dashboard-widget').forEach(widget=>{
+      const instanceId=widget.dataset.widgetId,type=widget.dataset.widgetType;
+      if(type==='modbusChart'||type===SIGNAL_WIDGET||type==='map')return;
+      const body=widget.querySelector('.widget-live-body');if(!body)return;
+      const next=window.widgetBody(type,instanceId);if(body.innerHTML!==next)body.innerHTML=next;
+    });
+    renderDashboardMapWidget();renderDashboardModbusChart();
+    syncSignalChartHistories(false).then(()=>renderDashboardSignalCharts()).catch(error=>console.warn('Refresco gráfica de señal:',error));
+  };
+
+  window.forceVisibleDashboardSignalRedraw=function(){
+    const dash=document.getElementById('dashboard');if(!dash?.classList.contains('active'))return;
+    renderDashboardSignalCharts(true);
+  };
+
+  // Al volver a una pestaña visible, resincroniza el histórico de señal.
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden){
+      syncSignalChartHistories(true).then(()=>renderDashboardSignalCharts(true)).catch(()=>{});
+    }
+  });
+})();
+
+</script>
+
 </body>
 </html>
