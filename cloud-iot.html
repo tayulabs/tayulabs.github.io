@@ -1345,7 +1345,7 @@ document.querySelectorAll(".nav button").forEach(btn=>{btn.onclick=()=>{
   const view=document.getElementById(btn.dataset.view);
   if(view)view.classList.add("active");
   pageTitle.textContent=btn.textContent;
-  sidebar.classList.remove("open");if(btn.dataset.view==='dashboard')setTimeout(()=>window.forceVisibleDashboardModbusRedraw?.(),120);if(btn.dataset.view==='ganaderia')setTimeout(()=>{initCattleSatelliteMap();window.cattleSatelliteMap?.invalidateSize()},180);if(btn.dataset.view==='bananeras')setTimeout(()=>{initBananaSatelliteMap();window.bananaSatelliteMap?.invalidateSize()},180);if(btn.dataset.view==='fincas')setTimeout(()=>renderIrrigationSystem(),80);if(btn.dataset.view==='modbus')setTimeout(()=>{renderModbusDevices();initMbPreview();},100);if(btn.dataset.view==='dispositivos')setTimeout(renderAssetInventory,60);
+  sidebar.classList.remove("open");if(btn.dataset.view==='dashboard')setTimeout(async()=>{try{await window.syncDashboardChartHistoriesReliable?.(true)}catch(e){console.warn(e)}window.forceVisibleDashboardModbusRedraw?.()},120);if(btn.dataset.view==='ganaderia')setTimeout(()=>{initCattleSatelliteMap();window.cattleSatelliteMap?.invalidateSize()},180);if(btn.dataset.view==='bananeras')setTimeout(()=>{initBananaSatelliteMap();window.bananaSatelliteMap?.invalidateSize()},180);if(btn.dataset.view==='fincas')setTimeout(()=>renderIrrigationSystem(),80);if(btn.dataset.view==='modbus')setTimeout(()=>{renderModbusDevices();initMbPreview();},100);if(btn.dataset.view==='dispositivos')setTimeout(renderAssetInventory,60);
   setTimeout(()=>{if(window.iotMap)iotMap.invalidateSize()},200)
 }})
 function startPlatform(){
@@ -2623,8 +2623,13 @@ function renderDashboardModbusChart(forceRedraw=false){
        console.warn('Sincronización de histórico live:',e);
      }
 
-     const liveNow=Date.now();
-     h=filterMbHistory(mbHistory(d,v),cfg,liveNow);
+     const storedHistory=mbHistory(d,v);
+     const lastStored=storedHistory[storedHistory.length-1];
+     // v4.4.7: offline conserva visible la última ventana real recibida.
+     const liveNow=d.online!==false
+       ? Date.now()
+       : (lastStored?.t instanceof Date && !Number.isNaN(lastStored.t.getTime())?lastStored.t.getTime():Date.now());
+     h=filterMbHistory(storedHistory,cfg,liveNow);
      labels=h.map(x=>x.t.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
    }
 
@@ -2636,12 +2641,21 @@ function renderDashboardModbusChart(forceRedraw=false){
      __historyFrom:historyState.from?.toISOString?.()||'',
      __historyTo:historyState.to?.toISOString?.()||''
    };
+   const liveReferenceNow=historyState.mode==='history'
+     ? null
+     : (()=>{
+         const stored=mbHistory(d,v);
+         const last=stored[stored.length-1];
+         return d.online!==false
+           ? Date.now()
+           : (last?.t instanceof Date && !Number.isNaN(last.t.getTime())?last.t.getTime():Date.now());
+       })();
    const xMin=historyState.mode==='history'
      ? historyState.from?.getTime?.()
-     : Date.now()-tayuChartWindowMs(cfg);
+     : liveReferenceNow-tayuChartWindowMs(cfg);
    const xMax=historyState.mode==='history'
      ? historyState.to?.getTime?.()
-     : Date.now();
+     : liveReferenceNow;
 
    const plotData=h.map(x=>({x:x.t.getTime(),y:x.v}));
    const signature=tayuChartSignature(
@@ -3691,53 +3705,73 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
 
   function syncRealModbusToDashboard(realDevices, realTelemetry) {
     const latest = latestTelemetryByDevice(realTelemetry);
+    const previousById = new Map((modbusDevices||[]).map(d=>[d.id,d]));
     const real = [];
 
     realDevices
       .filter(d => (d.capabilities?.protocols||[]).some(p=>p.type==='modbus_rtu'))
       .forEach(d => {
+        const deviceId=`real-${d.device_key}`;
+        const previous=previousById.get(deviceId);
         const row = latest.get(d.device_key);
         const payload = row?.payload || {};
         const values = payload.modbus || {};
-        const entries = Object.entries(values);
-        if (!entries.length) return;
-
         const saved = remoteModbusConfigs[d.device_key] || {};
         const params = Array.isArray(saved.params) ? saved.params.filter(p=>p.enabled!==false && p.name) : [];
-        const sourceEntries = params.length
-          ? params.filter(p=>Object.prototype.hasOwnProperty.call(values,p.name)).map(p=>[p.name,values[p.name],p])
-          : Object.entries(values).map(([name,value])=>[name,value,{}]);
 
-        const variables = sourceEntries.map(([name, value, p], index) => {
+        // v4.4.7: el esquema de variables viene de la configuración guardada.
+        // Una desconexión NO elimina el equipo ni rompe las gráficas guardadas.
+        let sourceEntries=[];
+        if(params.length){
+          sourceEntries=params.map(p=>[
+            p.name,
+            Object.prototype.hasOwnProperty.call(values,p.name)?values[p.name]:undefined,
+            p
+          ]);
+        }else if(Object.keys(values).length){
+          sourceEntries=Object.entries(values).map(([name,value])=>[name,value,{}]);
+        }else if(previous?.variables?.length){
+          sourceEntries=previous.variables.map(v=>[v.name,undefined,{
+            reg:v.register,fc:v.fc,type:v.dataType,scale:v.scale,unit:v.unit
+          }]);
+        }
+
+        const variables = sourceEntries.map(([name, liveValue, p], index) => {
+          const id=modbusVariableId(d.device_key,name);
+          const previousVar=previous?.variables?.find(v=>v.id===id);
+          const history=modbusHistories[`${deviceId}|${id}`]||[];
+          const lastHistory=history[history.length-1];
+          let value=liveValue;
+          if(value===undefined || value===null){
+            value=previousVar?.value;
+            if((value===undefined || value===null) && lastHistory)value=lastHistory.v;
+          }
+          const numeric=Number(value);
           return {
-            id: modbusVariableId(d.device_key,name),
+            id,
             name,
-            register: p.reg ?? index,
-            fc: String(p.fc ?? 3).padStart(2, '0'),
-            dataType: p.type || 'U16',
-            scale: Number(p.scale ?? 1),
-            unit: p.unit || inferModbusUnit(name),
-            value: Number.isFinite(Number(value)) ? Number(value) : value,
-            min: 0,
-            max: 100000
+            register: p.reg ?? previousVar?.register ?? index,
+            fc: String(p.fc ?? previousVar?.fc ?? 3).padStart(2, '0'),
+            dataType: p.type || previousVar?.dataType || 'U16',
+            scale: Number(p.scale ?? previousVar?.scale ?? 1),
+            unit: p.unit || previousVar?.unit || inferModbusUnit(name),
+            value: Number.isFinite(numeric) ? numeric : (value??null),
+            min: previousVar?.min ?? 0,
+            max: previousVar?.max ?? 100000
           };
         });
 
         variables.forEach(v=>{
-          const key=`real-${d.device_key}|${v.id}`;
+          const key=`${deviceId}|${v.id}`;
           if(!modbusHistories[key])modbusHistories[key]=[];
           const h=modbusHistories[key];
-          const val=Number(v.value);
+          const hasLive=Object.prototype.hasOwnProperty.call(values,v.name);
+          const val=Number(values[v.name]);
           const pointTime=row?.time?new Date(row.time):null;
-          if(Number.isFinite(val) && pointTime && !Number.isNaN(pointTime.getTime())){
+          if(hasLive && Number.isFinite(val) && pointTime && !Number.isNaN(pointTime.getTime())){
             const last=h[h.length-1];
-            // Un refresh de la web no crea un punto ficticio.
-            // Solo agregamos cuando el servidor entrega una telemetría con timestamp nuevo.
             if(!last || last.t.getTime()!==pointTime.getTime() || last.v!==val){
               h.push({t:pointTime,v:val});
-
-              // Conservamos datos live suficientes para ventanas largas.
-              // "Detalle de la gráfica" limita lo dibujado, no lo almacenado.
               const cutoff=Date.now()-7*24*60*60*1000;
               while(h.length && h[0].t.getTime()<cutoff)h.shift();
             }
@@ -3746,29 +3780,22 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
 
         const age = row?.time ? Date.now() - new Date(row.time).getTime() : Infinity;
         real.push({
-          id: `real-${d.device_key}`,
-          name: saved.equipment_name || d.name,
-          type: saved.equipment_type || 'Equipo Modbus',
+          id: deviceId,
+          name: saved.equipment_name || previous?.name || d.name,
+          type: saved.equipment_type || previous?.type || 'Equipo Modbus',
           protocol: 'RTU',
           host: '',
           port: 0,
-          slave: saved.slave_id ?? 1,
-          baud: saved.baudrate ?? 9600,
+          slave: saved.slave_id ?? previous?.slave ?? 1,
+          baud: saved.baudrate ?? previous?.baud ?? 9600,
           interval: 3,
           online: age < 60000,
           variables
         });
       });
 
-    // Only real Modbus devices are used for the live dashboard.
     modbusDevices = real;
-
-    // v4.3.2: una edición Modbus o una ausencia temporal de telemetría
-    // NUNCA modifica el layout del Dashboard.
-    // Las gráficas solo se eliminan cuando el usuario pulsa quitar.
     refreshMbDevices();
-
-    // Los widgets no se agregan automáticamente. El usuario decide qué mostrar.
   }
 
   function renderModbusLive(realTelemetry) {
@@ -4015,6 +4042,29 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   }
   window.syncIncrementalModbusHistory=syncIncrementalModbusHistory;
 
+  // v4.4.7: respaldo fiable. Usa la misma consulta de histórico que ya funciona
+  // al abrir la configuración de la gráfica. Máximo una vez cada 4 segundos.
+  async function syncDashboardChartHistoriesReliable(force=false){
+    const now=Date.now();
+    if(!force && now-Number(window.__tayuLastReliableChartSyncAt||0)<4000)return;
+    window.__tayuLastReliableChartSyncAt=now;
+
+    const byDevice=new Map();
+    Object.values(modbusChartConfigs||{}).forEach(cfg=>{
+      if(!cfg?.deviceId || !String(cfg.deviceId).startsWith('real-'))return;
+      const period=Math.max(1,Number(cfg.period||5));
+      byDevice.set(cfg.deviceId,Math.max(byDevice.get(cfg.deviceId)||1,period));
+    });
+
+    const jobs=[...byDevice.entries()].map(async([deviceId,minutes])=>{
+      const d=modbusDevices.find(x=>x.id===deviceId);
+      if(!d?.variables?.length)return;
+      await loadMbHistoryFromVps(d,minutes,true);
+    });
+    await Promise.all(jobs.map(p=>p.catch(error=>console.warn('Histórico Dashboard:',error))));
+  }
+  window.syncDashboardChartHistoriesReliable=syncDashboardChartHistoriesReliable;
+
   async function refreshLiveTelemetry(silent=true){
     if(liveRefreshBusy || refreshBusy)return false;
 
@@ -4043,6 +4093,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       // Esta consulta incremental trae TODOS los puntos del batch que llegaron
       // desde la actualización anterior y los fusiona por timestamp.
       await syncIncrementalModbusHistory(realDevices);
+      await syncDashboardChartHistoriesReliable(false);
       refreshDashboardWidgetsInPlace();
       forceVisibleDashboardModbusRedraw();
 
@@ -4086,6 +4137,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       applyRealData(window.__tayuRealDevices, window.__tayuLastTelemetry);
       telemetryToFrames(window.__tayuLastTelemetry);
       await syncIncrementalModbusHistory(window.__tayuRealDevices);
+      await syncDashboardChartHistoriesReliable(true);
       refreshDashboardWidgetsInPlace();
       forceVisibleDashboardModbusRedraw();
 
@@ -4157,6 +4209,12 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     window.__tayuRealtimeTimer=setTimeout(run,0);
   }
   window.startRealtimeRefresh=startRealtimeRefresh;
+
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden){
+      refreshLiveTelemetry(true).then(()=>forceVisibleDashboardModbusRedraw()).catch(console.error);
+    }
+  });
 
   // Metadatos, módulos y alarmas no necesitan consultarse cada segundo.
   // Se mantienen sincronizados en segundo plano cada 30 s.
