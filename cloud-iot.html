@@ -48,7 +48,7 @@ keycloak.init({
   const isSuperAdmin=roles.includes('platform_super_admin');
   status.textContent=isSuperAdmin?'Abriendo administración TAYULABS…':'Abriendo plataforma…';
 
-  const target=isSuperAdmin?'cloud-admin-v2.html':'cloud-client.html';
+  const target=isSuperAdmin?'cloud-admin-v2.html?v=20260817-fase5b':'cloud-client.html';
   window.location.replace(new URL(target,window.location.href).href);
 }).catch(error=>{
   console.error('TAYULABS role router:',error);
