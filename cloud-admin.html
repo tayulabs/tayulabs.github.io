@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TAYULABS Cloud · Administración</title>
+<script>
+document.documentElement.classList.add('auth-pending');
+</script>
+<style>
+:root{--bg:#f6f8f5;--panel:#fff;--panel2:#f4f6f2;--text:#111811;--muted:#6b7469;--border:#e2e8df;--brand:#55c62b;--brand-dark:#3da51b;--danger:#dc2626;--warn:#d97706;--blue:#2563eb;--shadow:0 14px 40px rgba(20,35,18,.08);--radius:20px}
+body.dark{--bg:#090b0a;--panel:#111411;--panel2:#181d18;--text:#f6f7f5;--muted:#a4aaa0;--border:#2b302a;--shadow:0 18px 50px rgba(0,0,0,.35)}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}button,input,select,textarea{font:inherit}.hidden{display:none!important}
+#boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg)}.boot-inner{text-align:center}.boot-inner img{width:145px;max-width:65vw}.spinner{width:30px;height:30px;border:3px solid rgba(85,198,43,.18);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite;margin:24px auto 12px}@keyframes spin{to{transform:rotate(360deg)}}.boot-text{font-size:13px;color:var(--muted);font-weight:800}
+.app{display:none;min-height:100vh}.sidebar{position:fixed;inset:0 auto 0 0;width:260px;background:var(--panel);border-right:1px solid var(--border);padding:20px;z-index:20}.brand{height:58px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}.brand img{width:145px;max-height:54px;object-fit:contain}.logo-white{display:none}body.dark .logo-color{display:none}body.dark .logo-white{display:block}.admin-badge{display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 10px;border-radius:999px;background:rgba(85,198,43,.12);color:var(--brand-dark);font-size:11px;font-weight:900;margin:0 8px 18px}.nav{display:grid;gap:7px}.nav button{border:0;width:100%;text-align:left;padding:12px 14px;border-radius:14px;background:transparent;color:var(--muted);font-weight:850;cursor:pointer}.nav button:hover,.nav button.active{background:rgba(85,198,43,.12);color:var(--text)}.nav .soon{opacity:.55;cursor:default}.sidebar-footer{position:absolute;left:20px;right:20px;bottom:18px;display:grid;gap:8px}.identity{padding:12px;background:var(--panel2);border:1px solid var(--border);border-radius:14px;overflow:hidden}.identity b,.identity span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.identity span{color:var(--muted);font-size:11px;margin-top:3px}
+.main{margin-left:260px;padding:24px;min-width:0}.topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px}.title h1{font-size:28px;margin:0}.title p{margin:6px 0 0;color:var(--muted)}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:0;border-radius:13px;padding:11px 14px;background:var(--brand);color:#fff;font-weight:850;cursor:pointer}.btn:hover{filter:brightness(.97)}.btn.ghost{background:var(--panel);color:var(--text);border:1px solid var(--border)}.btn.danger{background:var(--danger)}.btn.small{padding:8px 10px;font-size:12px}.btn:disabled{opacity:.5;cursor:not-allowed}.mobile-menu{display:none}
+.view{display:none}.view.active{display:block}.grid{display:grid;gap:16px}.kpis{grid-template-columns:repeat(5,minmax(0,1fr))}.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}.kpi span{display:block;color:var(--muted);font-size:12px;font-weight:850}.kpi strong{display:block;font-size:30px;margin:9px 0 3px}.kpi small{color:var(--muted)}.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.section-head h2,.section-head h3{margin:0}.section-head p{margin:5px 0 0;color:var(--muted);font-size:13px}.toolbar{display:grid;grid-template-columns:minmax(240px,1fr) 190px auto;gap:10px;align-items:end;margin-bottom:14px}.field label{display:block;font-size:11px;font-weight:850;color:var(--muted);margin:0 0 6px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:11px 12px;border-radius:12px;outline:none}.field textarea{min-height:90px;resize:vertical}.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:15px}.table{width:100%;border-collapse:collapse;min-width:780px}.table th,.table td{padding:12px 13px;border-bottom:1px solid var(--border);text-align:left;font-size:13px}.table th{background:var(--panel2);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em}.table tr:last-child td{border-bottom:0}.table tbody tr{cursor:pointer}.table tbody tr:hover{background:rgba(85,198,43,.055)}.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:900;background:rgba(85,198,43,.12);color:var(--brand-dark)}.pill.off{background:rgba(220,38,38,.10);color:var(--danger)}.pill.warn{background:rgba(217,119,6,.11);color:var(--warn)}.pill.blue{background:rgba(37,99,235,.10);color:var(--blue)}.dot{width:7px;height:7px;border-radius:50%;background:currentColor}.muted{color:var(--muted)}.empty{padding:28px;text-align:center;color:var(--muted)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:1000;display:none;align-items:flex-start;justify-content:center;padding:30px 18px;overflow:auto}.modal.open{display:flex}.modal-card{width:min(1050px,100%);background:var(--panel);border:1px solid var(--border);border-radius:24px;box-shadow:var(--shadow);padding:20px;max-height:calc(100vh - 60px);overflow:auto}.modal-card.medium{width:min(760px,100%)}.modal-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:16px}.modal-head h2{margin:0}.modal-head p{margin:5px 0 0;color:var(--muted)}.close{border:0;background:var(--panel2);color:var(--text);width:38px;height:38px;border-radius:12px;cursor:pointer;font-size:20px}.tabs{display:flex;gap:7px;overflow:auto;padding-bottom:8px;margin-bottom:14px}.tabs button{border:1px solid var(--border);background:var(--panel2);color:var(--muted);padding:9px 11px;border-radius:11px;white-space:nowrap;font-weight:850;cursor:pointer}.tabs button.active{background:rgba(85,198,43,.12);border-color:rgba(85,198,43,.28);color:var(--text)}.tab{display:none}.tab.active{display:block}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.form-grid .full{grid-column:1/-1}.form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.detail-kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:14px}.detail-kpis .card{box-shadow:none;padding:13px}.list{display:grid;gap:9px}.list-item{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px;border:1px solid var(--border);background:var(--panel2);border-radius:14px}.list-item b{display:block}.list-item small{color:var(--muted)}.module-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.module-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px;border:1px solid var(--border);border-radius:12px;background:var(--panel2)}.module-item input{width:auto}.notice{padding:11px 13px;border:1px solid rgba(37,99,235,.22);background:rgba(37,99,235,.07);color:var(--blue);border-radius:13px;font-size:12px;font-weight:750}.error-box{display:none;padding:11px 13px;border:1px solid rgba(220,38,38,.22);background:rgba(220,38,38,.07);color:var(--danger);border-radius:13px;font-size:12px;font-weight:800;margin:10px 0}.error-box.show{display:block}.loading{opacity:.55;pointer-events:none}
+.access-denied{min-height:100vh;display:none;place-items:center;padding:24px}.denied-card{width:min(520px,100%);text-align:center}.denied-card img{width:150px}.denied-card h1{margin:20px 0 8px}.denied-card p{color:var(--muted);line-height:1.55}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.detail-kpis{grid-template-columns:repeat(2,1fr)}.module-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.sidebar{transform:translateX(-100%);transition:.2s}.sidebar.open{transform:translateX(0)}.main{margin-left:0;padding:14px}.mobile-menu{display:inline-flex}.topbar{align-items:flex-start;flex-direction:column}.kpis,.detail-kpis{grid-template-columns:1fr 1fr}.toolbar,.form-grid,.module-grid{grid-template-columns:1fr}.form-grid .full{grid-column:auto}.modal{padding:12px}.modal-card{max-height:calc(100vh - 24px);padding:14px}.section-head{align-items:flex-start;flex-direction:column}}
+@media(max-width:430px){.kpis,.detail-kpis{grid-template-columns:1fr}.actions{width:100%}.actions .btn{flex:1}.title h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div id="boot"><div class="boot-inner"><img class="logo-color" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"><img class="logo-white" src="imagenes/LOGO-WHITE.jpg" alt="TAYULABS"><div class="spinner"></div><div id="bootText" class="boot-text">Verificando acceso de Super Admin…</div></div></div>
+
+<div id="denied" class="access-denied"><div class="card denied-card"><img class="logo-color" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"><img class="logo-white" src="imagenes/LOGO-WHITE.jpg" alt="TAYULABS"><h1>Acceso administrativo requerido</h1><p>Esta consola está disponible únicamente para el rol global <b>platform_super_admin</b>.</p><button class="btn" onclick="logout()">Cerrar sesión</button></div></div>
+
+<section id="app" class="app">
+<aside id="sidebar" class="sidebar">
+  <div class="brand"><img class="logo-color" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"><img class="logo-white" src="imagenes/LOGO-WHITE.jpg" alt="TAYULABS"></div>
+  <div class="admin-badge">● TAYULABS SUPER ADMIN</div>
+  <nav class="nav">
+    <button class="active" data-view="overview" onclick="goView('overview',this)">▦ Resumen</button>
+    <button data-view="organizations" onclick="goView('organizations',this)">▣ Empresas</button>
+    <button class="soon" disabled>♙ Usuarios · dentro de empresa</button>
+    <button class="soon" disabled>◈ Dispositivos · dentro de empresa</button>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="identity"><b id="identityName">Super Admin</b><span id="identityEmail">—</span></div>
+    <button class="btn ghost" onclick="toggleTheme()">◐ Cambiar tema</button>
+    <button class="btn ghost" onclick="logout()">Salir</button>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <button class="btn ghost mobile-menu" onclick="document.getElementById('sidebar').classList.toggle('open')">☰ Menú</button>
+    <div class="title"><h1 id="pageTitle">Resumen administrativo</h1><p id="pageSubtitle">Vista global de TAYULABS Cloud.</p></div>
+    <div class="actions"><button class="btn ghost" onclick="refreshAll()">↻ Actualizar</button><button class="btn" onclick="openCreateOrganization()">＋ Nueva empresa</button></div>
+  </div>
+
+  <section id="overview" class="view active">
+    <div class="grid kpis">
+      <div class="card kpi"><span>Empresas</span><strong id="kOrganizations">—</strong><small id="kOrganizationsMeta">Cargando…</small></div>
+      <div class="card kpi"><span>Usuarios</span><strong id="kUsers">—</strong><small>Usuarios registrados</small></div>
+      <div class="card kpi"><span>Dispositivos</span><strong id="kDevices">—</strong><small id="kDevicesMeta">—</small></div>
+      <div class="card kpi"><span>Sitios</span><strong id="kSites">—</strong><small>Operaciones registradas</small></div>
+      <div class="card kpi"><span>Suscripciones</span><strong id="kSubscriptions">—</strong><small id="kSubscriptionsMeta">—</small></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="section-head"><div><h2>Empresas recientes</h2><p>Estado administrativo y servicio de las organizaciones.</p></div><button class="btn ghost" onclick="goView('organizations',document.querySelector('[data-view=organizations]'))">Ver todas</button></div>
+      <div id="overviewOrganizations"></div>
+    </div>
+  </section>
+
+  <section id="organizations" class="view">
+    <div class="card">
+      <div class="section-head"><div><h2>Empresas</h2><p>Administración global de organizaciones, sitios, módulos y suscripciones.</p></div><button class="btn" onclick="openCreateOrganization()">＋ Nueva empresa</button></div>
+      <div class="toolbar">
+        <div class="field"><label>Buscar</label><input id="organizationSearch" placeholder="Nombre, slug o contacto" oninput="renderOrganizations()"></div>
+        <div class="field"><label>Estado</label><select id="organizationStatus" onchange="renderOrganizations()"><option value="all">Todos</option><option value="active">Activas</option><option value="disabled">Deshabilitadas</option></select></div>
+        <button class="btn ghost" onclick="loadOrganizations()">↻ Recargar</button>
+      </div>
+      <div id="organizationsHost"></div>
+    </div>
+  </section>
+</main>
+</section>
+
+<div id="organizationModal" class="modal" onclick="if(event.target===this)closeOrganizationModal()"><div class="modal-card">
+  <div class="modal-head"><div><h2 id="orgModalTitle">Empresa</h2><p id="orgModalSubtitle">—</p></div><button class="close" onclick="closeOrganizationModal()">×</button></div>
+  <div class="grid detail-kpis">
+    <div class="card kpi"><span>Usuarios</span><strong id="orgUsersCount">—</strong></div>
+    <div class="card kpi"><span>Sitios</span><strong id="orgSitesCount">—</strong></div>
+    <div class="card kpi"><span>Dispositivos</span><strong id="orgDevicesCount">—</strong></div>
+    <div class="card kpi"><span>Módulos activos</span><strong id="orgModulesCount">—</strong></div>
+  </div>
+  <div class="tabs">
+    <button class="active" onclick="orgTab('general',this)">General</button>
+    <button onclick="orgTab('subscription',this)">Suscripción</button>
+    <button onclick="orgTab('modules',this)">Módulos</button>
+    <button onclick="orgTab('sites',this)">Sitios</button>
+    <button onclick="orgTab('users',this)">Usuarios</button>
+    <button onclick="orgTab('devices',this)">Dispositivos</button>
+  </div>
+  <div id="orgError" class="error-box"></div>
+  <div id="tab-general" class="tab active"></div>
+  <div id="tab-subscription" class="tab"></div>
+  <div id="tab-modules" class="tab"></div>
+  <div id="tab-sites" class="tab"></div>
+  <div id="tab-users" class="tab"></div>
+  <div id="tab-devices" class="tab"></div>
+</div></div>
+
+<div id="createOrgModal" class="modal" onclick="if(event.target===this)closeCreateOrganization()"><div class="modal-card medium">
+  <div class="modal-head"><div><h2>Nueva empresa</h2><p>Crear organización y suscripción base.</p></div><button class="close" onclick="closeCreateOrganization()">×</button></div>
+  <div id="createOrgError" class="error-box"></div>
+  <form id="createOrgForm" onsubmit="createOrganization(event)">
+    <div class="form-grid">
+      <div class="field"><label>Nombre *</label><input name="name" required maxlength="200" placeholder="Ej: Hacienda San José"></div>
+      <div class="field"><label>Slug *</label><input name="slug" required maxlength="100" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="hacienda-san-jose"></div>
+      <div class="field"><label>Contacto</label><input name="contact_name" placeholder="Nombre del responsable"></div>
+      <div class="field"><label>Email de contacto</label><input name="contact_email" type="email" placeholder="contacto@empresa.com"></div>
+      <div class="field"><label>Teléfono</label><input name="contact_phone" placeholder="+593..."></div>
+      <div class="field"><label>Días de gracia</label><input name="grace_days" type="number" min="0" max="365" value="5"></div>
+      <div class="field"><label>Inicio de servicio</label><input name="start_date" type="date"></div>
+      <div class="field"><label>Fin de servicio</label><input name="end_date" type="date"></div>
+      <div class="field full"><label>Notas internas</label><textarea name="internal_notes" placeholder="Notas visibles solo para TAYULABS"></textarea></div>
+    </div>
+    <div class="form-actions"><button type="button" class="btn ghost" onclick="closeCreateOrganization()">Cancelar</button><button class="btn" type="submit">Crear empresa</button></div>
+  </form>
+</div></div>
+
+<script type="module">
+import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
+
+const AUTH_URL='https://auth.tayulabs.com';
+const API_URL='https://api.tayulabs.com';
+const MODULE_CATALOG=[
+  ['dashboard','Dashboard'],['fincas','Fincas'],['camaroneras','Camaroneras'],['bananeras','Bananeras'],['ganaderia','Ganadería'],['alarmas','Alarmas'],['sensores','Sensores'],['dispositivos','Dispositivos'],['tramas','Tramas'],['modbus','Equipos Modbus'],['configuracion','Configuración']
+];
+
+const keycloak=new Keycloak({url:AUTH_URL,realm:'tayu-platform',clientId:'tayu-dashboard'});
+window.__tayuKeycloak=keycloak;
+let organizations=[];
+let dashboard={};
+let currentOrgId=null;
+let currentBundle=null;
+
+function esc(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function isoDate(value){if(!value)return'';return String(value).slice(0,10);}
+function niceDate(value){if(!value)return'—';const d=new Date(String(value).length===10?value+'T00:00:00Z':value);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('es-EC');}
+function showError(id,message){const el=document.getElementById(id);if(!el)return;el.textContent=message||'';el.classList.toggle('show',Boolean(message));}
+async function api(path){await keycloak.updateToken(30);const r=await fetch(API_URL+path,{headers:{Authorization:`Bearer ${keycloak.token}`}});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||`API ${r.status}`);return data;}
+async function post(path,body){await keycloak.updateToken(30);const r=await fetch(API_URL+path,{method:'POST',headers:{Authorization:`Bearer ${keycloak.token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||`API ${r.status}`);return data;}
+function subscriptionState(org){if(org.administrative_status==='disabled')return['Deshabilitada','off'];if(!org.start_date||!org.end_date)return['Sin configurar','warn'];const today=new Date();today.setHours(0,0,0,0);const end=new Date(org.end_date+'T00:00:00');const grace=new Date(end);grace.setDate(grace.getDate()+Number(org.grace_enabled?org.grace_days||0:0));if(today<=end)return['Activa',''];if(today<=grace)return['Gracia','warn'];return['Vencida','off'];}
+function statusPill(status){return status==='active'?'<span class="pill"><i class="dot"></i>Activa</span>':'<span class="pill off"><i class="dot"></i>Deshabilitada</span>';}
+
+window.toggleTheme=function(){document.body.classList.toggle('dark');localStorage.setItem('tayu-admin-theme',document.body.classList.contains('dark')?'dark':'light');};
+window.logout=function(){keycloak.logout({redirectUri:'https://tayulabs.com/cloud-admin.html'});};
+window.goView=function(id,button){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));document.querySelectorAll('.nav button[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===id));document.getElementById('sidebar').classList.remove('open');const map={overview:['Resumen administrativo','Vista global de TAYULABS Cloud.'],organizations:['Empresas','Organizaciones, sitios, módulos y suscripciones.']};document.getElementById('pageTitle').textContent=map[id]?.[0]||'TAYULABS Cloud';document.getElementById('pageSubtitle').textContent=map[id]?.[1]||'';};
+
+async function loadDashboard(){dashboard=await api('/admin/dashboard');document.getElementById('kOrganizations').textContent=dashboard.organizations_total??0;document.getElementById('kOrganizationsMeta').textContent=`${dashboard.organizations_active??0} activas · ${dashboard.organizations_disabled??0} deshabilitadas`;document.getElementById('kUsers').textContent=dashboard.users_total??0;document.getElementById('kDevices').textContent=dashboard.devices_total??0;document.getElementById('kDevicesMeta').textContent=`${dashboard.devices_online??0} online · ${dashboard.devices_offline??0} offline`;document.getElementById('kSites').textContent=dashboard.sites_total??0;document.getElementById('kSubscriptions').textContent=dashboard.subscriptions_configured??0;document.getElementById('kSubscriptionsMeta').textContent=`${dashboard.subscriptions_unconfigured??0} sin configurar`;}
+
+async function loadOrganizations(){organizations=await api('/admin/organizations');renderOrganizations();renderOverviewOrganizations();}
+window.loadOrganizations=loadOrganizations;
+function orgRows(list){if(!list.length)return'<div class="empty">No hay empresas para mostrar.</div>';return`<div class="table-wrap"><table class="table"><thead><tr><th>Empresa</th><th>Estado</th><th>Servicio</th><th>Usuarios</th><th>Sitios</th><th>Dispositivos</th><th>Módulos</th></tr></thead><tbody>${list.map(org=>{const [sub,cls]=subscriptionState(org);return`<tr onclick="openOrganization('${org.id}')"><td><b>${esc(org.name)}</b><br><span class="muted">${esc(org.slug)}</span></td><td>${statusPill(org.administrative_status)}</td><td><span class="pill ${cls}">${esc(sub)}</span><br><span class="muted">${org.end_date?`hasta ${niceDate(org.end_date)}`:'sin fechas'}</span></td><td>${org.users_count??0}</td><td>${org.sites_count??0}</td><td>${org.devices_count??0}</td><td>${org.enabled_modules_count??0}</td></tr>`;}).join('')}</tbody></table></div>`;}
+window.renderOrganizations=function(){const q=(document.getElementById('organizationSearch')?.value||'').toLowerCase().trim();const status=document.getElementById('organizationStatus')?.value||'all';const list=organizations.filter(o=>(status==='all'||o.administrative_status===status)&&(!q||`${o.name} ${o.slug} ${o.contact_name||''} ${o.contact_email||''}`.toLowerCase().includes(q)));document.getElementById('organizationsHost').innerHTML=orgRows(list);};
+function renderOverviewOrganizations(){document.getElementById('overviewOrganizations').innerHTML=orgRows(organizations.slice(0,5));}
+
+window.refreshAll=async function(){const app=document.getElementById('app');app.classList.add('loading');try{await Promise.all([loadDashboard(),loadOrganizations()]);}catch(e){alert(e.message);}finally{app.classList.remove('loading');}};
+
+window.openCreateOrganization=function(){showError('createOrgError','');document.getElementById('createOrgForm').reset();document.querySelector('#createOrgForm [name=grace_days]').value=5;document.getElementById('createOrgModal').classList.add('open');};
+window.closeCreateOrganization=function(){document.getElementById('createOrgModal').classList.remove('open');};
+window.createOrganization=async function(event){event.preventDefault();showError('createOrgError','');const form=new FormData(event.currentTarget);const body=Object.fromEntries(form.entries());body.grace_days=Number(body.grace_days||5);for(const k of ['start_date','end_date','contact_name','contact_email','contact_phone','internal_notes'])if(!body[k])body[k]=null;try{const org=await post('/admin/organizations',body);closeCreateOrganization();await refreshAll();openOrganization(org.id);}catch(e){showError('createOrgError',e.message);}};
+
+window.closeOrganizationModal=function(){document.getElementById('organizationModal').classList.remove('open');currentOrgId=null;currentBundle=null;};
+window.orgTab=function(name,button){document.querySelectorAll('#organizationModal .tab').forEach(x=>x.classList.toggle('active',x.id===`tab-${name}`));document.querySelectorAll('#organizationModal .tabs button').forEach(x=>x.classList.toggle('active',x===button));};
+window.openOrganization=async function(id){currentOrgId=id;showError('orgError','');document.getElementById('organizationModal').classList.add('open');document.getElementById('orgModalTitle').textContent='Cargando…';document.getElementById('orgModalSubtitle').textContent='';document.querySelectorAll('#organizationModal .tab').forEach((x,i)=>x.classList.toggle('active',i===0));document.querySelectorAll('#organizationModal .tabs button').forEach((x,i)=>x.classList.toggle('active',i===0));try{const q=`?organization_id=${encodeURIComponent(id)}`;const [detail,users,sites,devices,modules,subscription]=await Promise.all([api('/admin/organization'+q),api('/admin/organization/users'+q),api('/admin/organization/sites'+q),api('/admin/organization/devices'+q),api('/admin/organization/modules'+q),api('/admin/organization/subscription'+q)]);currentBundle={detail,users,sites,devices,modules,subscription};renderOrganizationBundle();}catch(e){showError('orgError',e.message);}};
+
+function renderOrganizationBundle(){const b=currentBundle;if(!b)return;const o=b.detail;document.getElementById('orgModalTitle').textContent=o.name;document.getElementById('orgModalSubtitle').textContent=o.slug;document.getElementById('orgUsersCount').textContent=o.users_count??b.users.length;document.getElementById('orgSitesCount').textContent=o.sites_count??b.sites.length;document.getElementById('orgDevicesCount').textContent=o.devices_count??b.devices.length;document.getElementById('orgModulesCount').textContent=o.enabled_modules_count??b.modules.filter(x=>x.enabled).length;renderGeneral(o);renderSubscription(b.subscription||{});renderModules(b.modules);renderSites(b.sites);renderUsers(b.users);renderDevices(b.devices);}
+
+function renderGeneral(o){document.getElementById('tab-general').innerHTML=`<form onsubmit="saveGeneral(event)"><div class="form-grid"><div class="field"><label>Nombre</label><input name="name" value="${esc(o.name)}" required></div><div class="field"><label>Slug</label><input name="slug" value="${esc(o.slug)}" required></div><div class="field"><label>Estado administrativo</label><select name="administrative_status"><option value="active" ${o.administrative_status==='active'?'selected':''}>Activa</option><option value="disabled" ${o.administrative_status==='disabled'?'selected':''}>Deshabilitada</option></select></div><div class="field"><label>Contacto</label><input name="contact_name" value="${esc(o.contact_name||'')}"></div><div class="field"><label>Email de contacto</label><input name="contact_email" type="email" value="${esc(o.contact_email||'')}"></div><div class="field"><label>Teléfono</label><input name="contact_phone" value="${esc(o.contact_phone||'')}"></div><div class="field full"><label>Notas internas</label><textarea name="internal_notes">${esc(o.internal_notes||'')}</textarea></div></div><div class="form-actions"><button class="btn" type="submit">Guardar cambios</button></div></form>`;}
+window.saveGeneral=async function(event){event.preventDefault();showError('orgError','');const body=Object.fromEntries(new FormData(event.currentTarget).entries());body.organization_id=currentOrgId;try{await post('/admin/organization',body);await openOrganization(currentOrgId);await refreshAll();}catch(e){showError('orgError',e.message);}};
+
+function renderSubscription(s){document.getElementById('tab-subscription').innerHTML=`<div class="notice">La suspensión administrativa afecta acceso humano; la política de corte automático por vencimiento se implementará en la fase de suscripciones.</div><form onsubmit="saveSubscription(event)" style="margin-top:14px"><div class="form-grid"><div class="field"><label>Inicio de servicio</label><input name="start_date" type="date" value="${isoDate(s.start_date)}"></div><div class="field"><label>Fin de servicio</label><input name="end_date" type="date" value="${isoDate(s.end_date)}"></div><div class="field"><label>Gracia habilitada</label><select name="grace_enabled"><option value="true" ${s.grace_enabled!==false?'selected':''}>Sí</option><option value="false" ${s.grace_enabled===false?'selected':''}>No</option></select></div><div class="field"><label>Días de gracia</label><input name="grace_days" type="number" min="0" max="365" value="${Number(s.grace_days??5)}"></div></div><div class="form-actions"><button class="btn" type="submit">Guardar suscripción</button></div></form>`;}
+window.saveSubscription=async function(event){event.preventDefault();showError('orgError','');const raw=Object.fromEntries(new FormData(event.currentTarget).entries());const body={organization_id:currentOrgId,start_date:raw.start_date||null,end_date:raw.end_date||null,grace_enabled:raw.grace_enabled==='true',grace_days:Number(raw.grace_days)};try{await post('/admin/organization/subscription',body);await openOrganization(currentOrgId);await refreshAll();}catch(e){showError('orgError',e.message);}};
+
+function renderModules(rows){const map=new Map(rows.map(x=>[x.module,Boolean(x.enabled)]));const extras=rows.filter(x=>!MODULE_CATALOG.some(m=>m[0]===x.module)).map(x=>[x.module,x.module]);const list=[...MODULE_CATALOG,...extras];document.getElementById('tab-modules').innerHTML=`<form onsubmit="saveModules(event)"><div class="module-grid">${list.map(([key,label])=>`<label class="module-item"><span><b>${esc(label)}</b><br><small class="muted">${esc(key)}</small></span><input type="checkbox" name="module" value="${esc(key)}" ${map.get(key)?'checked':''}></label>`).join('')}</div><div class="form-actions"><button class="btn" type="submit">Guardar módulos</button></div></form>`;}
+window.saveModules=async function(event){event.preventDefault();showError('orgError','');const checked=new Set(new FormData(event.currentTarget).getAll('module'));const keys=[...new Set([...MODULE_CATALOG.map(x=>x[0]),...(currentBundle.modules||[]).map(x=>x.module)])];const body={organization_id:currentOrgId,modules:keys.map(module=>({module,enabled:checked.has(module)}))};try{await post('/admin/organization/modules',body);await openOrganization(currentOrgId);await refreshAll();}catch(e){showError('orgError',e.message);}};
+
+function renderSites(rows){document.getElementById('tab-sites').innerHTML=`<div class="section-head"><div><h3>Sitios / operaciones</h3><p>Fincas, camaroneras, plantas u otras unidades físicas.</p></div></div><form onsubmit="createSite(event)"><div class="form-grid"><div class="field"><label>Nombre *</label><input name="name" required placeholder="Finca San José"></div><div class="field"><label>Slug *</label><input name="slug" required placeholder="finca-san-jose"></div><div class="field"><label>Tipo</label><input name="site_type" value="finca"></div><div class="field"><label>Dirección</label><input name="address"></div></div><div class="form-actions"><button class="btn" type="submit">＋ Crear sitio</button></div></form><div class="list" style="margin-top:16px">${rows.length?rows.map(s=>`<div class="list-item"><div><b>${esc(s.name)}</b><small>${esc(s.site_type)} · ${esc(s.slug)} · ${s.devices_count??0} dispositivos</small></div><span class="pill ${s.administrative_status==='active'?'':'off'}">${esc(s.administrative_status)}</span></div>`).join(''):'<div class="empty">Aún no hay sitios registrados.</div>'}</div>`;}
+window.createSite=async function(event){event.preventDefault();showError('orgError','');const body=Object.fromEntries(new FormData(event.currentTarget).entries());body.organization_id=currentOrgId;try{await post('/admin/organization/sites',body);await openOrganization(currentOrgId);await refreshAll();}catch(e){showError('orgError',e.message);}};
+
+function renderUsers(rows){document.getElementById('tab-users').innerHTML=rows.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acceso</th></tr></thead><tbody>${rows.map(u=>`<tr style="cursor:default"><td><b>${esc(u.display_name)}</b><br><span class="muted">${esc(u.email)}</span></td><td>${esc(u.role)}</td><td><span class="pill ${u.administrative_status==='active'?'':'off'}">${esc(u.administrative_status)}</span></td><td>${u.site_access_mode==='all_sites'?'Todos los sitios':`${u.sites_restricted_count} sitios`}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Esta empresa todavía no tiene usuarios.</div>';}
+function renderDevices(rows){document.getElementById('tab-devices').innerHTML=rows.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Dispositivo</th><th>Tipo</th><th>Sitio</th><th>Estado</th><th>Administrativo</th></tr></thead><tbody>${rows.map(d=>`<tr style="cursor:default"><td><b>${esc(d.name)}</b><br><span class="muted">${esc(d.device_key)}</span></td><td>${esc(d.device_type)}</td><td>${esc(d.site_name||'Sin asignar')}</td><td><span class="pill ${d.status==='online'?'':'off'}">${esc(d.status)}</span></td><td>${esc(d.administrative_status)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Esta empresa todavía no tiene dispositivos.</div>';}
+
+keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}).then(async authenticated=>{
+  if(!authenticated)return;
+  const roles=keycloak.tokenParsed?.realm_access?.roles||[];
+  const identity=keycloak.tokenParsed?.preferred_username||keycloak.tokenParsed?.email||'Super Admin';
+  document.getElementById('identityName').textContent='Super Admin';document.getElementById('identityEmail').textContent=identity;
+  if(!roles.includes('platform_super_admin')){document.getElementById('boot').style.display='none';document.getElementById('denied').style.display='grid';return;}
+  try{await api('/admin/me');if(localStorage.getItem('tayu-admin-theme')==='dark')document.body.classList.add('dark');await Promise.all([loadDashboard(),loadOrganizations()]);document.getElementById('boot').style.display='none';document.getElementById('app').style.display='block';document.documentElement.classList.remove('auth-pending');}catch(e){document.getElementById('bootText').textContent=`No se pudo cargar la consola: ${e.message}`;document.querySelector('#boot .spinner').style.display='none';}
+}).catch(e=>{document.getElementById('bootText').textContent='No se pudo iniciar la sesión segura.';document.querySelector('#boot .spinner').style.display='none';console.error(e);});
+</script>
+</body>
+</html>
