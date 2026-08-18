@@ -29,31 +29,37 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   const roles=keycloak.tokenParsed?.realm_access?.roles||[];
   if(roles.includes('platform_super_admin')){
     status.textContent='Abriendo administración TAYULABS…';
-    window.location.replace('https://tayulabs.com/cloud-admin-v2.html?v=20260817-fase6-authfix4');
+    window.location.replace('https://tayulabs.com/cloud-admin-v2.html?v=20260817-fase6-authfix5');
     return;
   }
 
   status.textContent='Preparando plataforma…';
-  const response=await fetch('cloud-client-app.html?v=20260817-fase6-authfix4',{cache:'no-store'});
+  const response=await fetch('cloud-client-app.html?v=20260817-fase6-authfix5',{cache:'no-store'});
   if(!response.ok)throw new Error(`No se pudo cargar la plataforma (${response.status})`);
   let html=await response.text();
 
-  // Los scripts ES module escritos con document.write no se ejecutan de forma
-  // consistente entre navegadores. Convertimos únicamente el módulo Keycloak
-  // de la aplicación en un script clásico que usa import() dinámico.
   const modulePattern=/<script\s+type=["']module["']>\s*import\s+Keycloak\s+from\s+["']([^"']+)["'];\s*([\s\S]*?)<\/script>/i;
   const match=html.match(modulePattern);
   if(!match)throw new Error('No se encontró el módulo de autenticación de la plataforma');
 
+  let appCode=match[2];
+
+  const keycloakCreation=/const\s+keycloak\s*=\s*new\s+Keycloak\(\{[\s\S]*?clientId:\s*['"]tayu-dashboard['"][\s\S]*?\}\);/;
+  if(!keycloakCreation.test(appCode))throw new Error('No se encontró la creación Keycloak del cliente');
+  appCode=appCode.replace(keycloakCreation,"const keycloak = window.__tayuEntryKeycloak;");
+
+  const secondInit=/keycloak\.init\(\{\s*onLoad:\s*['"]login-required['"],\s*pkceMethod:\s*['"]S256['"],\s*checkLoginIframe:\s*false\s*\}\)\.then\(async authenticated => \{/;
+  if(!secondInit.test(appCode))throw new Error('No se encontró el segundo inicio Keycloak');
+  appCode=appCode.replace(secondInit,"Promise.resolve(Boolean(keycloak && keycloak.authenticated)).then(async authenticated => {");
+
+  appCode=appCode.replace(
+    "return keycloak.logout({ redirectUri: window.location.href });",
+    "return keycloak.logout({ redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=20260817-fase6-authfix5' });"
+  );
+
   const openScript='<scr'+'ipt>';
   const closeScript='</scr'+'ipt>';
-  const replacement=openScript+
-    '(async()=>{const {default:Keycloak}=await import('+JSON.stringify(match[1])+');\n'+
-    match[2]+
-    '\n})().catch(error=>{console.error("TAYULABS app auth:",error);window.showAuthBootError?.("No se pudo iniciar la sesión segura. Recarga la página para intentar nuevamente.");});'+
-    closeScript;
-
-  html=html.replace(modulePattern,replacement);
+  html=html.replace(modulePattern,openScript+appCode+closeScript);
 
   document.open();
   document.write(html);
