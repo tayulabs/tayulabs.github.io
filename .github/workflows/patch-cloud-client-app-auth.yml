@@ -1,0 +1,76 @@
+name: Patch cloud client app auth
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-cloud-client-app-auth.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch cloud-client-app auth flow
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('cloud-client-app.html')
+          s = p.read_text(encoding='utf-8')
+
+          old_logout = "return keycloak.logout({ redirectUri: window.location.href });"
+          new_logout = "return keycloak.logout({ redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=20260817-fase6-authfix3' });"
+
+          if old_logout in s:
+              s = s.replace(old_logout, new_logout, 1)
+          elif new_logout not in s:
+              raise SystemExit('Logout pattern not found; aborting safely')
+
+          old_guard = """  }).then(async authenticated => {
+    if (!authenticated) return;
+
+    const appRoot=document.getElementById('app');"""
+
+          new_guard = """  }).then(async authenticated => {
+    if (!authenticated) return;
+
+    // cloud-client-app nunca debe operar con una sesión Super Admin.
+    const realmRoles = keycloak.tokenParsed?.realm_access?.roles || [];
+    if (realmRoles.includes('platform_super_admin')) {
+      window.location.replace('https://tayulabs.com/cloud-admin-v2.html?v=20260817-fase6-authfix3');
+      return;
+    }
+
+    const appRoot=document.getElementById('app');"""
+
+          if old_guard in s:
+              s = s.replace(old_guard, new_guard, 1)
+          elif "realmRoles.includes('platform_super_admin')" not in s:
+              raise SystemExit('Keycloak init pattern not found; aborting safely')
+
+          p.write_text(s, encoding='utf-8')
+          print('cloud-client-app auth patch OK')
+          PY
+
+      - name: Verify patch
+        run: |
+          grep -F "redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=20260817-fase6-authfix3'" cloud-client-app.html
+          grep -F "realmRoles.includes('platform_super_admin')" cloud-client-app.html
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet -- cloud-client-app.html; then
+            echo 'No changes required'
+            exit 0
+          fi
+          git config user.name 'tayulabs-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add cloud-client-app.html
+          git commit -m 'Fix client app logout and Super Admin guard'
+          git push
