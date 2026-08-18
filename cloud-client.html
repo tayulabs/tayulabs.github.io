@@ -23,22 +23,16 @@ window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
 const spinner=document.getElementById('spinner');
 
-keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}).then(async authenticated=>{
+keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}).then(authenticated=>{
   if(!authenticated)return;
   const roles=keycloak.tokenParsed?.realm_access?.roles||[];
   if(roles.includes('platform_super_admin')){
     status.textContent='Abriendo administración TAYULABS…';
-    window.location.replace('https://tayulabs.com/cloud-admin-v2.html?v=20260817-fase6-authfix2');
+    window.location.replace('https://tayulabs.com/cloud-admin-v2.html?v=20260817-fase6-authfix3');
     return;
   }
-
   status.textContent='Abriendo plataforma…';
-  const response=await fetch('cloud-client-app.html?v=20260817-fase6-authfix2',{cache:'no-store'});
-  if(!response.ok)throw new Error(`No se pudo cargar la plataforma (${response.status})`);
-  const html=await response.text();
-  document.open();
-  document.write(html);
-  document.close();
+  window.location.replace('https://tayulabs.com/cloud-client-app.html?v=20260817-fase6-authfix3');
 }).catch(error=>{
   console.error('TAYULABS client entry:',error);
   spinner.style.display='none';
