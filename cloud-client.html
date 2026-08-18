@@ -23,16 +23,41 @@ window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
 const spinner=document.getElementById('spinner');
 
-keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}).then(authenticated=>{
+keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}).then(async authenticated=>{
   if(!authenticated)return;
+
   const roles=keycloak.tokenParsed?.realm_access?.roles||[];
   if(roles.includes('platform_super_admin')){
     status.textContent='Abriendo administración TAYULABS…';
-    window.location.replace('https://tayulabs.com/cloud-admin-v2.html?v=20260817-fase6-authfix3');
+    window.location.replace('https://tayulabs.com/cloud-admin-v2.html?v=20260817-fase6-authfix4');
     return;
   }
-  status.textContent='Abriendo plataforma…';
-  window.location.replace('https://tayulabs.com/cloud-client-app.html?v=20260817-fase6-authfix3');
+
+  status.textContent='Preparando plataforma…';
+  const response=await fetch('cloud-client-app.html?v=20260817-fase6-authfix4',{cache:'no-store'});
+  if(!response.ok)throw new Error(`No se pudo cargar la plataforma (${response.status})`);
+  let html=await response.text();
+
+  // Los scripts ES module escritos con document.write no se ejecutan de forma
+  // consistente entre navegadores. Convertimos únicamente el módulo Keycloak
+  // de la aplicación en un script clásico que usa import() dinámico.
+  const modulePattern=/<script\s+type=["']module["']>\s*import\s+Keycloak\s+from\s+["']([^"']+)["'];\s*([\s\S]*?)<\/script>/i;
+  const match=html.match(modulePattern);
+  if(!match)throw new Error('No se encontró el módulo de autenticación de la plataforma');
+
+  const openScript='<scr'+'ipt>';
+  const closeScript='</scr'+'ipt>';
+  const replacement=openScript+
+    '(async()=>{const {default:Keycloak}=await import('+JSON.stringify(match[1])+');\n'+
+    match[2]+
+    '\n})().catch(error=>{console.error("TAYULABS app auth:",error);window.showAuthBootError?.("No se pudo iniciar la sesión segura. Recarga la página para intentar nuevamente.");});'+
+    closeScript;
+
+  html=html.replace(modulePattern,replacement);
+
+  document.open();
+  document.write(html);
+  document.close();
 }).catch(error=>{
   console.error('TAYULABS client entry:',error);
   spinner.style.display='none';
