@@ -18,6 +18,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
+const VERSION='20260818-clientstage2';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -29,12 +30,22 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   const roles=keycloak.tokenParsed?.realm_access?.roles||[];
   if(roles.includes('platform_super_admin')){
     status.textContent='Abriendo administración TAYULABS…';
-    window.location.replace('https://tayulabs.com/cloud-admin-v2.html?v=20260818-rollback1');
+    window.location.replace(`https://tayulabs.com/cloud-admin-v2.html?v=${VERSION}`);
     return;
   }
 
-  status.textContent='Preparando plataforma…';
-  const response=await fetch('cloud-client-app.html?v=20260818-rollback1',{cache:'no-store'});
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('boot')!=='2'){
+    status.textContent='Preparando plataforma…';
+    const next=new URL(window.location.href);
+    next.searchParams.set('v',VERSION);
+    next.searchParams.set('boot','2');
+    window.location.replace(next.href);
+    return;
+  }
+
+  status.textContent='Cargando plataforma…';
+  const response=await fetch(`cloud-client-app.html?v=${VERSION}`,{cache:'no-store'});
   if(!response.ok)throw new Error(`No se pudo cargar la plataforma (${response.status})`);
   let html=await response.text();
 
@@ -54,7 +65,7 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
 
   appCode=appCode.replace(
     "return keycloak.logout({ redirectUri: window.location.href });",
-    "return keycloak.logout({ redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=20260818-rollback1' });"
+    `return keycloak.logout({ redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=${VERSION}' });`
   );
 
   const openScript='<scr'+'ipt>';
