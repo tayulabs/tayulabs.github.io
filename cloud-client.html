@@ -7,34 +7,21 @@
 <title>TAYULABS Cloud</title>
 <style>
 :root{--bg:#fff;--text:#667085;--brand:#55c62b}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif;background:var(--bg);overflow:hidden}
-.boot{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:radial-gradient(circle at 8% 5%,rgba(91,193,47,.12),rgba(91,193,47,.035) 24%,transparent 42%),#fff}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif;background:var(--bg)}
+.boot{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(circle at 8% 5%,rgba(91,193,47,.12),rgba(91,193,47,.035) 24%,transparent 42%),#fff}
 .inner{display:flex;flex-direction:column;align-items:center;gap:18px;padding:24px;text-align:center}
 .logo{width:130px;max-height:68px;object-fit:contain}.spinner{width:27px;height:27px;border:3px solid rgba(91,193,47,.18);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite}.text{color:var(--text);font-size:12px;font-weight:800;line-height:1.45}.error{color:#b42318}@keyframes spin{to{transform:rotate(360deg)}}
-#appFrame{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff;display:none}
 </style>
 </head>
 <body>
-<div id="boot" class="boot"><div class="inner"><img class="logo" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"><div id="spinner" class="spinner"></div><div id="status" class="text">Verificando acceso seguro…</div></div></div>
-<iframe id="appFrame" title="TAYULABS IoT Platform"></iframe>
+<div class="boot"><div class="inner"><img class="logo" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"><div id="spinner" class="spinner"></div><div id="status" class="text">Verificando acceso seguro…</div></div></div>
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260818-clientbootfix1';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
-
-const boot=document.getElementById('boot');
 const status=document.getElementById('status');
 const spinner=document.getElementById('spinner');
-const frame=document.getElementById('appFrame');
-
-function fail(error){
-  console.error('TAYULABS client entry:',error);
-  spinner.style.display='none';
-  status.textContent='No se pudo iniciar la plataforma. Recarga la página para intentar nuevamente.';
-  status.classList.add('error');
-}
 
 keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}).then(async authenticated=>{
   if(!authenticated)return;
@@ -42,13 +29,12 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   const roles=keycloak.tokenParsed?.realm_access?.roles||[];
   if(roles.includes('platform_super_admin')){
     status.textContent='Abriendo administración TAYULABS…';
-    window.location.replace(`https://tayulabs.com/cloud-admin-v2.html?v=${VERSION}`);
+    window.location.replace('https://tayulabs.com/cloud-admin-v2.html?v=20260818-rollback1');
     return;
   }
 
   status.textContent='Preparando plataforma…';
-
-  const response=await fetch(`cloud-client-app.html?v=${VERSION}`,{cache:'no-store'});
+  const response=await fetch('cloud-client-app.html?v=20260818-rollback1',{cache:'no-store'});
   if(!response.ok)throw new Error(`No se pudo cargar la plataforma (${response.status})`);
   let html=await response.text();
 
@@ -60,7 +46,7 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
 
   const keycloakCreation=/const\s+keycloak\s*=\s*new\s+Keycloak\(\{[\s\S]*?clientId:\s*['"]tayu-dashboard['"][\s\S]*?\}\);/;
   if(!keycloakCreation.test(appCode))throw new Error('No se encontró la creación Keycloak del cliente');
-  appCode=appCode.replace(keycloakCreation,"const keycloak = window.parent.__tayuEntryKeycloak;");
+  appCode=appCode.replace(keycloakCreation,"const keycloak = window.__tayuEntryKeycloak;");
 
   const secondInit=/keycloak\.init\(\{\s*onLoad:\s*['"]login-required['"],\s*pkceMethod:\s*['"]S256['"],\s*checkLoginIframe:\s*false\s*\}\)\.then\(async authenticated => \{/;
   if(!secondInit.test(appCode))throw new Error('No se encontró el segundo inicio Keycloak');
@@ -68,25 +54,22 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
 
   appCode=appCode.replace(
     "return keycloak.logout({ redirectUri: window.location.href });",
-    `return keycloak.logout({ redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=${VERSION}' });`
+    "return keycloak.logout({ redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=20260818-rollback1' });"
   );
 
   const openScript='<scr'+'ipt>';
   const closeScript='</scr'+'ipt>';
   html=html.replace(modulePattern,openScript+appCode+closeScript);
 
-  const timeout=setTimeout(()=>{
-    if(frame.style.display!=='block')fail(new Error('Tiempo de carga agotado'));
-  },20000);
-
-  frame.addEventListener('load',()=>{
-    clearTimeout(timeout);
-    frame.style.display='block';
-    boot.style.display='none';
-  },{once:true});
-
-  frame.srcdoc=html;
-}).catch(fail);
+  document.open();
+  document.write(html);
+  document.close();
+}).catch(error=>{
+  console.error('TAYULABS client entry:',error);
+  spinner.style.display='none';
+  status.textContent='No se pudo iniciar la sesión segura. Recarga la página para intentar nuevamente.';
+  status.classList.add('error');
+});
 </script>
 </body>
 </html>
