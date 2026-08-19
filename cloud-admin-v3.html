@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>TAYULABS Cloud · Super Admin</title>
+<style>
+:root{--bg:#f5f7f4;--text:#697268;--brand:#55c62b}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif;background:var(--bg)}
+.boot{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg)}
+.inner{text-align:center;padding:24px}.logo{width:145px;max-height:60px;object-fit:contain}.spinner{width:30px;height:30px;border:3px solid rgba(85,198,43,.18);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite;margin:24px auto 12px}.text{color:var(--text);font-size:12px;font-weight:800}@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="boot"><div class="inner"><img class="logo" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"><div class="spinner"></div><div id="status" class="text">Cargando administración…</div></div></div>
+<script>
+(async()=>{
+  const VERSION='20260819-users1';
+  try{
+    const response=await fetch(`cloud-admin-v2.html?v=${VERSION}`,{cache:'no-store'});
+    if(!response.ok)throw new Error(`No se pudo cargar la consola (${response.status})`);
+    let html=await response.text();
+    const addon=`<script src="cloud-admin-users.js?v=${VERSION}"><\/script>`;
+    if(!html.includes('</body>'))throw new Error('La consola administrativa no contiene </body>');
+    html=html.replace('</body>',`${addon}\n</body>`);
+    document.open();
+    document.write(html);
+    document.close();
+  }catch(error){
+    console.error('TAYULABS admin loader:',error);
+    const status=document.getElementById('status');
+    if(status)status.textContent=`No se pudo cargar la administración: ${error.message}`;
+    const spinner=document.querySelector('.spinner');
+    if(spinner)spinner.style.display='none';
+  }
+})();
+</script>
+</body>
+</html>
