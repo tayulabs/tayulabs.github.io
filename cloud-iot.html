@@ -29,6 +29,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
+const VERSION='20260818-clientbootfix1';
 const keycloak=new Keycloak({
   url:'https://auth.tayulabs.com',
   realm:'tayu-platform',
@@ -47,7 +48,7 @@ async function openLogin(){
   retryButton.style.display='none';
 
   return keycloak.login({
-    redirectUri:'https://tayulabs.com/cloud-iot.html?v=20260818-loginflow1',
+    redirectUri:`https://tayulabs.com/cloud-iot.html?v=${VERSION}`,
     prompt:'login'
   });
 }
@@ -78,7 +79,10 @@ keycloak.init({
   const isSuperAdmin=roles.includes('platform_super_admin');
   status.textContent=isSuperAdmin?'Abriendo administración TAYULABS…':'Abriendo plataforma…';
 
-  const target=isSuperAdmin?'cloud-admin-v2.html?v=20260818-loginflow1':'cloud-client.html?v=20260818-loginflow1';
+  const target=isSuperAdmin
+    ? `cloud-admin-v2.html?v=${VERSION}`
+    : `cloud-client.html?v=${VERSION}`;
+
   window.location.replace(new URL(target,window.location.href).href);
 }).catch(showError);
 </script>
