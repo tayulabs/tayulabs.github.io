@@ -18,7 +18,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260818-clientstage2';
+const VERSION='20260819-satellitefix1';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -49,6 +49,20 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   if(!response.ok)throw new Error(`No se pudo cargar la plataforma (${response.status})`);
   let html=await response.text();
 
+  const openScript='<scr'+'ipt>';
+  const closeScript='</scr'+'ipt>';
+  const satelliteCompat=openScript+`
+function addSatelliteLayer(map){
+  if(!map || !window.L)return null;
+  return L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {maxZoom:19,attribution:'Imágenes © Esri'}
+  ).addTo(map);
+}
+window.addSatelliteLayer=addSatelliteLayer;
+`+closeScript;
+  html=html.replace('</head>',satelliteCompat+'</head>');
+
   const modulePattern=/<script\s+type=["']module["']>\s*import\s+Keycloak\s+from\s+["']([^"']+)["'];\s*([\s\S]*?)<\/script>/i;
   const match=html.match(modulePattern);
   if(!match)throw new Error('No se encontró el módulo de autenticación de la plataforma');
@@ -68,8 +82,6 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
     `return keycloak.logout({ redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=${VERSION}' });`
   );
 
-  const openScript='<scr'+'ipt>';
-  const closeScript='</scr'+'ipt>';
   html=html.replace(modulePattern,openScript+appCode+closeScript);
 
   document.open();
