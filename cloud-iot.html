@@ -6,13 +6,15 @@
 <meta name="robots" content="noindex,nofollow">
 <title>TAYULABS Cloud</title>
 <style>
-:root{--bg:#fff;--text:#667085;--brand:#55c62b}
+:root{--bg:#fff;--text:#667085;--heading:#101510;--brand:#55c62b;--border:#e1e7df;--panel:#fff;--shadow:0 18px 50px rgba(20,35,18,.10)}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif;background:var(--bg)}
 .boot{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(circle at 8% 5%,rgba(91,193,47,.12),rgba(91,193,47,.035) 24%,transparent 42%),#fff}
-.inner{display:flex;flex-direction:column;align-items:center;gap:18px;padding:24px;text-align:center}
-.logo{width:130px;max-height:68px;object-fit:contain}
+.inner{width:min(430px,calc(100% - 36px));display:flex;flex-direction:column;align-items:center;gap:18px;padding:30px 26px;text-align:center;background:var(--panel);border:1px solid var(--border);border-radius:28px;box-shadow:var(--shadow)}
+.logo{width:145px;max-height:72px;object-fit:contain}
 .spinner{width:27px;height:27px;border:3px solid rgba(91,193,47,.18);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite}
-.text{color:var(--text);font-size:12px;font-weight:800;line-height:1.45}.error{color:#b42318}
+.text{color:var(--text);font-size:13px;font-weight:800;line-height:1.5}.title{margin:2px 0 0;color:var(--heading);font-size:25px;font-weight:900}.error{color:#b42318}
+.btn{display:none;width:100%;border:0;border-radius:14px;padding:13px 16px;background:var(--brand);color:#fff;font:inherit;font-weight:900;cursor:pointer}.btn:hover{filter:brightness(.97)}
+.small{display:none;color:var(--text);font-size:11px;line-height:1.45}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
@@ -21,7 +23,10 @@
   <div class="inner">
     <img class="logo" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS">
     <div id="spinner" class="spinner" aria-hidden="true"></div>
+    <div id="title" class="title" style="display:none">Sesión cerrada</div>
     <div id="status" class="text" role="status" aria-live="polite">Verificando acceso seguro…</div>
+    <button id="loginButton" class="btn" type="button">Iniciar sesión</button>
+    <div id="hint" class="small">Puedes ingresar con esta u otra cuenta de TAYULABS Cloud.</div>
   </div>
 </div>
 <script type="module">
@@ -36,25 +41,56 @@ window.__tayuKeycloak=keycloak;
 
 const status=document.getElementById('status');
 const spinner=document.getElementById('spinner');
+const title=document.getElementById('title');
+const loginButton=document.getElementById('loginButton');
+const hint=document.getElementById('hint');
+
+function showLoggedOut(){
+  spinner.style.display='none';
+  title.style.display='block';
+  status.textContent='Has cerrado tu sesión correctamente.';
+  loginButton.style.display='block';
+  hint.style.display='block';
+}
+
+loginButton.addEventListener('click',()=>{
+  loginButton.disabled=true;
+  status.textContent='Abriendo inicio de sesión seguro…';
+  keycloak.login({
+    redirectUri:'https://tayulabs.com/cloud-iot.html?v=20260818-logoutfix2',
+    prompt:'login'
+  }).catch(error=>{
+    console.error('TAYULABS login:',error);
+    loginButton.disabled=false;
+    status.textContent='No se pudo abrir el inicio de sesión. Intenta nuevamente.';
+    status.classList.add('error');
+  });
+});
 
 keycloak.init({
-  onLoad:'login-required',
+  onLoad:'check-sso',
   pkceMethod:'S256',
   checkLoginIframe:false
 }).then(authenticated=>{
-  if(!authenticated)return;
+  if(!authenticated){
+    showLoggedOut();
+    return;
+  }
 
   const roles=keycloak.tokenParsed?.realm_access?.roles||[];
   const isSuperAdmin=roles.includes('platform_super_admin');
   status.textContent=isSuperAdmin?'Abriendo administración TAYULABS…':'Abriendo plataforma…';
 
-  const target=isSuperAdmin?'cloud-admin-v2.html?v=20260817-fase6-authfix5':'cloud-client.html?v=20260817-fase6-authfix5';
+  const target=isSuperAdmin?'cloud-admin-v2.html?v=20260818-logoutfix2':'cloud-client.html?v=20260818-logoutfix2';
   window.location.replace(new URL(target,window.location.href).href);
 }).catch(error=>{
   console.error('TAYULABS role router:',error);
   spinner.style.display='none';
-  status.textContent='No se pudo iniciar la sesión segura. Recarga la página para intentar nuevamente.';
+  title.style.display='none';
+  status.textContent='No se pudo verificar la sesión segura. Recarga la página para intentar nuevamente.';
   status.classList.add('error');
+  loginButton.style.display='block';
+  hint.style.display='block';
 });
 </script>
 </body>
