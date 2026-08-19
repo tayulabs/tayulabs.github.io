@@ -29,7 +29,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260818-rollback1';
+const VERSION='20260818-clientstage2';
 const keycloak=new Keycloak({
   url:'https://auth.tayulabs.com',
   realm:'tayu-platform',
@@ -81,7 +81,7 @@ keycloak.init({
 
   const target=isSuperAdmin
     ? `cloud-admin-v2.html?v=${VERSION}`
-    : `cloud-client.html?v=${VERSION}`;
+    : `cloud-client.html?v=${VERSION}&boot=1`;
 
   window.location.replace(new URL(target,window.location.href).href);
 }).catch(showError);
