@@ -30,7 +30,7 @@
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
 const VERSION='20260819-satellitefix1';
-const ADMIN_VERSION='20260819-users1';
+const ADMIN_VERSION='20260820-devices1';
 const keycloak=new Keycloak({
   url:'https://auth.tayulabs.com',
   realm:'tayu-platform',
@@ -81,7 +81,7 @@ keycloak.init({
   status.textContent=isSuperAdmin?'Abriendo administración TAYULABS…':'Abriendo plataforma…';
 
   const target=isSuperAdmin
-    ? `cloud-admin-v3.html?v=${ADMIN_VERSION}`
+    ? `cloud-admin-v4.html?v=${ADMIN_VERSION}`
     : `cloud-client.html?v=${VERSION}&boot=1`;
 
   window.location.replace(new URL(target,window.location.href).href);
