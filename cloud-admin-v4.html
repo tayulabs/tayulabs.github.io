@@ -16,12 +16,13 @@
 <div class="boot"><div class="inner"><img class="logo" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"><div class="spinner"></div><div id="status" class="text">Cargando administración…</div></div></div>
 <script>
 (async()=>{
-  const VERSION='20260821-humanaccess1';
+  const VERSION='20260822-stability1';
   try{
     const response=await fetch(`cloud-admin-v2.html?v=${VERSION}`,{cache:'no-store'});
     if(!response.ok)throw new Error(`No se pudo cargar la consola (${response.status})`);
     let html=await response.text();
     const addons=[
+      `<script src="cloud-admin-stability.js?v=${VERSION}"><\/script>`,
       `<script src="cloud-admin-users.js?v=${VERSION}"><\/script>`,
       `<script src="cloud-admin-devices.js?v=${VERSION}"><\/script>`,
       `<script src="cloud-admin-subscriptions.js?v=${VERSION}"><\/script>`,
