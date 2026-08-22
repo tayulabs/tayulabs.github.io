@@ -3,10 +3,33 @@
 
   const API_ORIGIN = 'https://api.tayulabs.com';
   const API_TIMEOUT_MS = 15000;
+  const TOKEN_TIMEOUT_MS = 10000;
+  const OPEN_TIMEOUT_MS = 22000;
 
   let modalBusy = false;
   let openingOrganization = false;
+  let tokenRefreshInFlight = null;
   let installed = false;
+  let openAttempt = 0;
+
+  const diagnostics = {
+    version: '20260822-stability2',
+    lastOpenStartedAt: null,
+    lastOpenFinishedAt: null,
+    lastOpenOrganizationId: null,
+    lastError: null,
+  };
+  window.__tayuAdminStability = diagnostics;
+
+  function timeoutPromise(ms, message) {
+    return new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    });
+  }
+
+  function withTimeout(promise, ms, message) {
+    return Promise.race([promise, timeoutPromise(ms, message)]);
+  }
 
   function injectStyles() {
     if (document.getElementById('tayuAdminStabilityStyles')) return;
@@ -62,12 +85,52 @@
     };
   }
 
+  function installKeycloakGuard() {
+    const kc = window.__tayuKeycloak;
+    if (!kc || typeof kc.updateToken !== 'function') return false;
+    if (kc.updateToken.__tayuStabilityWrapped) return true;
+
+    const originalUpdateToken = kc.updateToken.bind(kc);
+
+    const wrappedUpdateToken = function (minValidity = 5) {
+      if (tokenRefreshInFlight) return tokenRefreshInFlight;
+
+      tokenRefreshInFlight = withTimeout(
+        Promise.resolve().then(() => originalUpdateToken(minValidity)),
+        TOKEN_TIMEOUT_MS,
+        'La renovación de la sesión tardó demasiado. Intenta nuevamente.'
+      ).finally(() => {
+        tokenRefreshInFlight = null;
+      });
+
+      return tokenRefreshInFlight;
+    };
+
+    wrappedUpdateToken.__tayuStabilityWrapped = true;
+    kc.updateToken = wrappedUpdateToken;
+    return true;
+  }
+
   function setModalBusy(value, mode = 'save') {
     modalBusy = Boolean(value);
     const modal = document.getElementById('organizationModal');
     if (!modal) return;
     modal.classList.toggle('tayu-admin-busy', modalBusy && mode === 'save');
     modal.classList.toggle('tayu-admin-opening', modalBusy && mode === 'open');
+  }
+
+  function showLoadFailure(message) {
+    const title = document.getElementById('orgModalTitle');
+    const errorBox = document.getElementById('orgError');
+
+    if (title?.textContent?.trim() === 'Cargando…') {
+      title.textContent = 'No se pudo cargar la empresa';
+    }
+
+    if (errorBox) {
+      errorBox.textContent = message || 'La carga no terminó correctamente. Cierra esta ventana e intenta nuevamente.';
+      errorBox.classList.add('show');
+    }
   }
 
   function wrapAsyncAction(name) {
@@ -78,7 +141,19 @@
       if (modalBusy || openingOrganization) return;
       setModalBusy(true, 'save');
       try {
-        return await original.apply(this, args);
+        return await withTimeout(
+          Promise.resolve(original.apply(this, args)),
+          OPEN_TIMEOUT_MS,
+          'La operación administrativa tardó demasiado. Intenta nuevamente.'
+        );
+      } catch (error) {
+        diagnostics.lastError = error?.message || String(error);
+        const errorBox = document.getElementById('orgError');
+        if (errorBox) {
+          errorBox.textContent = diagnostics.lastError;
+          errorBox.classList.add('show');
+        }
+        console.error('TAYULABS admin action:', name, error);
       } finally {
         setModalBusy(false, 'save');
       }
@@ -95,23 +170,40 @@
 
     const wrapped = async function (id) {
       if (openingOrganization || modalBusy) return;
+
+      const attempt = ++openAttempt;
       openingOrganization = true;
       setModalBusy(true, 'open');
+      diagnostics.lastOpenStartedAt = new Date().toISOString();
+      diagnostics.lastOpenFinishedAt = null;
+      diagnostics.lastOpenOrganizationId = id;
+      diagnostics.lastError = null;
 
       try {
-        await original.call(this, id);
+        await withTimeout(
+          Promise.resolve(original.call(this, id)),
+          OPEN_TIMEOUT_MS,
+          'La empresa tardó demasiado en cargar. Cierra esta ventana e intenta nuevamente.'
+        );
+      } catch (error) {
+        diagnostics.lastError = error?.message || String(error);
+        showLoadFailure(diagnostics.lastError);
+        console.error('TAYULABS open organization:', error);
       } finally {
-        const title = document.getElementById('orgModalTitle');
-        const errorBox = document.getElementById('orgError');
-        if (title?.textContent?.trim() === 'Cargando…') {
-          title.textContent = 'No se pudo cargar la empresa';
-          if (errorBox && !errorBox.classList.contains('show')) {
-            errorBox.textContent = 'La carga no terminó correctamente. Cierra esta ventana e intenta nuevamente.';
-            errorBox.classList.add('show');
+        if (attempt === openAttempt) {
+          const title = document.getElementById('orgModalTitle');
+          const errorBox = document.getElementById('orgError');
+          if (title?.textContent?.trim() === 'Cargando…') {
+            title.textContent = 'No se pudo cargar la empresa';
+            if (errorBox && !errorBox.classList.contains('show')) {
+              errorBox.textContent = 'La carga no terminó correctamente. Cierra esta ventana e intenta nuevamente.';
+              errorBox.classList.add('show');
+            }
           }
+          diagnostics.lastOpenFinishedAt = new Date().toISOString();
+          openingOrganization = false;
+          setModalBusy(false, 'open');
         }
-        openingOrganization = false;
-        setModalBusy(false, 'open');
       }
     };
 
@@ -140,6 +232,8 @@
 
     const wrapped = function (...args) {
       if (modalBusy || openingOrganization) return;
+      openAttempt += 1;
+      diagnostics.lastOpenOrganizationId = null;
       return original.apply(this, args);
     };
 
@@ -150,6 +244,7 @@
 
   function installWrappers() {
     injectStyles();
+    installKeycloakGuard();
 
     const results = [
       wrapOpenOrganization(),
@@ -173,7 +268,8 @@
     const timer = setInterval(() => {
       attempts += 1;
       installWrappers();
-      if (attempts >= 80 || (
+      if (attempts >= 120 || (
+        window.__tayuKeycloak?.updateToken?.__tayuStabilityWrapped &&
         typeof window.openOrganization === 'function' &&
         window.openOrganization.__tayuStabilityWrapped &&
         typeof window.saveGeneral === 'function' &&
