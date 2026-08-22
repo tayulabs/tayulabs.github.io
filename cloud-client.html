@@ -18,7 +18,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260819-satellitefix1';
+const VERSION='20260822-access1';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -83,6 +83,9 @@ window.addSatelliteLayer=addSatelliteLayer;
   );
 
   html=html.replace(modulePattern,openScript+appCode+closeScript);
+
+  const accessScript='<scr'+'ipt src="cloud-client-access.js?v='+VERSION+'"></scr'+'ipt>';
+  html=html.replace('</body>',accessScript+'</body>');
 
   document.open();
   document.write(html);
