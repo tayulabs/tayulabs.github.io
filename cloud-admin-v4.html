@@ -16,7 +16,7 @@
 <div class="boot"><div class="inner"><img class="logo" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"><div class="spinner"></div><div id="status" class="text">Cargando administración…</div></div></div>
 <script>
 (async()=>{
-  const VERSION='20260822-stability1';
+  const VERSION='20260822-stability2';
   try{
     const response=await fetch(`cloud-admin-v2.html?v=${VERSION}`,{cache:'no-store'});
     if(!response.ok)throw new Error(`No se pudo cargar la consola (${response.status})`);
