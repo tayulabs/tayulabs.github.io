@@ -18,7 +18,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260822-access1';
+const VERSION='20260824-gps-generic1';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -30,7 +30,7 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   const roles=keycloak.tokenParsed?.realm_access?.roles||[];
   if(roles.includes('platform_super_admin')){
     status.textContent='Abriendo administración TAYULABS…';
-    window.location.replace(`https://tayulabs.com/cloud-admin-v2.html?v=${VERSION}`);
+    window.location.replace(`https://tayulabs.com/cloud-admin-v4.html?v=${VERSION}`);
     return;
   }
 
@@ -84,8 +84,10 @@ window.addSatelliteLayer=addSatelliteLayer;
 
   html=html.replace(modulePattern,openScript+appCode+closeScript);
 
-  const accessScript='<scr'+'ipt src="cloud-client-access.js?v='+VERSION+'"></scr'+'ipt>';
-  html=html.replace('</body>',accessScript+'</body>');
+  const addons=
+    '<scr'+'ipt src="cloud-client-access.js?v='+VERSION+'"></scr'+'ipt>\n'+
+    '<scr'+'ipt src="cloud-client-gps-generic.js?v='+VERSION+'"></scr'+'ipt>';
+  html=html.replace('</body>',addons+'</body>');
 
   document.open();
   document.write(html);
