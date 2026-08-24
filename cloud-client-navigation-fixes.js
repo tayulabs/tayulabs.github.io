@@ -13,7 +13,7 @@
       .sidebar{
         display:flex;
         flex-direction:column;
-        overflow:hidden;
+        overflow:visible;
       }
       .sidebar .brand{
         flex:0 0 auto;
@@ -46,15 +46,15 @@
     const fleet = document.getElementById('gpsGenericNavButton');
     if (!nav || !fleet) return false;
 
-    // El usuario pidió que, desde Ganadería hacia abajo, el orden sea:
-    // Ganadería → Flotas → Sensores → Dispositivos → Tramas → Equipos Modbus → Configuración.
-    // Alarmas se conserva y se mueve antes de Ganadería.
+    // Orden solicitado:
+    // Dashboard → Alarmas → Fincas → Camaroneras → Bananeras → Ganadería →
+    // Flotas → Sensores → Dispositivos → Tramas → Equipos Modbus → Configuración.
     const order = [
       navButton('dashboard'),
+      navButton('alarmas'),
       navButton('fincas'),
       navButton('camaroneras'),
       navButton('bananeras'),
-      navButton('alarmas'),
       navButton('ganaderia'),
       fleet,
       navButton('sensores'),
@@ -110,44 +110,69 @@
     });
   }
 
+  function currentFleetGpsPosition() {
+    const text = document.querySelector('#gpsCurrentLocation b')?.textContent || '';
+    const match = text.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+    if (!match) return null;
+    const lat = Number(match[1]);
+    const lng = Number(match[2]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  }
+
+  function samePoint(a, b, tolerance = 0.00002) {
+    return Boolean(
+      a && b &&
+      Math.abs(Number(a.lat) - Number(b.lat)) <= tolerance &&
+      Math.abs(Number(a.lng) - Number(b.lng)) <= tolerance
+    );
+  }
+
   function patchLeafletFleetMap() {
     if (!window.L?.Map?.prototype) return false;
     const proto = window.L.Map.prototype;
-    if (proto.__tayuFleetNavigationPatched) return true;
+    if (proto.__tayuFleetNavigationPatchedV2) return true;
 
     const originalSetView = proto.setView;
     proto.setView = function(center, zoom, options) {
       const isFleetMap = this.getContainer?.()?.id === 'gpsGenericMap';
+
       if (isFleetMap && fleetMapExploring) {
-        return this;
+        let requested = null;
+        try {
+          requested = window.L.latLng(center);
+        } catch (_) {}
+
+        const gps = currentFleetGpsPosition();
+        const noExplicitOptions = options === undefined || options === null;
+        const isAutomaticGpsCenter = noExplicitOptions && Number(zoom) === 16 && samePoint(requested, gps);
+        const ecuadorCenter = { lat: -1.8312, lng: -78.1834 };
+        const isAutomaticFallback = noExplicitOptions && Number(zoom) === 6 && samePoint(requested, ecuadorCenter, 0.0002);
+
+        // Solo bloqueamos el recentrado automático del módulo GPS.
+        // Los controles +/-, rueda del mouse, pinch y zoom del usuario siguen funcionando.
+        if (isAutomaticGpsCenter || isAutomaticFallback) {
+          return this;
+        }
       }
+
       return originalSetView.call(this, center, zoom, options);
     };
 
-    const originalFitBounds = proto.fitBounds;
-    proto.fitBounds = function(bounds, options) {
-      const isFleetMap = this.getContainer?.()?.id === 'gpsGenericMap';
-      if (isFleetMap && fleetMapExploring) {
-        return this;
-      }
-      return originalFitBounds.call(this, bounds, options);
-    };
-
-    proto.__tayuFleetNavigationPatched = true;
+    proto.__tayuFleetNavigationPatchedV2 = true;
     return true;
   }
 
   function markFleetMapExploringAfterInteraction(event) {
     if (!event.target?.closest?.('#gpsGenericMap')) return;
-    // Se marca después del evento para no bloquear el propio zoom/pan de Leaflet.
     setTimeout(() => {
       fleetMapExploring = true;
     }, 0);
   }
 
   function installInteractionGuards() {
-    if (document.documentElement.dataset.tayuFleetInteractionGuards === '1') return;
-    document.documentElement.dataset.tayuFleetInteractionGuards = '1';
+    if (document.documentElement.dataset.tayuFleetInteractionGuardsV2 === '1') return;
+    document.documentElement.dataset.tayuFleetInteractionGuardsV2 = '1';
 
     document.addEventListener('click', event => {
       const nav = event.target?.closest?.('.nav button');
@@ -163,7 +188,6 @@
       }
 
       if (event.target?.closest?.('#gpsCurrentOnlyButton, #gpsHistoryButton')) {
-        // Estas acciones sí deben volver a centrar/ajustar el mapa.
         fleetMapExploring = false;
       }
     }, true);
@@ -189,10 +213,9 @@
       attempts += 1;
       const navReady = reorderNavigation();
       const leafletReady = patchLeafletFleetMap();
-      if (navReady && leafletReady || attempts >= 120) clearInterval(timer);
+      if ((navReady && leafletReady) || attempts >= 120) clearInterval(timer);
     }, 100);
 
-    // Si el script entra cuando Flotas ya está abierta, mantenemos esa vista.
     fleetPinned = Boolean(document.getElementById('gps-generic-view')?.classList.contains('active'));
   }
 
