@@ -16,7 +16,7 @@
 <div class="boot"><div class="inner"><img class="logo" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"><div class="spinner"></div><div id="status" class="text">Cargando administración…</div></div></div>
 <script>
 (async()=>{
-  const VERSION='20260824-device-profiles1';
+  const VERSION='20260824-gps-generic1';
   try{
     const response=await fetch(`cloud-admin-v2.html?v=${VERSION}`,{cache:'no-store'});
     if(!response.ok)throw new Error(`No se pudo cargar la consola (${response.status})`);
@@ -27,6 +27,7 @@
       `<script src="cloud-admin-devices.js?v=${VERSION}"><\/script>`,
       `<script src="cloud-admin-device-credentials-download.js?v=${VERSION}"><\/script>`,
       `<script src="cloud-admin-profiles.js?v=${VERSION}"><\/script>`,
+      `<script src="cloud-admin-gps-generic.js?v=${VERSION}"><\/script>`,
       `<script src="cloud-admin-subscription-controls.js?v=${VERSION}"><\/script>`
     ].join('\n');
     if(!html.includes('</body>'))throw new Error('La consola administrativa no contiene </body>');
