@@ -1,0 +1,89 @@
+/* TAYULABS Cloud · Bananeras layout v1.2
+   Evita overflow horizontal global y da más espacio a tablas operativas.
+*/
+
+/* Ningún hijo del módulo debe forzar el ancho de toda la página. */
+#bananeras,
+#bananeras .banana-shell,
+#bananeras .banana-panel,
+#bananeras .banana-grid-two,
+#bananeras .banana-grid-three,
+#bananeras .banana-section-card,
+#bananeras .banana-table-wrap{
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+
+/* Producción y Personal son vistas operativas: priorizamos lectura y acciones. */
+#bananeras [data-banana-panel="production"] .banana-grid-two,
+#bananeras [data-banana-panel="people"] .banana-grid-two{
+  grid-template-columns:minmax(0,1fr);
+  gap:16px;
+}
+
+/* La página no crece horizontalmente; si una tabla excepcionalmente no cabe,
+   el desplazamiento queda contenido dentro de su propia tarjeta. */
+#bananeras .banana-table-wrap{
+  width:100%;
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+}
+
+/* En las vistas de gestión hay ancho suficiente para evitar el scroll normalmente. */
+#bananeras [data-banana-panel="production"] .banana-table,
+#bananeras [data-banana-panel="people"] .banana-table{
+  min-width:0;
+  width:100%;
+}
+
+#bananeras [data-banana-panel="production"] .banana-table th,
+#bananeras [data-banana-panel="production"] .banana-table td,
+#bananeras [data-banana-panel="people"] .banana-table th,
+#bananeras [data-banana-panel="people"] .banana-table td{
+  white-space:normal;
+  vertical-align:middle;
+}
+
+/* Códigos y estados siguen compactos y fáciles de escanear. */
+#bananeras [data-banana-panel="production"] .banana-table td:first-child,
+#bananeras [data-banana-panel="people"] .banana-table td:first-child,
+#bananeras .banana-status{
+  white-space:nowrap;
+}
+
+/* Acciones compactas en una sola fila cuando hay espacio. */
+#bananeras .banana-row-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  min-width:0;
+}
+
+#bananeras .banana-mini{
+  padding:6px 9px;
+  line-height:1.15;
+  white-space:nowrap;
+}
+
+/* El encabezado de cada tarjeta tampoco debe ensanchar la vista. */
+#bananeras .banana-head > *{
+  min-width:0;
+}
+
+/* Tablets: mantenemos tarjetas a ancho completo y hacemos las acciones algo menores. */
+@media(max-width:1100px){
+  #bananeras .banana-mini{
+    padding:5px 7px;
+    font-size:10.5px;
+  }
+}
+
+/* En móvil permitimos scroll solo dentro de la tabla, no en la aplicación completa. */
+@media(max-width:700px){
+  #bananeras [data-banana-panel="production"] .banana-table,
+  #bananeras [data-banana-panel="people"] .banana-table{
+    min-width:680px;
+  }
+}
