@@ -1,4 +1,4 @@
-/* TAYULABS Cloud · Bananeras loader v1.2 */
+/* TAYULABS Cloud · Bananeras loader v1.3 */
 (function(){
   'use strict';
 
@@ -25,6 +25,7 @@
       loadCss('cloud-client-bananas-layout.css?v=1.2');
       await loadScript('cloud-client-bananas.js?v=1.0');
       await loadScript('cloud-client-bananas-actions.js?v=1.1');
+      await loadScript('cloud-client-bananas-ops.js?v=1.3');
     }catch(error){
       console.error('Bananeras loader:',error);
     }
