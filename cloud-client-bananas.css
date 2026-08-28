@@ -1,0 +1,57 @@
+/* TAYULABS Cloud · Bananeras v1.0 */
+#bananeras .banana-shell{display:grid;gap:16px}
+#bananeras .banana-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+#bananeras .banana-head h3{margin:0;font-size:24px}
+#bananeras .banana-head p{margin:6px 0 0;color:var(--muted)}
+#bananeras .banana-actions{display:flex;gap:9px;flex-wrap:wrap}
+#bananeras .banana-tabs{display:flex;gap:8px;overflow:auto;padding:4px 0 8px;scrollbar-width:thin}
+#bananeras .banana-tab{border:1px solid var(--border);background:var(--panel);color:var(--muted);padding:10px 13px;border-radius:14px;font-weight:850;cursor:pointer;white-space:nowrap}
+#bananeras .banana-tab.active{background:rgba(85,198,43,.12);border-color:rgba(85,198,43,.38);color:var(--text)}
+#bananeras .banana-panel{display:none}
+#bananeras .banana-panel.active{display:block}
+#bananeras .banana-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+#bananeras .banana-kpi{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:var(--shadow)}
+#bananeras .banana-kpi span{display:block;color:var(--muted);font-size:12px;font-weight:850}
+#bananeras .banana-kpi strong{display:block;font-size:26px;margin-top:7px;line-height:1.05}
+#bananeras .banana-kpi small{display:block;color:var(--muted);margin-top:5px}
+#bananeras .banana-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) 220px auto;gap:10px;align-items:end;margin-bottom:14px}
+#bananeras .banana-toolbar .btn{height:46px}
+#bananeras .banana-grid-two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+#bananeras .banana-grid-three{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+#bananeras .banana-section-card{background:var(--panel);border:1px solid var(--border);border-radius:22px;padding:18px;box-shadow:var(--shadow)}
+#bananeras .banana-section-card h4{font-size:18px;margin:0 0 4px}
+#bananeras .banana-section-card>p{margin:0 0 14px;color:var(--muted);font-size:13px}
+#bananeras .banana-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:16px}
+#bananeras .banana-table{width:100%;border-collapse:collapse;min-width:760px}
+#bananeras .banana-table th,#bananeras .banana-table td{padding:11px 12px;border-bottom:1px solid var(--border);font-size:12.5px;text-align:left;white-space:nowrap}
+#bananeras .banana-table th{background:var(--panel2);color:var(--muted);font-weight:900}
+#bananeras .banana-table tbody tr:last-child td{border-bottom:0}
+#bananeras .banana-empty{padding:30px 18px;text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:16px;background:var(--panel2)}
+#bananeras .banana-status{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:900;background:rgba(85,198,43,.12);color:var(--brand)}
+#bananeras .banana-status.warn{background:rgba(245,158,11,.12);color:var(--warning)}
+#bananeras .banana-status.off{background:rgba(239,68,68,.11);color:var(--danger)}
+#bananeras .banana-status.info{background:rgba(37,99,235,.10);color:var(--blue)}
+#bananeras .banana-link{border:0;background:transparent;color:var(--blue);font-weight:850;cursor:pointer;padding:0}
+#bananeras .banana-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#bananeras .banana-form .full{grid-column:1/-1}
+#bananeras .banana-form label{margin-top:0}
+#bananeras .banana-form-actions{display:flex;gap:10px;justify-content:flex-end;grid-column:1/-1;margin-top:6px}
+#bananeras .banana-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.42);z-index:100002}
+#bananeras .banana-modal.open{display:flex}
+#bananeras .banana-modal-card{width:min(760px,100%);max-height:86vh;overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:24px;padding:20px;box-shadow:var(--shadow)}
+#bananeras .banana-modal-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:14px}
+#bananeras .banana-modal-head h4{margin:0;font-size:20px}
+#bananeras .banana-message{display:none;padding:11px 13px;border-radius:14px;margin-bottom:12px;font-size:13px;font-weight:750}
+#bananeras .banana-message.show{display:block}
+#bananeras .banana-message.error{background:rgba(239,68,68,.10);color:var(--danger);border:1px solid rgba(239,68,68,.2)}
+#bananeras .banana-message.ok{background:rgba(85,198,43,.10);color:var(--brand);border:1px solid rgba(85,198,43,.24)}
+#bananeras .banana-orion-panel>.banana-legacy-orion{display:block}
+#bananeras .banana-trace-box{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-bottom:14px}
+#bananeras .banana-trace-result{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+#bananeras .banana-trace-result div{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:12px}
+#bananeras .banana-trace-result span{display:block;color:var(--muted);font-size:11px;font-weight:850}
+#bananeras .banana-trace-result b{display:block;margin-top:5px;font-size:14px;overflow-wrap:anywhere}
+#bananeras .banana-loading{opacity:.65;pointer-events:none}
+@media(max-width:1250px){#bananeras .banana-kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){#bananeras .banana-grid-two,#bananeras .banana-grid-three,#bananeras .banana-toolbar,#bananeras .banana-form,#bananeras .banana-trace-result{grid-template-columns:1fr}#bananeras .banana-form .full,#bananeras .banana-form-actions{grid-column:auto}#bananeras .banana-kpis{grid-template-columns:repeat(2,1fr)}#bananeras .banana-trace-box{grid-template-columns:1fr}}
+@media(max-width:520px){#bananeras .banana-kpis{grid-template-columns:1fr}#bananeras .banana-head h3{font-size:21px}#bananeras .banana-actions{width:100%}#bananeras .banana-actions .btn{flex:1}}
