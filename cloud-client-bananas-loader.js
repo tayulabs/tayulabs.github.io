@@ -1,8 +1,8 @@
-/* TAYULABS Cloud · Bananeras loader v1.1 */
+/* TAYULABS Cloud · Bananeras loader v1.2 */
 (function(){
   'use strict';
 
-  function load(src){
+  function loadScript(src){
     return new Promise((resolve,reject)=>{
       const script=document.createElement('script');
       script.src=src;
@@ -12,10 +12,19 @@
     });
   }
 
+  function loadCss(href){
+    if(document.querySelector(`link[href="${href}"]`))return;
+    const link=document.createElement('link');
+    link.rel='stylesheet';
+    link.href=href;
+    document.head.appendChild(link);
+  }
+
   (async()=>{
     try{
-      await load('cloud-client-bananas.js?v=1.0');
-      await load('cloud-client-bananas-actions.js?v=1.1');
+      loadCss('cloud-client-bananas-layout.css?v=1.2');
+      await loadScript('cloud-client-bananas.js?v=1.0');
+      await loadScript('cloud-client-bananas-actions.js?v=1.1');
     }catch(error){
       console.error('Bananeras loader:',error);
     }
