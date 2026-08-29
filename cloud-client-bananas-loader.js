@@ -1,4 +1,4 @@
-/* TAYULABS Cloud · Bananeras loader v1.7 */
+/* TAYULABS Cloud · Bananeras loader v1.8 */
 (function(){
   'use strict';
 
@@ -28,6 +28,7 @@
       await loadScript('cloud-client-bananas-ops.js?v=1.3');
       await loadScript('cloud-client-bananas-demo.js?v=1.4');
       await loadScript('cloud-client-bananas-demo-gps.js?v=1.7');
+      await loadScript('cloud-client-bananas-demo-gps-fix.js?v=1.8');
     }catch(error){
       console.error('Bananeras loader:',error);
     }
