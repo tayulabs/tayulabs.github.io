@@ -18,7 +18,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260824-flotas-nav3';
+const VERSION='20260831-dashboard-sync1';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -49,7 +49,26 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   if(!response.ok)throw new Error(`No se pudo cargar la plataforma (${response.status})`);
   let html=await response.text();
 
+  // Protección: un navegador nuevo no puede sobrescribir /dashboard
+  // hasta haber cargado correctamente primero el estado central del VPS.
+  const saveGuardNeedle=`async function saveDashboardCloud(){
+    if(!window.__tayuApiPost)return;`;
+  const saveGuardReplacement=`async function saveDashboardCloud(){
+    if(window.__tayuDashboardCloudLoaded!==true)return;
+    if(!window.__tayuApiPost)return;`;
+  if(!html.includes(saveGuardNeedle))throw new Error('No se encontró saveDashboardCloud para aplicar protección de sincronización');
+  html=html.replace(saveGuardNeedle,saveGuardReplacement);
+
+  const loadGuardNeedle=`const data=await window.__tayuApi('/dashboard');
+    dashboardWidgetIds=Array.isArray(data.layout)?data.layout:[];`;
+  const loadGuardReplacement=`const data=await window.__tayuApi('/dashboard');
+    window.__tayuDashboardCloudLoaded=true;
+    dashboardWidgetIds=Array.isArray(data.layout)?data.layout:[];`;
+  if(!html.includes(loadGuardNeedle))throw new Error('No se encontró loadDashboardCloud para aplicar protección de sincronización');
+  html=html.replace(loadGuardNeedle,loadGuardReplacement);
+
   const openScript='<scr'+'ipt>';
+  const openModuleScript='<scr'+'ipt type="module">';
   const closeScript='</scr'+'ipt>';
   const satelliteCompat=openScript+`
 function addSatelliteLayer(map){
@@ -82,7 +101,9 @@ window.addSatelliteLayer=addSatelliteLayer;
     `return keycloak.logout({ redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=${VERSION}' });`
   );
 
-  html=html.replace(modulePattern,openScript+appCode+closeScript);
+  // Mantener type="module" es esencial: así el arranque ocurre después de
+  // parsear los scripts que definen loadDashboardCloud/saveDashboardCloud.
+  html=html.replace(modulePattern,openModuleScript+appCode+closeScript);
 
   const addons=
     '<scr'+'ipt src="cloud-client-access.js?v='+VERSION+'"></scr'+'ipt>\n'+
