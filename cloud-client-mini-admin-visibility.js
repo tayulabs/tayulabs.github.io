@@ -20,8 +20,30 @@
       body[data-tayu-role="admin"] #clientAdminNavButton {
         display: flex !important;
       }
+
+      #client-admin.tca-standalone-view {
+        display: none;
+      }
+
+      #client-admin.tca-standalone-view.active {
+        display: block;
+      }
     `;
     document.head.appendChild(style);
+  }
+
+  function installNavigationBridge(section, button) {
+    const nav = document.querySelector('.sidebar .nav');
+    if (!nav || nav.dataset.tcaStandaloneBridge === '1') return;
+
+    nav.dataset.tcaStandaloneBridge = '1';
+    nav.addEventListener('click', event => {
+      const target = event.target.closest('button');
+      if (!target || target === button) return;
+
+      section.classList.remove('active');
+      section.style.removeProperty('display');
+    });
   }
 
   function detachMiniAdminFromModulePermissions() {
@@ -31,13 +53,19 @@
     const section = document.getElementById('client-admin');
     if (!button || !section) return false;
 
-    // La administración depende del rol seguro owner/admin, no de los
-    // módulos habilitados de la organización. Si conserva data-view,
-    // applyModulePermissions() del cliente la oculta por no ser un módulo.
+    // Administración no es un módulo operativo de la organización.
+    // Debe depender del rol seguro owner/admin y no de applyModulePermissions().
     button.removeAttribute('data-view');
     button.style.removeProperty('display');
+
+    // applyModulePermissions() busca `.view.active` y redirige a Dashboard
+    // cuando el id activo no está en organization_modules. Sacamos solamente
+    // Administración de esa colección y mantenemos su navegación por separado.
+    section.classList.remove('view');
+    section.classList.add('tca-standalone-view');
     section.style.removeProperty('display');
 
+    installNavigationBridge(section, button);
     return true;
   }
 
