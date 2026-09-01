@@ -47,8 +47,8 @@
     if (!nav || !fleet) return false;
 
     // Orden solicitado:
-    // Dashboard → Alarmas → Fincas → Camaroneras → Bananeras → Ganadería →
-    // Flotas → Sensores → Dispositivos → Tramas → Equipos Modbus → Configuración.
+    // Dashboard → Alarmas → Fincas → Fincas Camaroneras → Bananeras → Ganadería →
+    // Flotas → Sensores → Dispositivos → Tramas → Equipos Modbus → Configuración → Administración.
     const order = [
       navButton('dashboard'),
       navButton('alarmas'),
@@ -61,7 +61,8 @@
       navButton('dispositivos'),
       navButton('tramas'),
       navButton('modbus'),
-      navButton('configuracion')
+      navButton('configuracion'),
+      document.getElementById('clientAdminNavButton')
     ].filter(Boolean);
 
     order.forEach(button => nav.appendChild(button));
