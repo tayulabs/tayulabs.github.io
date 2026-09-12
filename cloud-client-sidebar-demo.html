@@ -75,7 +75,7 @@ body.sidebar-expanded .demo-shell{grid-template-columns:286px minmax(0,1fr)}
 }
 body.sidebar-expanded .sidebar{width:244px;padding-left:12px;padding-right:12px;align-items:stretch}
 .sidebar-toggle{
-  position:absolute;right:-20px;top:78px;z-index:10020;
+  position:absolute;right:-20px;top:25px;z-index:10020;
   width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
   background:var(--panel);color:var(--ink);display:grid;place-items:center;cursor:pointer;
   box-shadow:0 7px 22px rgba(0,0,0,.13);transition:background .22s ease,color .22s ease,border-color .22s ease;
@@ -98,7 +98,7 @@ body:not(.sidebar-expanded) .sidebar-toggle svg{transform:rotate(180deg)}
   position:relative;width:70px;height:48px;min-height:48px;flex:0 0 48px;
   border:0;background:transparent;color:var(--rail-ink);border-radius:17px;padding:0;
   cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto;
-  transition:width .28s ease,background .16s ease,transform .18s ease,box-shadow .18s ease,color .18s ease,padding .28s ease;
+  transition:width .28s ease,background .16s ease,box-shadow .18s ease,color .18s ease,padding .28s ease;
 }
 .nav-item:hover:not(.active){background:var(--rail-hover)}
 .nav-icon-wrap{width:70px;height:48px;flex:0 0 70px;display:grid;place-items:center;position:relative;z-index:4;transition:width .28s ease,flex-basis .28s ease}
@@ -116,7 +116,7 @@ body.dark .nav-item:not(.active) .nav-icon-white{filter:brightness(0) saturate(1
   z-index:9999;pointer-events:none;
 }
 .nav-item.active{
-  background:var(--active-bg);color:var(--active-text);transform:translateX(4px);
+  background:var(--active-bg);color:var(--active-text);
   border-radius:18px;box-shadow:0 5px 18px rgba(0,0,0,.12);
 }
 .nav-item.active .nav-icon-white{opacity:0;visibility:hidden}
@@ -129,7 +129,7 @@ body:not(.sidebar-expanded) .nav-item.active:focus-visible .nav-label{
   max-width:220px;min-width:135px;opacity:1;padding:0 19px 0 10px;
 }
 body.sidebar-expanded .nav-item{
-  width:100%;justify-content:flex-start;margin:0;padding:0 10px;transform:none;
+  width:100%;justify-content:flex-start;margin:0;padding:0 10px;
 }
 body.sidebar-expanded .nav-icon-wrap{width:42px;flex-basis:42px}
 body.sidebar-expanded .nav-label{
@@ -189,6 +189,7 @@ body.dark .map-grid{opacity:.18}
   body.sidebar-expanded .demo-shell{grid-template-columns:252px minmax(0,1fr)}
   .sidebar-zone{padding-left:12px}.sidebar{width:82px}.sidebar-logo{width:58px;height:58px;flex-basis:58px}
   body.sidebar-expanded .sidebar{width:222px}
+  .sidebar-toggle{top:23px;right:-19px}
   .nav-item,.nav-icon-wrap{width:62px}.content{padding:16px 14px 20px 4px}.search{display:none}.page-head{align-items:center}.demo-tag{display:none}.user-name,.chev{display:none}
 }
 </style>
