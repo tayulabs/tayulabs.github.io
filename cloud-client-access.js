@@ -24,6 +24,9 @@
   let moduleMap = new Map();
   let hasModulePolicy = false;
   let visibilityTimer = null;
+  let visibilityObserver = null;
+  let visibilityQueued = false;
+  let applyingVisibility = false;
 
   function installRoleStyles() {
     if (document.getElementById('tayu-client-role-styles')) return;
@@ -102,8 +105,9 @@
 
   function setElementModuleVisibility(element, enabled) {
     if (!element) return;
-    element.hidden = !enabled;
-    element.style.display = enabled ? '' : 'none';
+    const display = enabled ? '' : 'none';
+    if (element.hidden === enabled) element.hidden = !enabled;
+    if (element.style.display !== display) element.style.display = display;
     element.dataset.tayuModuleAllowed = enabled ? '1' : '0';
   }
 
@@ -117,29 +121,94 @@
   }
 
   function applyModuleVisibility() {
-    if (!hasModulePolicy) return;
+    if (!hasModulePolicy || applyingVisibility) return;
+    applyingVisibility = true;
 
-    let activeViewWasBlocked = false;
+    try {
+      let activeViewWasBlocked = false;
 
-    for (const [key, ui] of Object.entries(MODULE_UI)) {
-      const enabled = isModuleEnabled(key);
-      const button = document.querySelector(ui.button);
-      const view = document.querySelector(ui.view);
+      for (const [key, ui] of Object.entries(MODULE_UI)) {
+        const enabled = isModuleEnabled(key);
+        const button = document.querySelector(ui.button);
+        const view = document.querySelector(ui.view);
 
-      setElementModuleVisibility(button, enabled);
-      setElementModuleVisibility(view, enabled);
+        setElementModuleVisibility(button, enabled);
+        setElementModuleVisibility(view, enabled);
 
-      if (!enabled && (button?.classList.contains('active') || view?.classList.contains('active'))) {
-        button?.classList.remove('active');
-        view?.classList.remove('active');
-        activeViewWasBlocked = true;
+        if (!enabled && (button?.classList.contains('active') || view?.classList.contains('active'))) {
+          button?.classList.remove('active');
+          view?.classList.remove('active');
+          activeViewWasBlocked = true;
+        }
       }
-    }
 
-    if (activeViewWasBlocked) {
-      const fallback = firstEnabledModuleButton();
-      if (fallback) setTimeout(() => fallback.click(), 0);
+      if (activeViewWasBlocked) {
+        const fallback = firstEnabledModuleButton();
+        if (fallback) setTimeout(() => fallback.click(), 0);
+      }
+    } finally {
+      applyingVisibility = false;
     }
+  }
+
+  function queueModuleVisibility() {
+    if (visibilityQueued || !hasModulePolicy) return;
+    visibilityQueued = true;
+    queueMicrotask(() => {
+      visibilityQueued = false;
+      applyModuleVisibility();
+    });
+  }
+
+  function installModuleVisibilityObserver() {
+    if (visibilityObserver || !document.body) return;
+
+    visibilityObserver = new MutationObserver((mutations) => {
+      if (applyingVisibility || !hasModulePolicy) return;
+
+      const relevant = mutations.some((mutation) => {
+        if (mutation.type === 'childList') return mutation.addedNodes.length > 0;
+        if (mutation.type !== 'attributes') return false;
+
+        const target = mutation.target;
+        return Boolean(
+          target?.id === 'gpsGenericNavButton' ||
+          target?.id === 'gps-generic-view' ||
+          target?.matches?.('.nav button[data-view]')
+        );
+      });
+
+      if (relevant) queueModuleVisibility();
+    });
+
+    visibilityObserver.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['style', 'hidden', 'class'],
+    });
+  }
+
+  function installModuleClickGuard() {
+    if (document.documentElement.dataset.tayuModuleClickGuard === '1') return;
+    document.documentElement.dataset.tayuModuleClickGuard = '1';
+
+    document.addEventListener('click', (event) => {
+      if (!hasModulePolicy) return;
+
+      const button = event.target?.closest?.('.nav button');
+      if (!button) return;
+
+      let key = null;
+      if (button.id === 'gpsGenericNavButton') key = 'flotas';
+      else key = String(button.dataset.view || '').trim().toLowerCase();
+
+      if (!key || isModuleEnabled(key)) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      applyModuleVisibility();
+    }, true);
   }
 
   function scheduleModuleVisibilityRefresh() {
@@ -190,6 +259,8 @@
 
     buildModuleMap(access?.modules);
     exposeModuleAccess();
+    installModuleVisibilityObserver();
+    installModuleClickGuard();
     scheduleModuleVisibilityRefresh();
 
     window.dispatchEvent(new CustomEvent('tayu:client-access-ready', {
