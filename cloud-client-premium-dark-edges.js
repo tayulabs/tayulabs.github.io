@@ -10,6 +10,23 @@
     style.id = STYLE_ID;
     style.textContent = `
       @media (min-width:961px){
+        .sidebar{
+          border-radius:30px!important;
+          box-shadow:0 16px 38px rgba(0,0,0,.14)!important;
+        }
+
+        .main{
+          margin-left:244px!important;
+        }
+
+        body.sidebar-collapsed .main{
+          margin-left:100px!important;
+        }
+
+        .sidebar-collapse-btn{
+          z-index:70!important;
+        }
+
         body.dark .main{
           background:#101310!important;
           border:1px solid #2A302A!important;
