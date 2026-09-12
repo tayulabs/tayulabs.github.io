@@ -10,22 +10,22 @@
     style.id = STYLE_ID;
     style.textContent = `
       @media (min-width:961px){
-        /*
-         * Esta extensión permanece fija: evita animar otra superficie grande
-         * mientras se abre el drawer y conserva el borde premium redondeado.
-         */
         #app.app::before{
           content:"";
           position:fixed;
           left:14px;
           top:14px;
           bottom:14px;
-          width:132px;
+          width:276px;
           border-radius:30px;
           background:var(--tayu-premium-rail);
           z-index:10;
           pointer-events:none;
-          transition:background .16s ease;
+          transition:width .18s cubic-bezier(.2,.8,.2,1),background .16s ease;
+        }
+
+        body.sidebar-collapsed #app.app::before{
+          width:132px;
         }
 
         .sidebar{
@@ -34,15 +34,17 @@
           box-shadow:none!important;
         }
 
-        /* El panel ya no se desplaza al abrir el menú. */
-        .main,
-        body.sidebar-collapsed .main,
-        body:not(.sidebar-collapsed) .main{
+        .main{
           position:relative!important;
           z-index:30!important;
-          margin-left:108px!important;
+          margin-left:252px!important;
           padding-left:42px!important;
           border-radius:30px!important;
+          transition:margin-left .18s cubic-bezier(.2,.8,.2,1),background .16s ease!important;
+        }
+
+        body.sidebar-collapsed .main{
+          margin-left:108px!important;
         }
 
         .sidebar-collapse-btn{display:none!important;}
