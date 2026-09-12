@@ -4,6 +4,27 @@
   const API_URL = 'https://api.tayulabs.com';
   const READ_ONLY_ROLE = 'viewer';
 
+  const MODULE_UI = {
+    dashboard: { button: '.nav button[data-view="dashboard"]', view: '#dashboard' },
+    alarmas: { button: '.nav button[data-view="alarmas"]', view: '#alarmas' },
+    fincas: { button: '.nav button[data-view="fincas"]', view: '#fincas' },
+    camaroneras: { button: '.nav button[data-view="camaroneras"]', view: '#camaroneras' },
+    bananeras: { button: '.nav button[data-view="bananeras"]', view: '#bananeras' },
+    ganaderia: { button: '.nav button[data-view="ganaderia"]', view: '#ganaderia' },
+    flotas: { button: '#gpsGenericNavButton', view: '#gps-generic-view' },
+    sensores: { button: '.nav button[data-view="sensores"]', view: '#sensores' },
+    dispositivos: { button: '.nav button[data-view="dispositivos"]', view: '#dispositivos' },
+    tramas: { button: '.nav button[data-view="tramas"]', view: '#tramas' },
+    modbus: { button: '.nav button[data-view="modbus"]', view: '#modbus' },
+    configuracion: { button: '.nav button[data-view="configuracion"]', view: '#configuracion' },
+  };
+
+  const SECTOR_KEYS = new Set(['fincas', 'camaroneras', 'bananeras', 'ganaderia']);
+
+  let moduleMap = new Map();
+  let hasModulePolicy = false;
+  let visibilityTimer = null;
+
   function installRoleStyles() {
     if (document.getElementById('tayu-client-role-styles')) return;
 
@@ -37,6 +58,123 @@
     });
   }
 
+  function buildModuleMap(modules) {
+    const rows = Array.isArray(modules) ? modules : [];
+    moduleMap = new Map();
+
+    rows.forEach((row) => {
+      const key = String(row?.module || '').trim().toLowerCase();
+      if (!key) return;
+      moduleMap.set(key, Boolean(row?.enabled));
+    });
+
+    // Compatibilidad: organizaciones antiguas sin filas de módulos
+    // conservan la experiencia completa hasta que Super Admin las configure.
+    hasModulePolicy = moduleMap.size > 0;
+  }
+
+  function isModuleEnabled(key) {
+    const normalized = String(key || '').trim().toLowerCase();
+    if (!normalized) return false;
+    if (!hasModulePolicy) return true;
+
+    if (moduleMap.has(normalized)) {
+      return moduleMap.get(normalized) === true;
+    }
+
+    if (normalized.endsWith('.iot')) {
+      const parent = normalized.slice(0, -4);
+      // En configuraciones antiguas, habilitar el sector equivalía al IoT existente.
+      return moduleMap.get(parent) === true;
+    }
+
+    if (normalized.endsWith('.erp')) {
+      // ERP es una capacidad nueva: si no existe explícitamente, se considera desactivada.
+      return false;
+    }
+
+    if (SECTOR_KEYS.has(normalized)) {
+      return moduleMap.get(`${normalized}.iot`) === true || moduleMap.get(`${normalized}.erp`) === true;
+    }
+
+    return false;
+  }
+
+  function setElementModuleVisibility(element, enabled) {
+    if (!element) return;
+    element.hidden = !enabled;
+    element.style.display = enabled ? '' : 'none';
+    element.dataset.tayuModuleAllowed = enabled ? '1' : '0';
+  }
+
+  function firstEnabledModuleButton() {
+    for (const [key, ui] of Object.entries(MODULE_UI)) {
+      if (!isModuleEnabled(key)) continue;
+      const button = document.querySelector(ui.button);
+      if (button && !button.hidden && button.style.display !== 'none') return button;
+    }
+    return null;
+  }
+
+  function applyModuleVisibility() {
+    if (!hasModulePolicy) return;
+
+    let activeViewWasBlocked = false;
+
+    for (const [key, ui] of Object.entries(MODULE_UI)) {
+      const enabled = isModuleEnabled(key);
+      const button = document.querySelector(ui.button);
+      const view = document.querySelector(ui.view);
+
+      setElementModuleVisibility(button, enabled);
+      setElementModuleVisibility(view, enabled);
+
+      if (!enabled && (button?.classList.contains('active') || view?.classList.contains('active'))) {
+        button?.classList.remove('active');
+        view?.classList.remove('active');
+        activeViewWasBlocked = true;
+      }
+    }
+
+    if (activeViewWasBlocked) {
+      const fallback = firstEnabledModuleButton();
+      if (fallback) setTimeout(() => fallback.click(), 0);
+    }
+  }
+
+  function scheduleModuleVisibilityRefresh() {
+    if (visibilityTimer) clearInterval(visibilityTimer);
+
+    let attempts = 0;
+    applyModuleVisibility();
+
+    visibilityTimer = setInterval(() => {
+      attempts += 1;
+      applyModuleVisibility();
+      if (attempts >= 60) {
+        clearInterval(visibilityTimer);
+        visibilityTimer = null;
+      }
+    }, 100);
+  }
+
+  function exposeModuleAccess() {
+    const snapshot = Object.fromEntries(moduleMap.entries());
+    window.__tayuModules = snapshot;
+    window.__tayuHasModulePolicy = hasModulePolicy;
+    window.__tayuModuleEnabled = isModuleEnabled;
+
+    document.documentElement.dataset.tayuModulePolicy = hasModulePolicy ? '1' : '0';
+    if (document.body) document.body.dataset.tayuModulePolicy = hasModulePolicy ? '1' : '0';
+
+    window.dispatchEvent(new CustomEvent('tayu:modules-applied', {
+      detail: {
+        has_policy: hasModulePolicy,
+        modules: snapshot,
+      }
+    }));
+  }
+
   function applyAccess(access) {
     const role = String(access?.role || '').trim().toLowerCase();
 
@@ -49,6 +187,10 @@
     if (role === READ_ONLY_ROLE) {
       hardenViewerActions();
     }
+
+    buildModuleMap(access?.modules);
+    exposeModuleAccess();
+    scheduleModuleVisibilityRefresh();
 
     window.dispatchEvent(new CustomEvent('tayu:client-access-ready', {
       detail: access || null
