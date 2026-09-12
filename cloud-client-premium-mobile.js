@@ -157,6 +157,12 @@
           box-shadow:none!important;
         }
 
+        /* La política de módulos de Cloud Admin siempre gana sobre el estilo móvil. */
+        .sidebar .nav button[hidden],
+        .sidebar .nav button[data-tayu-module-allowed="0"]{
+          display:none!important;
+        }
+
         body:not(.dark) .sidebar .nav button{
           color:#F7F8F6!important;
         }
@@ -365,6 +371,25 @@
     return backdrop;
   }
 
+  function moduleKeyForButton(button) {
+    if (!button || button.id === 'clientAdminNavButton') return null;
+    if (button.id === 'gpsGenericNavButton') return 'flotas';
+    const key = String(button.dataset.view || '').trim().toLowerCase();
+    return key || null;
+  }
+
+  function syncModuleVisibility() {
+    if (window.innerWidth > MOBILE_MAX || typeof window.__tayuModuleEnabled !== 'function') return;
+
+    document.querySelectorAll('.sidebar .nav button').forEach(button => {
+      const key = moduleKeyForButton(button);
+      if (!key) return;
+      const allowed = window.__tayuModuleEnabled(key) === true;
+      button.hidden = !allowed;
+      button.dataset.tayuModuleAllowed = allowed ? '1' : '0';
+    });
+  }
+
   function syncOpenState() {
     const sidebar = document.querySelector('.sidebar');
     const backdrop = ensureBackdrop();
@@ -386,8 +411,29 @@
       observer.observe(sidebar, { attributes:true, attributeFilter:['class'] });
     }
 
-    window.addEventListener('resize', syncOpenState, { passive:true });
+    const nav = document.querySelector('.sidebar .nav');
+    if (nav) {
+      const navObserver = new MutationObserver(() => syncModuleVisibility());
+      navObserver.observe(nav, { childList:true, subtree:true });
+    }
+
+    window.addEventListener('tayu:modules-applied', () => {
+      syncModuleVisibility();
+      requestAnimationFrame(syncModuleVisibility);
+    });
+
+    window.addEventListener('tayu:client-access-ready', () => {
+      syncModuleVisibility();
+      requestAnimationFrame(syncModuleVisibility);
+    });
+
+    window.addEventListener('resize', () => {
+      syncOpenState();
+      syncModuleVisibility();
+    }, { passive:true });
+
     syncOpenState();
+    syncModuleVisibility();
   }
 
   if (document.readyState === 'loading') {
