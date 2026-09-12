@@ -3,7 +3,11 @@
 
   const API_URL = 'https://api.tayulabs.com';
   const DEFAULT_COLOR = '#55C62B';
+  const DEFAULT_LOGO_LIGHT = 'imagenes/LOGO-COLOR.jpg';
+  const DEFAULT_LOGO_DARK = 'imagenes/LOGO-WHITE.jpg';
+
   let logoObjectUrl = null;
+  let logoDarkObjectUrl = null;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -63,42 +67,100 @@
     });
   }
 
-  async function applyLogo(branding) {
-    if (!branding?.has_custom_logo || !branding?.logo_url) return;
+  function revokeLogoObjectUrls() {
+    if (logoObjectUrl) {
+      URL.revokeObjectURL(logoObjectUrl);
+      logoObjectUrl = null;
+    }
+    if (logoDarkObjectUrl) {
+      URL.revokeObjectURL(logoDarkObjectUrl);
+      logoDarkObjectUrl = null;
+    }
+  }
 
-    const response = await authFetch(branding.logo_url);
-    if (!response.ok) throw new Error(`No se pudo cargar el logo (${response.status})`);
+  async function fetchLogoObjectUrl(path, label) {
+    const response = await authFetch(path);
+    if (!response.ok) {
+      throw new Error(`No se pudo cargar ${label} (${response.status})`);
+    }
 
     const blob = await response.blob();
     if (blob.type && blob.type !== 'image/png') {
-      throw new Error('El logo de la organización no es PNG.');
+      throw new Error(`${label} no es PNG.`);
     }
 
-    if (logoObjectUrl) URL.revokeObjectURL(logoObjectUrl);
-    logoObjectUrl = URL.createObjectURL(blob);
+    return URL.createObjectURL(blob);
+  }
 
-    const displayName = branding.display_name || 'Organización';
-
-    document.querySelectorAll('.sidebar-logo-color,.sidebar-logo-white').forEach((image) => {
-      image.src = logoObjectUrl;
-    });
-
-    const sidebarColor = document.querySelector('.sidebar-logo-color');
-    if (sidebarColor) sidebarColor.alt = displayName;
-
-    const stack = document.querySelector('.sidebar-logo-stack');
-    if (stack) stack.setAttribute('aria-label', displayName);
-
-    const authLogo = document.querySelector('#authBootScreen .auth-boot-logo-stack img');
-    if (authLogo) {
-      authLogo.src = logoObjectUrl;
-      authLogo.alt = displayName;
+  function applyLightLogoSrc(src, displayName) {
+    const sidebar = document.querySelector('.sidebar-logo-color');
+    if (sidebar) {
+      sidebar.src = src;
+      sidebar.alt = displayName;
     }
 
     document.querySelectorAll('.login-logo-only img').forEach((image) => {
-      image.src = logoObjectUrl;
+      image.src = src;
       image.alt = displayName;
     });
+
+    const authLogo = document.querySelector('#authBootScreen .auth-boot-logo-stack img');
+    if (authLogo) {
+      authLogo.src = src;
+      authLogo.alt = displayName;
+    }
+  }
+
+  function applyDarkLogoSrc(src) {
+    document.querySelectorAll('.sidebar-logo-white').forEach((image) => {
+      image.src = src;
+      image.alt = '';
+      image.setAttribute('aria-hidden', 'true');
+    });
+  }
+
+  async function applyLogo(branding) {
+    const displayName = branding?.display_name || 'Organización';
+    revokeLogoObjectUrls();
+
+    let lightSrc = DEFAULT_LOGO_LIGHT;
+    let darkSrc = DEFAULT_LOGO_DARK;
+
+    if (branding?.has_custom_logo && branding?.logo_url) {
+      try {
+        logoObjectUrl = await fetchLogoObjectUrl(branding.logo_url, 'el logo principal');
+        lightSrc = logoObjectUrl;
+      } catch (error) {
+        console.warn('TAYULABS organization light logo:', error);
+      }
+    }
+
+    if (
+      (branding?.has_custom_logo_dark || branding?.has_custom_logo) &&
+      branding?.logo_dark_url
+    ) {
+      try {
+        logoDarkObjectUrl = await fetchLogoObjectUrl(
+          branding.logo_dark_url,
+          'el logo para modo oscuro'
+        );
+        darkSrc = logoDarkObjectUrl;
+      } catch (error) {
+        console.warn('TAYULABS organization dark logo:', error);
+        if (logoObjectUrl) darkSrc = logoObjectUrl;
+      }
+    } else if (branding?.has_custom_logo && logoObjectUrl) {
+      // Compatibilidad con respuestas antiguas del backend:
+      // si existe logo principal pero aún no se anuncia logo_dark_url,
+      // reutilizamos el principal también en modo oscuro.
+      darkSrc = logoObjectUrl;
+    }
+
+    applyLightLogoSrc(lightSrc, displayName);
+    applyDarkLogoSrc(darkSrc);
+
+    const stack = document.querySelector('.sidebar-logo-stack');
+    if (stack) stack.setAttribute('aria-label', displayName);
   }
 
   function applyColorAndName(branding) {
@@ -133,15 +195,14 @@
       display_name: 'TAYULABS',
       primary_color: DEFAULT_COLOR,
       has_custom_logo: false,
+      has_custom_logo_dark: false,
       logo_url: null,
+      logo_dark_url: null,
       updated_at: null,
     };
 
     applyColorAndName(branding);
-
-    if (branding.has_custom_logo && branding.logo_url) {
-      await applyLogo(branding);
-    }
+    await applyLogo(branding);
 
     window.dispatchEvent(new CustomEvent('tayu:branding-applied', {
       detail: window.__tayuBranding,
@@ -154,12 +215,17 @@
 
   loadBranding().catch((error) => {
     console.warn('TAYULABS organization branding:', error);
+    revokeLogoObjectUrls();
     applyColorAndName({
       display_name: 'TAYULABS',
       primary_color: DEFAULT_COLOR,
       has_custom_logo: false,
+      has_custom_logo_dark: false,
       logo_url: null,
+      logo_dark_url: null,
       updated_at: null,
     });
+    applyLightLogoSrc(DEFAULT_LOGO_LIGHT, 'TAYULABS');
+    applyDarkLogoSrc(DEFAULT_LOGO_DARK);
   });
 })();
