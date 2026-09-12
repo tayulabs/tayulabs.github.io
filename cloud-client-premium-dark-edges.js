@@ -49,10 +49,25 @@
           margin-left:108px!important;
         }
 
-        /* Flecha fuera del logo y por encima del borde del panel principal. */
+        /*
+         * El control usa el mismo material del rail y lleva un pequeño puente
+         * hacia la izquierda. Así se lee como parte de la barra y no como un
+         * botón blanco flotando sobre el panel principal.
+         */
         .sidebar-collapse-btn{
-          right:-34px!important;
+          right:-30px!important;
           z-index:70!important;
+          background:var(--tayu-premium-rail)!important;
+          color:var(--tayu-premium-rail-ink)!important;
+          border:2px solid var(--tayu-premium-outer)!important;
+          box-shadow:
+            -10px 0 0 -1px var(--tayu-premium-rail),
+            0 7px 18px rgba(0,0,0,.18)!important;
+        }
+
+        .sidebar-collapse-btn:hover{
+          background:var(--tayu-premium-rail-hover)!important;
+          color:var(--tayu-premium-rail-ink)!important;
         }
 
         /* Claro: rail negro extendido por detrás, igual que el concepto premium. */
