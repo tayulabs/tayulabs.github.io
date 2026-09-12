@@ -9,16 +9,18 @@
 :root{
   --brand:#5BC12F;
   --bg:#eef1ed;
-  --shell:#ffffff;
-  --content:#ffffff;
-  --panel:#ffffff;
+  --shell:#fff;
+  --content:#fff;
+  --panel:#fff;
   --soft:#f6f8f5;
   --ink:#121512;
   --muted:#6f786d;
   --line:#e7ebe5;
   --rail:#101210;
   --rail-hover:#1c201c;
-  --active-bg:#ffffff;
+  --rail-ink:#fff;
+  --divider:#2a2e2a;
+  --active-bg:#fff;
   --active-text:#111511;
   --field:#fafbfa;
   --map:#e9ede8;
@@ -35,8 +37,10 @@ body.dark{
   --ink:#f2f5f1;
   --muted:#9aa49a;
   --line:#2a302a;
-  --rail:#050705;
-  --rail-hover:#171c17;
+  --rail:#f4f6f2;
+  --rail-hover:#e7ebe5;
+  --rail-ink:#172016;
+  --divider:#d8ddd5;
   --active-bg:#5BC12F;
   --active-text:#081006;
   --field:#171b17;
@@ -50,71 +54,54 @@ html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif;background
 body{padding:18px;transition:background .22s ease,color .22s ease}
 button,input{font:inherit}
 .demo-shell{
-  min-height:calc(100vh - 36px);
-  background:var(--shell);
-  border:1px solid var(--line);
-  border-radius:34px;
-  box-shadow:var(--shell-shadow);
-  display:grid;
-  grid-template-columns:126px minmax(0,1fr);
-  overflow:hidden;
+  min-height:calc(100vh - 36px);background:var(--shell);border:1px solid var(--line);
+  border-radius:34px;box-shadow:var(--shell-shadow);display:grid;
+  grid-template-columns:132px minmax(0,1fr);overflow:hidden;
   transition:background .22s ease,border-color .22s ease;
 }
 
-/* ===== SIDEBAR DEMO ===== */
+/* ===== SIDEBAR ===== */
 .sidebar-zone{position:relative;padding:18px 0 18px 22px;background:var(--shell);z-index:10;transition:background .22s ease}
 .sidebar{
-  position:sticky;top:18px;
-  width:84px;height:calc(100vh - 72px);min-height:700px;
-  background:var(--rail);
-  border-radius:28px;
-  padding:15px 10px;
-  display:flex;flex-direction:column;align-items:center;
-  overflow:visible;
-  box-shadow:0 16px 38px rgba(0,0,0,.22);
+  position:sticky;top:18px;width:90px;height:calc(100vh - 72px);min-height:560px;
+  background:var(--rail);border-radius:29px;padding:14px 10px 12px;
+  display:flex;flex-direction:column;align-items:center;overflow:visible;
+  box-shadow:0 16px 38px rgba(0,0,0,.20);transition:background .22s ease;
 }
 .sidebar-logo{
-  width:54px;height:54px;border-radius:17px;
-  display:grid;place-items:center;
-  background:var(--brand);color:#fff;
-  font-size:18px;font-weight:950;letter-spacing:-1px;
-  box-shadow:inset 0 0 0 2px rgba(255,255,255,.25),0 5px 18px rgba(91,193,47,.23);
-  margin-bottom:17px;
+  width:62px;height:62px;flex:0 0 62px;border-radius:19px;display:grid;place-items:center;
+  background:var(--brand);color:#fff;font-size:20px;font-weight:950;letter-spacing:-1px;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.28),0 6px 19px rgba(91,193,47,.26);
+  margin-bottom:12px;
 }
-.nav-list{width:100%;display:flex;flex-direction:column;gap:4px;position:relative}
+.nav-list{
+  width:100%;flex:1;min-height:0;display:flex;flex-direction:column;gap:4px;position:relative;
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:none;padding:2px 0 8px;
+}
+.nav-list::-webkit-scrollbar{display:none}
 .nav-item{
-  position:relative;
-  width:64px;height:48px;
-  border:0;background:transparent;color:#fff;
-  border-radius:16px;padding:0;cursor:pointer;overflow:visible;
-  display:flex;align-items:center;
-  transition:background .16s ease,transform .18s ease,box-shadow .18s ease;
+  position:relative;width:70px;height:48px;min-height:48px;flex:0 0 48px;
+  border:0;background:transparent;color:var(--rail-ink);border-radius:17px;padding:0;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .16s ease,transform .18s ease,box-shadow .18s ease,color .18s ease;
 }
 .nav-item:hover:not(.active){background:var(--rail-hover)}
-.nav-icon-wrap{
-  width:64px;height:48px;flex:0 0 64px;
-  display:grid;place-items:center;position:relative;z-index:4;
-}
+.nav-icon-wrap{width:70px;height:48px;display:grid;place-items:center;position:relative;z-index:4}
 .nav-icon-wrap img{grid-area:1/1;width:21px;height:21px;object-fit:contain;transition:none}
 .nav-icon-color{opacity:0;visibility:hidden}
 .nav-icon-white{opacity:1;visibility:visible}
+body.dark .nav-item:not(.active) .nav-icon-white{filter:brightness(0) saturate(100%);opacity:.82}
 .nav-label{
-  position:absolute;left:53px;top:4px;
-  height:40px;min-width:0;max-width:0;
-  display:flex;align-items:center;white-space:nowrap;overflow:hidden;
-  padding:0;border-radius:0 14px 14px 0;
-  background:var(--active-bg);color:var(--active-text);
-  font-size:13px;font-weight:900;opacity:0;
-  box-shadow:12px 7px 28px rgba(18,24,18,.12);
+  position:fixed;height:40px;min-width:0;max-width:0;display:flex;align-items:center;
+  white-space:nowrap;overflow:hidden;padding:0;border-radius:0 14px 14px 0;
+  background:var(--active-bg);color:var(--active-text);font-size:13px;font-weight:900;
+  opacity:0;box-shadow:12px 7px 28px rgba(18,24,18,.13);
   transition:max-width .22s ease,opacity .14s ease,padding .22s ease,background .22s ease,color .22s ease;
-  z-index:2;
+  z-index:9999;pointer-events:none;
 }
-/* Estado activo limpio: sin pseudo-curvas que dejaban bordes negros visibles. */
 .nav-item.active{
-  background:var(--active-bg);color:var(--active-text);
-  transform:translateX(4px);
-  border-radius:17px;
-  box-shadow:0 5px 18px rgba(0,0,0,.12);
+  background:var(--active-bg);color:var(--active-text);transform:translateX(4px);
+  border-radius:18px;box-shadow:0 5px 18px rgba(0,0,0,.12);
 }
 .nav-item.active .nav-icon-white{opacity:0;visibility:hidden}
 .nav-item.active .nav-icon-color{opacity:1;visibility:visible}
@@ -123,41 +110,35 @@ body.dark .nav-item.active .nav-icon-color{opacity:0;visibility:hidden}
 .nav-item.active.label-open .nav-label,
 .nav-item.active:hover .nav-label,
 .nav-item.active:focus-visible .nav-label{
-  max-width:210px;min-width:132px;
-  opacity:1;padding:0 18px 0 10px;
+  max-width:220px;min-width:135px;opacity:1;padding:0 19px 0 10px;
 }
-.nav-divider{height:1px;background:#2a2e2a;margin:6px 9px}
-.sidebar-bottom{margin-top:auto;width:100%}
-.sidebar-bottom .nav-item{margin-top:5px}
+.nav-divider{height:1px;min-height:1px;background:var(--divider);margin:6px 10px;transition:background .22s ease}
+.sidebar-bottom{width:100%;flex:0 0 auto;padding-top:7px;border-top:1px solid var(--divider)}
+.sidebar-bottom .nav-item{margin:0 auto}
+.sidebar-scroll-hint{
+  flex:0 0 auto;height:14px;margin-top:2px;color:var(--rail-ink);font-size:10px;line-height:14px;
+  opacity:.42;user-select:none;transition:opacity .18s ease;
+}
+.sidebar:not(.can-scroll) .sidebar-scroll-hint{opacity:0}
 
 /* ===== CONTENT ===== */
 .content{padding:22px 28px 28px 8px;min-width:0;background:var(--content);transition:background .22s ease}
 .topbar{display:flex;align-items:center;gap:12px;min-height:48px;margin-bottom:22px}
-.search{
-  width:min(390px,36vw);height:43px;
-  border:1px solid var(--line);border-radius:14px;background:var(--field);
-  padding:0 15px;color:var(--ink);outline:none;
-}
+.search{width:min(390px,36vw);height:43px;border:1px solid var(--line);border-radius:14px;background:var(--field);padding:0 15px;color:var(--ink);outline:none}
 .search::placeholder{color:var(--muted)}
 .search:focus{border-color:rgba(91,193,47,.55);box-shadow:0 0 0 3px rgba(91,193,47,.10)}
 .top-spacer{flex:1}
-.round-action{
-  position:relative;width:42px;height:42px;border:1px solid var(--line);border-radius:14px;
-  background:var(--field);color:var(--ink);display:grid;place-items:center;cursor:pointer;
-}
+.round-action{position:relative;width:42px;height:42px;border:1px solid var(--line);border-radius:14px;background:var(--field);color:var(--ink);display:grid;place-items:center;cursor:pointer}
 .round-action:hover{border-color:rgba(91,193,47,.45)}
 .round-action svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.theme-moon{display:none}
-body.dark .theme-sun{display:none}
-body.dark .theme-moon{display:block}
+.theme-moon{display:none}body.dark .theme-sun{display:none}body.dark .theme-moon{display:block}
 .notification-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:#ef4444;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:900;border:2px solid var(--content)}
 .user-pill{display:flex;align-items:center;gap:10px;padding:4px 7px 4px 4px;border-radius:16px}
 .user-avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:#fff;font-weight:950;font-size:12px;box-shadow:0 0 0 3px rgba(91,193,47,.15)}
 .user-name{font-size:13px;font-weight:900;white-space:nowrap}.chev{font-size:15px;color:var(--muted)}
 .page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}
-.page-title-wrap h1{margin:0;font-size:30px;letter-spacing:-.55px}
-.page-title-wrap p{margin:5px 0 0;color:var(--muted);font-size:13px}
-.demo-tag{flex:0 0 auto;padding:8px 11px;border-radius:99px;background:rgba(91,193,47,.10);border:1px solid rgba(91,193,47,.28);color:var(--brand);font-size:10px;font-weight:900;letter-spacing:.2px}
+.page-title-wrap h1{margin:0;font-size:30px;letter-spacing:-.55px}.page-title-wrap p{margin:5px 0 0;color:var(--muted);font-size:13px}
+.demo-tag{flex:0 0 auto;padding:8px 11px;border-radius:99px;background:rgba(91,193,47,.10);border:1px solid rgba(91,193,47,.28);color:var(--brand);font-size:10px;font-weight:900}
 .dashboard-grid{display:grid;grid-template-columns:1.25fr .85fr;gap:18px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:23px;padding:19px;box-shadow:var(--shadow);transition:background .22s ease,border-color .22s ease}
 .card h3{margin:0;font-size:17px}.hint{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
@@ -176,58 +157,31 @@ body.dark .map-grid{opacity:.18}
 .bottom-strip{margin-top:18px;border:1px solid var(--line);border-radius:19px;padding:13px 15px;display:flex;align-items:center;gap:11px;color:var(--muted);font-size:12px;background:var(--panel)}
 .demo-dot{width:9px;height:9px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 4px rgba(91,193,47,.12)}
 @media(max-width:1180px){.dashboard-grid{grid-template-columns:1fr}.map-card{min-height:370px}.kpis{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:820px){body{padding:0}.demo-shell{min-height:100vh;border:0;border-radius:0;grid-template-columns:104px minmax(0,1fr)}.sidebar-zone{padding-left:12px}.sidebar{width:76px;min-height:650px}.nav-item,.nav-icon-wrap{width:56px}.nav-icon-wrap{flex-basis:56px}.nav-label{left:49px}.content{padding:16px 14px 20px 4px}.search{display:none}.page-head{align-items:center}.demo-tag{display:none}.user-name,.chev{display:none}}
+@media(max-width:820px){body{padding:0}.demo-shell{min-height:100vh;border:0;border-radius:0;grid-template-columns:112px minmax(0,1fr)}.sidebar-zone{padding-left:12px}.sidebar{width:82px}.sidebar-logo{width:58px;height:58px;flex-basis:58px}.nav-item,.nav-icon-wrap{width:62px}.content{padding:16px 14px 20px 4px}.search{display:none}.page-head{align-items:center}.demo-tag{display:none}.user-name,.chev{display:none}}
 </style>
 </head>
 <body>
 <div class="demo-shell">
   <aside class="sidebar-zone">
-    <nav class="sidebar" aria-label="Navegación demo TAYULABS">
+    <nav class="sidebar" id="demoSidebar" aria-label="Navegación demo TAYULABS">
       <div class="sidebar-logo">AQ</div>
       <div class="nav-list" id="navList">
-        <button class="nav-item active label-open" data-page="Dashboard" data-subtitle="Vista principal de la plataforma.">
-          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/dashboard-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/dashboard-color.png" alt=""></span><span class="nav-label">Dashboard</span>
-        </button>
-        <button class="nav-item" data-page="Fincas" data-subtitle="Agricultura, sitios, zonas y operación de campo.">
-          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/fincas-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/fincas-color.png" alt=""></span><span class="nav-label">Fincas</span>
-        </button>
-        <button class="nav-item" data-page="Camaroneras" data-subtitle="Producción acuícola, piscinas y automatización.">
-          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/camaroneras-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/camaroneras-color.png" alt=""></span><span class="nav-label">Camaroneras</span>
-        </button>
-        <button class="nav-item" data-page="Bananeras" data-subtitle="Gestión e IoT para producción bananera.">
-          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/bananeras-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/bananeras-color.png" alt=""></span><span class="nav-label">Bananeras</span>
-        </button>
-        <button class="nav-item" data-page="Ganadería" data-subtitle="Trazabilidad, hatos, potreros y monitoreo.">
-          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/ganaderia-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/ganaderia-color.png" alt=""></span><span class="nav-label">Ganadería</span>
-        </button>
-        <button class="nav-item" data-page="Flotas" data-subtitle="Seguimiento GPS de vehículos y activos.">
-          <span class="nav-icon-wrap"><span style="font-size:18px">⌖</span></span><span class="nav-label">Flotas</span>
-        </button>
+        <button class="nav-item active label-open" data-page="Dashboard" data-subtitle="Vista principal de la plataforma."><span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/dashboard-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/dashboard-color.png" alt=""></span><span class="nav-label">Dashboard</span></button>
+        <button class="nav-item" data-page="Fincas" data-subtitle="Agricultura, sitios, zonas y operación de campo."><span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/fincas-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/fincas-color.png" alt=""></span><span class="nav-label">Fincas</span></button>
+        <button class="nav-item" data-page="Camaroneras" data-subtitle="Producción acuícola, piscinas y automatización."><span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/camaroneras-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/camaroneras-color.png" alt=""></span><span class="nav-label">Camaroneras</span></button>
+        <button class="nav-item" data-page="Bananeras" data-subtitle="Gestión e IoT para producción bananera."><span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/bananeras-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/bananeras-color.png" alt=""></span><span class="nav-label">Bananeras</span></button>
+        <button class="nav-item" data-page="Ganadería" data-subtitle="Trazabilidad, hatos, potreros y monitoreo."><span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/ganaderia-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/ganaderia-color.png" alt=""></span><span class="nav-label">Ganadería</span></button>
+        <button class="nav-item" data-page="Flotas" data-subtitle="Seguimiento GPS de vehículos y activos."><span class="nav-icon-wrap"><span style="font-size:18px">⌖</span></span><span class="nav-label">Flotas</span></button>
         <div class="nav-divider"></div>
-        <button class="nav-item" data-page="Sensores" data-subtitle="Lecturas, variables e históricos IoT.">
-          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/sensores-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/sensores-color.png" alt=""></span><span class="nav-label">Sensores</span>
-        </button>
-        <button class="nav-item" data-page="Dispositivos" data-subtitle="Inventario y gestión de equipos.">
-          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/dispositivos-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/dispositivos-color.png" alt=""></span><span class="nav-label">Dispositivos</span>
-        </button>
-        <button class="nav-item" data-page="Tramas" data-subtitle="Telemetría y mensajes recibidos.">
-          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/tramas-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/tramas-color.png" alt=""></span><span class="nav-label">Tramas</span>
-        </button>
-        <button class="nav-item" data-page="Equipos Modbus" data-subtitle="Variables y equipos RS485 / Modbus.">
-          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/modbus-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/modbus-color.png" alt=""></span><span class="nav-label">Equipos Modbus</span>
-        </button>
-        <button class="nav-item" data-page="Configuración" data-subtitle="Ajustes generales de la plataforma.">
-          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/configuracion-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/configuracion-color.png" alt=""></span><span class="nav-label">Configuración</span>
-        </button>
-        <button class="nav-item" data-page="Administración" data-subtitle="Usuarios, permisos y estructura de la empresa.">
-          <span class="nav-icon-wrap"><span style="font-size:18px">◫</span></span><span class="nav-label">Administración</span>
-        </button>
+        <button class="nav-item" data-page="Sensores" data-subtitle="Lecturas, variables e históricos IoT."><span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/sensores-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/sensores-color.png" alt=""></span><span class="nav-label">Sensores</span></button>
+        <button class="nav-item" data-page="Dispositivos" data-subtitle="Inventario y gestión de equipos."><span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/dispositivos-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/dispositivos-color.png" alt=""></span><span class="nav-label">Dispositivos</span></button>
+        <button class="nav-item" data-page="Tramas" data-subtitle="Telemetría y mensajes recibidos."><span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/tramas-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/tramas-color.png" alt=""></span><span class="nav-label">Tramas</span></button>
+        <button class="nav-item" data-page="Equipos Modbus" data-subtitle="Variables y equipos RS485 / Modbus."><span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/modbus-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/modbus-color.png" alt=""></span><span class="nav-label">Equipos Modbus</span></button>
+        <button class="nav-item" data-page="Configuración" data-subtitle="Ajustes generales de la plataforma."><span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/configuracion-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/configuracion-color.png" alt=""></span><span class="nav-label">Configuración</span></button>
+        <button class="nav-item" data-page="Administración" data-subtitle="Usuarios, permisos y estructura de la empresa."><span class="nav-icon-wrap"><span style="font-size:18px">◫</span></span><span class="nav-label">Administración</span></button>
       </div>
-      <div class="sidebar-bottom">
-        <button class="nav-item" data-page="Cerrar sesión" data-subtitle="Cerrar la sesión actual.">
-          <span class="nav-icon-wrap"><span style="font-size:19px">↪</span></span><span class="nav-label">Cerrar sesión</span>
-        </button>
-      </div>
+      <div class="sidebar-scroll-hint" aria-hidden="true">⌄</div>
+      <div class="sidebar-bottom"><button class="nav-item" data-page="Cerrar sesión" data-subtitle="Cerrar la sesión actual."><span class="nav-icon-wrap"><span style="font-size:19px">↪</span></span><span class="nav-label">Cerrar sesión</span></button></div>
     </nav>
   </aside>
 
@@ -235,114 +189,66 @@ body.dark .map-grid{opacity:.18}
     <header class="topbar">
       <input class="search" placeholder="Buscar en la plataforma…">
       <div class="top-spacer"></div>
-      <button class="round-action" id="themeToggle" title="Cambiar tema" aria-label="Cambiar tema" aria-pressed="false">
-        <svg class="theme-sun" viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"></path><circle cx="12" cy="12" r="4"></circle></svg>
-        <svg class="theme-moon" viewBox="0 0 24 24"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"></path></svg>
-      </button>
-      <button class="round-action" title="Alarmas" aria-label="Alarmas">
-        <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg>
-        <span class="notification-badge">2</span>
-      </button>
+      <button class="round-action" id="themeToggle" title="Cambiar tema" aria-label="Cambiar tema" aria-pressed="false"><svg class="theme-sun" viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"></path><circle cx="12" cy="12" r="4"></circle></svg><svg class="theme-moon" viewBox="0 0 24 24"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"></path></svg></button>
+      <button class="round-action" title="Alarmas" aria-label="Alarmas"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg><span class="notification-badge">2</span></button>
       <div class="user-pill"><span class="user-avatar">DT</span><span class="user-name">DEMO TEST</span><span class="chev">⌄</span></div>
     </header>
 
-    <div class="page-head">
-      <div class="page-title-wrap">
-        <h1 id="pageTitle">Dashboard</h1>
-        <p id="pageSubtitle">Vista principal de la plataforma.</p>
-      </div>
-      <span class="demo-tag">DEMO AISLADO · NO MODIFICA PRODUCCIÓN</span>
-    </div>
-
+    <div class="page-head"><div class="page-title-wrap"><h1 id="pageTitle">Dashboard</h1><p id="pageSubtitle">Vista principal de la plataforma.</p></div><span class="demo-tag">DEMO AISLADO · NO MODIFICA PRODUCCIÓN</span></div>
     <section class="dashboard-grid">
       <div>
-        <article class="card">
-          <h3 id="moduleTitle">Resumen de operación</h3>
-          <p class="hint">Una aproximación visual usando la estructura real de TAYULABS Cloud.</p>
-          <div class="kpis">
-            <div class="kpi"><span>DISPOSITIVOS</span><b>24</b></div>
-            <div class="kpi"><span>ONLINE</span><b>21</b></div>
-            <div class="kpi"><span>ALARMAS ACTIVAS</span><b>2</b></div>
-            <div class="kpi"><span>SITIOS</span><b>6</b></div>
-          </div>
-        </article>
-        <article class="card operation-card">
-          <h3 id="operationTitle">Operación IoT</h3>
-          <p class="hint">El contenido es de demostración; lo importante aquí es evaluar la navegación compacta.</p>
-          <div class="module-chips">
-            <span class="module-chip">NOVA EDGE PRO 01 · Online</span>
-            <span class="module-chip">Sensores · 8 variables</span>
-            <span class="module-chip">RS485 / Modbus</span>
-          </div>
-        </article>
+        <article class="card"><h3 id="moduleTitle">Resumen de operación</h3><p class="hint">Una aproximación visual usando la estructura real de TAYULABS Cloud.</p><div class="kpis"><div class="kpi"><span>DISPOSITIVOS</span><b>24</b></div><div class="kpi"><span>ONLINE</span><b>21</b></div><div class="kpi"><span>ALARMAS ACTIVAS</span><b>2</b></div><div class="kpi"><span>SITIOS</span><b>6</b></div></div></article>
+        <article class="card operation-card"><h3 id="operationTitle">Operación IoT</h3><p class="hint">El contenido es de demostración; lo importante aquí es evaluar la navegación compacta.</p><div class="module-chips"><span class="module-chip">NOVA EDGE PRO 01 · Online</span><span class="module-chip">Sensores · 8 variables</span><span class="module-chip">RS485 / Modbus</span></div></article>
       </div>
-      <article class="card map-card" aria-label="Mapa de demostración">
-        <div class="map-grid"></div><div class="route"></div>
-        <span class="pin one"></span><span class="pin two"></span>
-        <span class="map-label">Mapa / tracking</span>
-      </article>
+      <article class="card map-card"><div class="map-grid"></div><div class="route"></div><span class="pin one"></span><span class="pin two"></span><span class="map-label">Mapa / tracking</span></article>
     </section>
-
-    <div class="bottom-strip"><span class="demo-dot"></span><span><b>Prueba de diseño:</b> selecciona cualquier módulo. El nombre aparece durante 2,5 segundos y luego se retrae; el icono activo permanece marcado. Usa el botón de tema de la parte superior para alternar claro/oscuro.</span></div>
+    <div class="bottom-strip"><span class="demo-dot"></span><span><b>Prueba de diseño:</b> el menú central ahora tiene scroll propio; el logo y la salida permanecen fijos. En modo oscuro, la barra lateral cambia a clara para mantener contraste.</span></div>
   </main>
 </div>
 
 <script>
-const contentMap={
-  Dashboard:['Resumen de operación','Operación IoT'],
-  Fincas:['Fincas y zonas','Agricultura y operación de campo'],
-  Camaroneras:['Piscinas y producción','Automatización acuícola'],
-  Bananeras:['Producción bananera','Trazabilidad y operación'],
-  'Ganadería':['Hatos y potreros','Trazabilidad ganadera'],
-  Flotas:['Vehículos y activos','Seguimiento GPS'],
-  Sensores:['Lecturas de sensores','Telemetría e históricos'],
-  Dispositivos:['Inventario de equipos','Gestión de dispositivos'],
-  Tramas:['Mensajes recibidos','Telemetría MQTT'],
-  'Equipos Modbus':['Equipos RS485 / Modbus','Variables industriales'],
-  'Configuración':['Configuración general','Preferencias de plataforma'],
-  'Administración':['Administración','Usuarios y permisos'],
-  'Cerrar sesión':['Cerrar sesión','Fin de sesión']
-};
+const contentMap={Dashboard:['Resumen de operación','Operación IoT'],Fincas:['Fincas y zonas','Agricultura y operación de campo'],Camaroneras:['Piscinas y producción','Automatización acuícola'],Bananeras:['Producción bananera','Trazabilidad y operación'],'Ganadería':['Hatos y potreros','Trazabilidad ganadera'],Flotas:['Vehículos y activos','Seguimiento GPS'],Sensores:['Lecturas de sensores','Telemetría e históricos'],Dispositivos:['Inventario de equipos','Gestión de dispositivos'],Tramas:['Mensajes recibidos','Telemetría MQTT'],'Equipos Modbus':['Equipos RS485 / Modbus','Variables industriales'],'Configuración':['Configuración general','Preferencias de plataforma'],'Administración':['Administración','Usuarios y permisos'],'Cerrar sesión':['Cerrar sesión','Fin de sesión']};
 
+const navList=document.getElementById('navList');
+const sidebar=document.getElementById('demoSidebar');
 let labelTimer=null;
+function positionLabel(button){
+  const label=button?.querySelector('.nav-label');
+  if(!label)return;
+  const r=button.getBoundingClientRect();
+  label.style.left=`${Math.round(r.right-8)}px`;
+  label.style.top=`${Math.round(r.top+4)}px`;
+}
 function showActiveLabel(button){
   if(labelTimer)clearTimeout(labelTimer);
   document.querySelectorAll('.nav-item').forEach(item=>item.classList.remove('label-open'));
-  button.classList.add('label-open');
-  labelTimer=setTimeout(()=>{
-    button.classList.remove('label-open');
-    labelTimer=null;
-  },2500);
+  positionLabel(button);button.classList.add('label-open');
+  labelTimer=setTimeout(()=>{button.classList.remove('label-open');labelTimer=null},2500);
 }
+function syncScrollable(){sidebar.classList.toggle('can-scroll',navList.scrollHeight>navList.clientHeight+2)}
+function syncActiveLabelPosition(){const active=document.querySelector('.nav-item.active');if(active)positionLabel(active)}
 
 document.querySelectorAll('.nav-item').forEach(button=>{
+  button.addEventListener('mouseenter',()=>{if(button.classList.contains('active'))positionLabel(button)});
+  button.addEventListener('focus',()=>{if(button.classList.contains('active'))positionLabel(button)});
   button.addEventListener('click',()=>{
     document.querySelectorAll('.nav-item').forEach(item=>item.classList.remove('active','label-open'));
-    button.classList.add('active');
-    showActiveLabel(button);
-    const page=button.dataset.page;
-    document.getElementById('pageTitle').textContent=page;
+    button.classList.add('active');showActiveLabel(button);
+    const page=button.dataset.page;document.getElementById('pageTitle').textContent=page;
     document.getElementById('pageSubtitle').textContent=button.dataset.subtitle||'';
-    const labels=contentMap[page]||[page,page];
-    document.getElementById('moduleTitle').textContent=labels[0];
-    document.getElementById('operationTitle').textContent=labels[1];
+    const labels=contentMap[page]||[page,page];document.getElementById('moduleTitle').textContent=labels[0];document.getElementById('operationTitle').textContent=labels[1];
   });
 });
+navList.addEventListener('scroll',syncActiveLabelPosition,{passive:true});
+window.addEventListener('resize',()=>{syncScrollable();syncActiveLabelPosition()});
 
 const themeToggle=document.getElementById('themeToggle');
-function applyTheme(dark){
-  document.body.classList.toggle('dark',dark);
-  themeToggle.setAttribute('aria-pressed',dark?'true':'false');
-  themeToggle.title=dark?'Cambiar a modo claro':'Cambiar a modo oscuro';
-  try{localStorage.setItem('tayu-sidebar-demo-theme',dark?'dark':'light')}catch{}
-}
-let initialDark=false;
-try{initialDark=localStorage.getItem('tayu-sidebar-demo-theme')==='dark'}catch{}
-applyTheme(initialDark);
-themeToggle.addEventListener('click',()=>applyTheme(!document.body.classList.contains('dark')));
+function applyTheme(dark){document.body.classList.toggle('dark',dark);themeToggle.setAttribute('aria-pressed',dark?'true':'false');themeToggle.title=dark?'Cambiar a modo claro':'Cambiar a modo oscuro';try{localStorage.setItem('tayu-sidebar-demo-theme',dark?'dark':'light')}catch{};requestAnimationFrame(syncActiveLabelPosition)}
+let initialDark=false;try{initialDark=localStorage.getItem('tayu-sidebar-demo-theme')==='dark'}catch{}
+applyTheme(initialDark);themeToggle.addEventListener('click',()=>applyTheme(!document.body.classList.contains('dark')));
 
-const initialActive=document.querySelector('.nav-item.active');
-if(initialActive)showActiveLabel(initialActive);
+const initialActive=document.querySelector('.nav-item.active');if(initialActive)showActiveLabel(initialActive);
+requestAnimationFrame(syncScrollable);setTimeout(syncScrollable,150);
 </script>
 </body>
 </html>
