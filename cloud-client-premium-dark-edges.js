@@ -29,14 +29,12 @@
           width:132px;
         }
 
-        /* La barra real queda encima para que la flecha pueda sobresalir. */
         .sidebar{
           border-radius:30px!important;
           z-index:40!important;
           box-shadow:none!important;
         }
 
-        /* La ventana principal se monta sobre la extensión del rail. */
         .main{
           position:relative!important;
           z-index:30!important;
@@ -50,19 +48,46 @@
         }
 
         /*
-         * El control usa el mismo material del rail y lleva un pequeño puente
-         * hacia la izquierda. Así se lee como parte de la barra y no como un
-         * botón blanco flotando sobre el panel principal.
+         * La flecha es una lengüeta que nace del borde del rail. No usa círculo,
+         * borde ni sombra para que visualmente forme una sola pieza con la barra.
          */
         .sidebar-collapse-btn{
-          right:-30px!important;
-          z-index:70!important;
+          right:-26px!important;
+          top:30px!important;
+          width:34px!important;
+          height:48px!important;
+          border:0!important;
+          border-radius:0 15px 15px 0!important;
           background:var(--tayu-premium-rail)!important;
           color:var(--tayu-premium-rail-ink)!important;
-          border:2px solid var(--tayu-premium-outer)!important;
-          box-shadow:
-            -10px 0 0 -1px var(--tayu-premium-rail),
-            0 7px 18px rgba(0,0,0,.18)!important;
+          box-shadow:none!important;
+          transform:none!important;
+          font-size:0!important;
+          display:grid!important;
+          place-items:center!important;
+          z-index:70!important;
+        }
+
+        .sidebar-collapse-btn > *{
+          display:none!important;
+        }
+
+        .sidebar-collapse-btn::after{
+          content:'‹';
+          display:block;
+          font-size:24px;
+          line-height:1;
+          font-weight:700;
+          color:var(--tayu-premium-rail-ink);
+          transform:none!important;
+        }
+
+        body.sidebar-collapsed .sidebar-collapse-btn{
+          transform:none!important;
+        }
+
+        body.sidebar-collapsed .sidebar-collapse-btn::after{
+          content:'›';
         }
 
         .sidebar-collapse-btn:hover{
@@ -70,12 +95,10 @@
           color:var(--tayu-premium-rail-ink)!important;
         }
 
-        /* Claro: rail negro extendido por detrás, igual que el concepto premium. */
         body:not(.dark) #app.app::before{
           background:#171917!important;
         }
 
-        /* Oscuro: rail gris verdoso extendido por detrás. */
         body.dark #app.app::before{
           background:#DDE4DA!important;
         }
