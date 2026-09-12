@@ -87,13 +87,15 @@ button,input{font:inherit}
   font-size:13px;font-weight:900;
   opacity:0;
   box-shadow:12px 7px 28px rgba(18,24,18,.10);
-  transition:max-width .2s ease,opacity .12s ease,padding .2s ease;
+  transition:max-width .22s ease,opacity .14s ease,padding .22s ease;
   z-index:2;
 }
 .nav-item.active{background:#fff;color:#111;transform:translateX(5px)}
 .nav-item.active .nav-icon-white{opacity:0;visibility:hidden}
 .nav-item.active .nav-icon-color{opacity:1;visibility:visible}
-.nav-item.active .nav-label{
+.nav-item.active.label-open .nav-label,
+.nav-item.active:hover .nav-label,
+.nav-item.active:focus-visible .nav-label{
   max-width:190px;min-width:132px;
   opacity:1;padding:0 18px 0 8px;
 }
@@ -155,7 +157,7 @@ button,input{font:inherit}
     <nav class="sidebar" aria-label="Navegación demo TAYULABS">
       <div class="sidebar-logo">AQ</div>
       <div class="nav-list" id="navList">
-        <button class="nav-item active" data-page="Dashboard" data-subtitle="Vista principal de la plataforma.">
+        <button class="nav-item active label-open" data-page="Dashboard" data-subtitle="Vista principal de la plataforma.">
           <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/dashboard-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/dashboard-color.png" alt=""></span><span class="nav-label">Dashboard</span>
         </button>
         <button class="nav-item" data-page="Fincas" data-subtitle="Agricultura, sitios, zonas y operación de campo.">
@@ -255,7 +257,7 @@ button,input{font:inherit}
       </article>
     </section>
 
-    <div class="bottom-strip"><span class="demo-dot"></span><span><b>Prueba de diseño:</b> selecciona cualquier módulo. El icono activo queda integrado con una pestaña blanca que sale del rail negro, pero la plataforma real no se modifica.</span></div>
+    <div class="bottom-strip"><span class="demo-dot"></span><span><b>Prueba de diseño:</b> al seleccionar un módulo, su nombre aparece durante 2,5 segundos y luego se retrae. El icono activo permanece marcado; al pasar el mouse sobre él, el nombre vuelve a mostrarse.</span></div>
   </main>
 </div>
 
@@ -276,10 +278,25 @@ const contentMap={
   'Cerrar sesión':['Cerrar sesión','Fin de sesión']
 };
 
+let labelTimer=null;
+function showActiveLabel(button){
+  if(labelTimer)clearTimeout(labelTimer);
+  document.querySelectorAll('.nav-item').forEach(item=>item.classList.remove('label-open'));
+  button.classList.add('label-open');
+  labelTimer=setTimeout(()=>{
+    button.classList.remove('label-open');
+    labelTimer=null;
+  },2500);
+}
+
 document.querySelectorAll('.nav-item').forEach(button=>{
   button.addEventListener('click',()=>{
-    document.querySelectorAll('.nav-item').forEach(item=>item.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(item=>{
+      item.classList.remove('active','label-open');
+    });
     button.classList.add('active');
+    showActiveLabel(button);
+
     const page=button.dataset.page;
     document.getElementById('pageTitle').textContent=page;
     document.getElementById('pageSubtitle').textContent=button.dataset.subtitle||'';
@@ -288,6 +305,9 @@ document.querySelectorAll('.nav-item').forEach(button=>{
     document.getElementById('operationTitle').textContent=labels[1];
   });
 });
+
+const initialActive=document.querySelector('.nav-item.active');
+if(initialActive)showActiveLabel(initialActive);
 </script>
 </body>
 </html>
