@@ -100,7 +100,6 @@
         body.sidebar-collapsed .sidebar-logo-stack{width:60px!important;}
         body.sidebar-collapsed .sidebar-logo-stack .sidebar-logo{width:60px!important;max-height:60px!important;}
 
-        /* La superficie manda sobre el tema: rail oscuro usa logo oscuro; rail claro usa logo principal. */
         .sidebar-logo-stack .sidebar-logo-color{opacity:0!important;visibility:hidden!important;}
         .sidebar-logo-stack .sidebar-logo-white{opacity:1!important;visibility:visible!important;}
         body.dark .sidebar-logo-stack .sidebar-logo-color{opacity:1!important;visibility:visible!important;}
@@ -173,22 +172,17 @@
         .sidebar .nav-icon{width:24px!important;height:24px!important;flex:0 0 24px!important;display:grid!important;place-items:center!important;}
         .sidebar .nav-icon .tayu-nav-img{width:20px!important;height:20px!important;max-width:20px!important;max-height:20px!important;}
 
-        /* Rail negro en claro: iconos blancos salvo el activo. */
         body:not(.dark) .sidebar .nav button:not(.active) .tayu-nav-img.icon-color{opacity:0!important;visibility:hidden!important;}
         body:not(.dark) .sidebar .nav button:not(.active) .tayu-nav-img.icon-white{opacity:1!important;visibility:visible!important;filter:none!important;}
         body:not(.dark) .sidebar .nav button.active .tayu-nav-img.icon-color{opacity:1!important;visibility:visible!important;}
         body:not(.dark) .sidebar .nav button.active .tayu-nav-img.icon-white{opacity:0!important;visibility:hidden!important;}
 
-        /* Rail gris verdoso en oscuro: iconos oscuros y activo verde. */
         body.dark .sidebar .nav button .tayu-nav-img.icon-color{opacity:0!important;visibility:hidden!important;}
         body.dark .sidebar .nav button .tayu-nav-img.icon-white{opacity:1!important;visibility:visible!important;filter:brightness(0) saturate(100%)!important;}
 
         .sidebar .alarm-badge{box-shadow:0 0 0 3px var(--tayu-premium-rail)!important;}
         body.sidebar-collapsed .sidebar .alarm-badge{right:1px!important;top:1px!important;}
-
-        /* GPS/Flotas y cualquier botón inyectado heredan el mismo shell. */
         #gpsGenericNavButton .nav-icon{font-size:17px!important;line-height:1!important;}
-
         .topbar{position:relative;z-index:5;}
       }
     `;
@@ -249,8 +243,6 @@
 
   function activate() {
     injectStyles();
-
-    /* Sobrescribe únicamente el comportamiento visual del control ya existente. */
     window.toggleSidebarCollapse = togglePremiumSidebar;
 
     if (isDesktop()) collapseSidebar();
@@ -258,10 +250,7 @@
     const nav = document.querySelector('.sidebar .nav');
     if (nav) {
       nav.addEventListener('click', () => {
-        if (isDesktop() && !document.body.classList.contains('sidebar-collapsed')) {
-          if (collapseTimer) clearTimeout(collapseTimer);
-          collapseTimer = setTimeout(collapseSidebar, 3000);
-        }
+        if (isDesktop()) expandSidebarTemporarily();
       }, true);
     }
 
