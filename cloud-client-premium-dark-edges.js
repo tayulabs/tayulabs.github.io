@@ -21,10 +21,10 @@
           bottom:14px;
           width:132px!important;
           border-radius:30px;
-          background:var(--tayu-premium-rail);
+          background:#FFFFFF!important;
           z-index:10;
           pointer-events:none;
-          transition:background .16s ease;
+          transition:none!important;
         }
 
         .sidebar,
@@ -35,6 +35,8 @@
           border-radius:30px!important;
           z-index:40!important;
           box-shadow:none!important;
+          background:#FFFFFF!important;
+          color:#242A24!important;
         }
 
         .main,
@@ -63,6 +65,19 @@
           max-height:60px!important;
         }
 
+        .sidebar .sidebar-logo-color,
+        body.dark .sidebar .sidebar-logo-color,
+        body:not(.dark) .sidebar .sidebar-logo-color{
+          opacity:1!important;
+          visibility:visible!important;
+        }
+        .sidebar .sidebar-logo-white,
+        body.dark .sidebar .sidebar-logo-white,
+        body:not(.dark) .sidebar .sidebar-logo-white{
+          opacity:0!important;
+          visibility:hidden!important;
+        }
+
         .sidebar .nav button,
         body.sidebar-collapsed .sidebar .nav button,
         body:not(.sidebar-collapsed) .sidebar .nav button{
@@ -72,6 +87,7 @@
           margin:3px auto!important;
           padding:0!important;
           justify-content:center!important;
+          color:#242A24!important;
         }
 
         .sidebar .nav-label,
@@ -82,8 +98,26 @@
 
         .sidebar-collapse-btn{display:none!important;}
 
-        body:not(.dark) #app.app::before{background:#171917!important;}
-        body.dark #app.app::before{background:#DDE4DA!important;}
+        .sidebar .nav button .tayu-nav-img.icon-color{
+          opacity:0!important;
+          visibility:hidden!important;
+        }
+        .sidebar .nav button .tayu-nav-img.icon-white{
+          opacity:1!important;
+          visibility:visible!important;
+          filter:brightness(0) saturate(100%)!important;
+        }
+        .sidebar .nav button:hover{
+          background:#F1F4EF!important;
+          color:#242A24!important;
+        }
+        .sidebar .nav button.active{
+          background:#5BC12F!important;
+          color:#071006!important;
+        }
+        .sidebar .alarm-badge{
+          box-shadow:0 0 0 3px #FFFFFF!important;
+        }
 
         body.dark .main{
           background:#101310!important;
@@ -121,13 +155,14 @@
           pointer-events:none;
           padding:8px 11px;
           border-radius:11px;
-          background:#171917;
-          color:#f7f8f6;
+          background:#FFFFFF;
+          color:#242A24;
           font-size:12px;
           line-height:1;
           font-weight:850;
           white-space:nowrap;
-          box-shadow:0 8px 22px rgba(0,0,0,.18);
+          border:1px solid rgba(36,42,36,.08);
+          box-shadow:0 8px 22px rgba(0,0,0,.16);
           opacity:0;
           visibility:hidden;
           transform:translate3d(-7px,-50%,0) scale(.96);
@@ -140,11 +175,6 @@
           visibility:visible;
           transform:translate3d(0,-50%,0) scale(1);
           transition:opacity .10s ease,transform .16s cubic-bezier(.2,.8,.2,1),visibility 0s;
-        }
-        body.dark #${HOVER_TIP_ID}{
-          background:#DDE4DA;
-          color:#242A24;
-          box-shadow:0 8px 22px rgba(0,0,0,.20);
         }
       }
     `;
