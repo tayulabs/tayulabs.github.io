@@ -10,20 +10,32 @@
     style.id = STYLE_ID;
     style.textContent = `
       @media (min-width:961px){
+        /*
+         * La barra conserva su ancho útil original. El fondo se prolonga hacia
+         * la derecha por detrás del panel principal, igual que en el demo.
+         * Así el panel puede mantener su curva izquierda sin que aparezca una
+         * cápsula separada ni una franja recta.
+         */
         .sidebar{
           border-radius:30px!important;
-          box-shadow:0 16px 38px rgba(0,0,0,.14)!important;
+          z-index:20!important;
+          box-shadow:38px 0 0 0 var(--tayu-premium-rail)!important;
         }
 
         .main{
-          margin-left:244px!important;
+          position:relative!important;
+          z-index:30!important;
+          margin-left:252px!important;
+          border-radius:30px!important;
         }
 
         body.sidebar-collapsed .main{
-          margin-left:100px!important;
+          margin-left:108px!important;
         }
 
+        /* La flecha queda completamente dentro del borde visible del rail. */
         .sidebar-collapse-btn{
+          right:0!important;
           z-index:70!important;
         }
 
@@ -35,10 +47,7 @@
             0 16px 42px rgba(0,0,0,.18)!important;
         }
 
-        body.dark #app.app{
-          background:#0D0F0D!important;
-        }
-
+        body.dark #app.app,
         body.dark{
           background:#0D0F0D!important;
         }
