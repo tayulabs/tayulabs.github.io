@@ -52,18 +52,27 @@
           width:min(82vw,310px)!important;
           max-width:310px!important;
           padding:18px 14px 14px!important;
-          border:1px solid rgba(36,42,36,.08)!important;
           border-radius:26px!important;
-          background:#FFFFFF!important;
-          color:#242A24!important;
           overflow:hidden!important;
           display:flex!important;
           flex-direction:column!important;
           z-index:7001!important;
           box-shadow:18px 0 42px rgba(0,0,0,.24)!important;
           transform:translate3d(calc(-100% - 18px),0,0)!important;
-          transition:transform .22s cubic-bezier(.2,.8,.2,1)!important;
+          transition:transform .22s cubic-bezier(.2,.8,.2,1),background .16s ease!important;
           will-change:transform;
+        }
+
+        body:not(.dark) .sidebar{
+          background:#171917!important;
+          color:#F7F8F6!important;
+          border:1px solid rgba(255,255,255,.06)!important;
+        }
+
+        body.dark .sidebar{
+          background:#FFFFFF!important;
+          color:#242A24!important;
+          border:1px solid rgba(36,42,36,.08)!important;
         }
 
         .sidebar.open{
@@ -97,16 +106,19 @@
           object-fit:contain!important;
         }
 
-        .sidebar .sidebar-logo-color,
-        body.dark .sidebar .sidebar-logo-color,
         body:not(.dark) .sidebar .sidebar-logo-color{
+          opacity:0!important;
+          visibility:hidden!important;
+        }
+        body:not(.dark) .sidebar .sidebar-logo-white{
           opacity:1!important;
           visibility:visible!important;
         }
-
-        .sidebar .sidebar-logo-white,
-        body.dark .sidebar .sidebar-logo-white,
-        body:not(.dark) .sidebar .sidebar-logo-white{
+        body.dark .sidebar .sidebar-logo-color{
+          opacity:1!important;
+          visibility:visible!important;
+        }
+        body.dark .sidebar .sidebar-logo-white{
           opacity:0!important;
           visibility:hidden!important;
         }
@@ -139,19 +151,34 @@
           justify-content:flex-start!important;
           gap:11px!important;
           background:transparent!important;
-          color:#242A24!important;
           font-size:13px!important;
           font-weight:850!important;
           text-align:left!important;
           box-shadow:none!important;
         }
 
-        .sidebar .nav button:hover{
-          background:#F1F4EF!important;
+        body:not(.dark) .sidebar .nav button{
+          color:#F7F8F6!important;
+        }
+        body.dark .sidebar .nav button{
           color:#242A24!important;
         }
 
-        .sidebar .nav button.active{
+        body:not(.dark) .sidebar .nav button:hover{
+          background:#232723!important;
+          color:#F7F8F6!important;
+        }
+        body:not(.dark) .sidebar .nav button.active{
+          background:#F7F3DF!important;
+          color:#151715!important;
+          box-shadow:0 6px 18px rgba(0,0,0,.14)!important;
+        }
+
+        body.dark .sidebar .nav button:hover{
+          background:#F1F4EF!important;
+          color:#242A24!important;
+        }
+        body.dark .sidebar .nav button.active{
           background:#5BC12F!important;
           color:#071006!important;
           box-shadow:0 6px 18px rgba(91,193,47,.20)!important;
@@ -176,18 +203,39 @@
           place-items:center!important;
         }
 
-        .sidebar .nav button .tayu-nav-img.icon-color{
+        body:not(.dark) .sidebar .nav button:not(.active) .tayu-nav-img.icon-color{
+          opacity:0!important;
+          visibility:hidden!important;
+        }
+        body:not(.dark) .sidebar .nav button:not(.active) .tayu-nav-img.icon-white{
+          opacity:1!important;
+          visibility:visible!important;
+          filter:none!important;
+        }
+        body:not(.dark) .sidebar .nav button.active .tayu-nav-img.icon-color{
+          opacity:1!important;
+          visibility:visible!important;
+        }
+        body:not(.dark) .sidebar .nav button.active .tayu-nav-img.icon-white{
           opacity:0!important;
           visibility:hidden!important;
         }
 
-        .sidebar .nav button .tayu-nav-img.icon-white{
+        body.dark .sidebar .nav button .tayu-nav-img.icon-color{
+          opacity:0!important;
+          visibility:hidden!important;
+        }
+        body.dark .sidebar .nav button .tayu-nav-img.icon-white{
           opacity:1!important;
           visibility:visible!important;
           filter:brightness(0) saturate(100%)!important;
         }
 
-        .sidebar .alarm-badge{
+        body:not(.dark) .sidebar .alarm-badge{
+          margin-left:auto!important;
+          box-shadow:0 0 0 3px #171917!important;
+        }
+        body.dark .sidebar .alarm-badge{
           margin-left:auto!important;
           box-shadow:0 0 0 3px #FFFFFF!important;
         }
