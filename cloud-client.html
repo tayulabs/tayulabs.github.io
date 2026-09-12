@@ -18,7 +18,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260912-premium-shell3';
+const VERSION='20260912-premium-shell4';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -49,8 +49,6 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   if(!response.ok)throw new Error(`No se pudo cargar la plataforma (${response.status})`);
   let html=await response.text();
 
-  // Protección: un navegador nuevo no puede sobrescribir /dashboard
-  // hasta haber cargado correctamente primero el estado central del VPS.
   const saveGuardNeedle=`async function saveDashboardCloud(){
     if(!window.__tayuApiPost)return;`;
   const saveGuardReplacement=`async function saveDashboardCloud(){
@@ -101,8 +99,6 @@ window.addSatelliteLayer=addSatelliteLayer;
     `return keycloak.logout({ redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=${VERSION}' });`
   );
 
-  // Mantener type="module" es esencial: así el arranque ocurre después de
-  // parsear los scripts que definen loadDashboardCloud/saveDashboardCloud.
   html=html.replace(modulePattern,openModuleScript+appCode+closeScript);
 
   const addons=
