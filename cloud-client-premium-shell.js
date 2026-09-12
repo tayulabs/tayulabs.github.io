@@ -30,9 +30,18 @@
       }
 
       @media (min-width:${DESKTOP_MIN}px){
-        html,body{min-height:100%;}
+        html,body{
+          height:100%!important;
+          min-height:100%!important;
+          overflow:hidden!important;
+        }
         body{background:var(--tayu-premium-outer)!important;}
-        #app.app{min-height:100vh;background:var(--tayu-premium-outer)!important;}
+        #app.app{
+          height:100vh!important;
+          min-height:0!important;
+          overflow:hidden!important;
+          background:var(--tayu-premium-outer)!important;
+        }
 
         .sidebar{
           position:fixed!important;
@@ -60,11 +69,22 @@
 
         .main{
           margin:14px 14px 14px 252px!important;
-          min-height:calc(100vh - 28px)!important;
+          height:calc(100vh - 28px)!important;
+          min-height:0!important;
           padding:24px!important;
           background:var(--bg)!important;
           border-radius:30px!important;
+          overflow-y:auto!important;
+          overflow-x:hidden!important;
+          overscroll-behavior:contain!important;
+          scrollbar-width:none!important;
+          -ms-overflow-style:none!important;
           transition:margin-left .28s ease,background .22s ease!important;
+        }
+        .main::-webkit-scrollbar{
+          width:0!important;
+          height:0!important;
+          display:none!important;
         }
         body.sidebar-collapsed .main{margin-left:108px!important;}
 
