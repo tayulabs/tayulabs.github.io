@@ -104,13 +104,13 @@
           will-change:transform;
         }
         .sidebar .nav button:hover .nav-icon{
-          transform:translateZ(0) scale(1.22);
+          transform:translateZ(0) scale(1.28);
         }
         .sidebar .nav button.active .nav-icon{
           transform:translateZ(0) scale(1.06);
         }
         .sidebar .nav button.active:hover .nav-icon{
-          transform:translateZ(0) scale(1.24);
+          transform:translateZ(0) scale(1.30);
         }
 
         #${HOVER_TIP_ID}{
