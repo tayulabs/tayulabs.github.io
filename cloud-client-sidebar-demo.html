@@ -4,139 +4,199 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>TAYULABS · Demo barra lateral</title>
+<title>TAYULABS · Demo navegación compacta</title>
 <style>
 :root{
   --brand:#5BC12F;
-  --ink:#101310;
-  --muted:#6b7280;
-  --line:#e8ebe7;
+  --ink:#121512;
+  --muted:#6f786d;
+  --line:#e7ebe5;
   --panel:#ffffff;
-  --soft:#f5f7f3;
-  --rail:#101110;
+  --soft:#f6f8f5;
+  --rail:#101210;
+  --shadow:0 18px 55px rgba(20,32,20,.08);
 }
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif;background:#eef1ed;color:var(--ink)}
-body{padding:24px}
+body{padding:18px}
+button,input{font:inherit}
 .demo-shell{
-  min-height:calc(100vh - 48px);
-  display:grid;
-  grid-template-columns:116px minmax(0,1fr);
+  min-height:calc(100vh - 36px);
   background:#fff;
-  border:1px solid #dfe3dc;
-  border-radius:38px;
+  border:1px solid #dfe4dc;
+  border-radius:34px;
+  box-shadow:0 24px 80px rgba(14,23,14,.10);
+  display:grid;
+  grid-template-columns:126px minmax(0,1fr);
   overflow:hidden;
-  box-shadow:0 24px 80px rgba(12,18,12,.10);
 }
-.sidebar-wrap{padding:18px 0 18px 18px;background:#fff;position:relative;z-index:3}
+
+/* ===== SIDEBAR DEMO ===== */
+.sidebar-zone{position:relative;padding:18px 0 18px 22px;background:#fff;z-index:10}
 .sidebar{
-  width:82px;
-  height:100%;
-  min-height:690px;
-  padding:16px 10px;
+  position:sticky;top:18px;
+  width:84px;height:calc(100vh - 72px);min-height:700px;
   background:var(--rail);
-  border-radius:29px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  position:relative;
+  border-radius:28px;
+  padding:15px 10px;
+  display:flex;flex-direction:column;align-items:center;
   overflow:visible;
+  box-shadow:0 16px 38px rgba(0,0,0,.14);
 }
-.brand-mark{
-  width:54px;height:54px;border-radius:16px;background:var(--brand);color:#fff;
-  display:grid;place-items:center;font-weight:950;font-size:20px;letter-spacing:-1px;
-  margin-bottom:36px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)
+.sidebar-logo{
+  width:54px;height:54px;border-radius:17px;
+  display:grid;place-items:center;
+  background:var(--brand);
+  color:#fff;font-size:18px;font-weight:950;letter-spacing:-1px;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.25),0 5px 18px rgba(91,193,47,.23);
+  margin-bottom:17px;
 }
-.nav-stack{display:grid;gap:12px;width:100%;position:relative}
+.sidebar-logo small{font-size:10px;display:block;line-height:1;text-align:center;letter-spacing:0}
+.nav-list{width:100%;display:flex;flex-direction:column;gap:4px;position:relative}
 .nav-item{
   position:relative;
-  width:62px;height:58px;
-  margin-left:0;
-  display:flex;align-items:center;gap:11px;
+  width:64px;height:48px;
   border:0;background:transparent;color:#fff;
-  border-radius:19px;
-  padding:0 17px;
+  border-radius:16px;
+  padding:0;
   cursor:pointer;
   overflow:visible;
-  transition:width .22s ease,transform .22s ease,background .22s ease,color .22s ease;
-  font:800 13px/1 Inter,Arial,sans-serif;
-  text-align:left;
+  display:flex;align-items:center;
+  transition:background .16s ease,transform .18s ease;
 }
-.nav-item:hover:not(.active){background:#1c1f1b}
-.nav-icon{width:28px;flex:0 0 28px;display:grid;place-items:center;font-size:20px;line-height:1;z-index:2}
-.nav-label{opacity:0;max-width:0;overflow:hidden;white-space:nowrap;transition:opacity .15s ease .05s,max-width .22s ease;color:#111;z-index:2}
-.nav-item.active{
-  width:154px;
-  transform:translateX(15px);
-  background:#fff;
-  color:#111;
-  border-radius:23px;
-  box-shadow:0 9px 24px rgba(0,0,0,.13);
+.nav-item:hover:not(.active){background:#1c201c}
+.nav-icon-wrap{
+  width:64px;height:48px;flex:0 0 64px;
+  display:grid;place-items:center;
+  position:relative;z-index:4;
 }
-.nav-item.active .nav-label{opacity:1;max-width:100px}
-/* curvas que hacen que la pestaña parezca salir de la barra negra */
-.nav-item.active::before,
-.nav-item.active::after{
-  content:"";
-  position:absolute;
-  left:-15px;
-  width:30px;height:30px;
-  background:transparent;
-  pointer-events:none;
+.nav-icon-wrap img{
+  grid-area:1/1;width:21px;height:21px;object-fit:contain;
+  transition:none;
 }
-.nav-item.active::before{
-  top:-30px;
-  border-bottom-left-radius:22px;
-  box-shadow:-10px 10px 0 8px var(--rail);
+.nav-icon-color{opacity:0;visibility:hidden}
+.nav-icon-white{opacity:1;visibility:visible}
+.nav-label{
+  position:absolute;left:57px;top:4px;
+  height:40px;min-width:0;max-width:0;
+  display:flex;align-items:center;
+  white-space:nowrap;overflow:hidden;
+  padding:0;
+  border-radius:0 15px 15px 0;
+  background:#fff;color:#151815;
+  font-size:13px;font-weight:900;
+  opacity:0;
+  box-shadow:12px 7px 28px rgba(18,24,18,.10);
+  transition:max-width .2s ease,opacity .12s ease,padding .2s ease;
+  z-index:2;
 }
-.nav-item.active::after{
-  bottom:-30px;
-  border-top-left-radius:22px;
-  box-shadow:-10px -10px 0 8px var(--rail);
+.nav-item.active{background:#fff;color:#111;transform:translateX(5px)}
+.nav-item.active .nav-icon-white{opacity:0;visibility:hidden}
+.nav-item.active .nav-icon-color{opacity:1;visibility:visible}
+.nav-item.active .nav-label{
+  max-width:190px;min-width:132px;
+  opacity:1;padding:0 18px 0 8px;
 }
-.sidebar-bottom{margin-top:auto;width:100%;display:grid;gap:12px}
-.content{padding:24px 30px 30px 18px;min-width:0}
-.topbar{display:flex;align-items:center;gap:18px;margin-bottom:24px}
-.search{width:min(420px,38vw);height:44px;border:1px solid var(--line);border-radius:13px;background:#fafbf9;padding:0 16px;font-size:13px;outline:none}
+/* unión orgánica con la barra negra */
+.nav-item.active::before,.nav-item.active::after{
+  content:"";position:absolute;right:-5px;width:17px;height:17px;background:transparent;z-index:1;pointer-events:none;
+}
+.nav-item.active::before{top:-17px;border-bottom-right-radius:17px;box-shadow:7px 7px 0 6px #fff}
+.nav-item.active::after{bottom:-17px;border-top-right-radius:17px;box-shadow:7px -7px 0 6px #fff}
+.nav-divider{height:1px;background:#282c28;margin:6px 9px}
+.sidebar-bottom{margin-top:auto;width:100%}
+.sidebar-bottom .nav-item{margin-top:5px}
+
+/* ===== CONTENT ===== */
+.content{padding:22px 28px 28px 8px;min-width:0;background:#fff}
+.topbar{display:flex;align-items:center;gap:12px;min-height:48px;margin-bottom:22px}
+.search{
+  width:min(390px,36vw);height:43px;border:1px solid var(--line);border-radius:14px;
+  background:#fafbfa;padding:0 15px;color:var(--ink);outline:none;
+}
+.search:focus{border-color:rgba(91,193,47,.55);box-shadow:0 0 0 3px rgba(91,193,47,.10)}
 .top-spacer{flex:1}
-.bell{position:relative;width:42px;height:42px;border:0;border-radius:50%;background:#f5f7f3;font-size:19px;cursor:pointer}
-.badge{position:absolute;right:1px;top:0;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;border:2px solid #fff}
-.user{display:flex;align-items:center;gap:10px;font-weight:850;font-size:13px}
-.avatar{width:39px;height:39px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:#fff;font-size:12px;font-weight:950;box-shadow:0 0 0 3px rgba(91,193,47,.15)}
-.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:18px}
-.page-head h1{margin:0;font-size:31px;letter-spacing:-.7px}
-.page-head p{margin:6px 0 0;color:var(--muted);font-size:14px}
-.demo-tag{padding:8px 12px;border-radius:99px;background:#effbe9;color:#39831d;font-size:11px;font-weight:900;border:1px solid #cfeec1}
-.hero-grid{display:grid;grid-template-columns:1.05fr 1.45fr;gap:18px}
-.card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:0 12px 35px rgba(15,23,15,.05)}
-.card h3{margin:0 0 6px}.hint{color:var(--muted);font-size:13px;margin:0}
-.gradient-card{margin-top:18px;min-height:175px;background:linear-gradient(135deg,#edffe5,#f5f0ff 52%,#e8efff);border:0;position:relative;overflow:hidden}
-.gradient-card:after{content:"";position:absolute;width:180px;height:180px;border-radius:48px;right:-35px;bottom:-55px;background:rgba(91,193,47,.15);transform:rotate(25deg)}
-.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}.kpi{padding:16px;border-radius:17px;background:var(--soft);border:1px solid var(--line)}.kpi span{display:block;color:var(--muted);font-size:11px;font-weight:800}.kpi b{display:block;margin-top:7px;font-size:22px}
-.map-mock{height:410px;background:linear-gradient(135deg,#f0f2ef,#e3e7e2);position:relative;overflow:hidden}
-.map-mock:before{content:"";position:absolute;inset:-20%;background:repeating-linear-gradient(118deg,transparent 0 56px,rgba(255,255,255,.72) 57px 61px),repeating-linear-gradient(28deg,transparent 0 78px,rgba(255,255,255,.45) 79px 82px);transform:rotate(-5deg)}
-.route{position:absolute;left:20%;bottom:15%;width:55%;height:55%;border-left:7px solid #1b1d1a;border-bottom:7px solid #1b1d1a;border-radius:0 0 0 90px;transform:rotate(-8deg);opacity:.82}
-.pin{position:absolute;width:24px;height:24px;background:#111;border:5px solid #fff;border-radius:50%;box-shadow:0 6px 20px rgba(0,0,0,.2)}.pin.a{left:29%;bottom:31%}.pin.b{right:25%;top:28%}
-.view-note{margin-top:18px;padding:14px 16px;border-radius:16px;background:#101310;color:#fff;font-size:12px;line-height:1.5}.view-note b{color:#a9ef8a}
-@media(max-width:900px){body{padding:0}.demo-shell{min-height:100vh;border-radius:0;border:0;grid-template-columns:94px 1fr}.sidebar-wrap{padding-left:10px}.sidebar{width:72px}.nav-item{width:52px;padding:0 12px}.nav-item.active{width:132px}.content{padding:18px 16px}.hero-grid{grid-template-columns:1fr}.search{display:none}.user span.name{display:none}}
+.round-action{position:relative;width:42px;height:42px;border:1px solid var(--line);border-radius:14px;background:#fafbfa;color:var(--ink);display:grid;place-items:center;cursor:pointer}
+.round-action svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.notification-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:#ef4444;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:900;border:2px solid #fff}
+.user-pill{display:flex;align-items:center;gap:10px;padding:4px 7px 4px 4px;border-radius:16px;cursor:default}
+.user-avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:#fff;font-weight:950;font-size:12px;box-shadow:0 0 0 3px rgba(91,193,47,.15)}
+.user-name{font-size:13px;font-weight:900;white-space:nowrap}.chev{font-size:15px;color:var(--muted)}
+
+.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}
+.page-title-wrap h1{margin:0;font-size:30px;letter-spacing:-.55px}
+.page-title-wrap p{margin:5px 0 0;color:var(--muted);font-size:13px}
+.demo-tag{flex:0 0 auto;padding:8px 11px;border-radius:99px;background:#f0faeb;border:1px solid #cfecc2;color:#3e8a20;font-size:10px;font-weight:900;letter-spacing:.2px}
+
+.dashboard-grid{display:grid;grid-template-columns:1.25fr .85fr;gap:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:23px;padding:19px;box-shadow:var(--shadow)}
+.card h3{margin:0;font-size:17px}.hint{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
+.kpi{padding:15px;border:1px solid var(--line);border-radius:17px;background:var(--soft)}
+.kpi span{display:block;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.3px}.kpi b{display:block;margin-top:7px;font-size:24px}
+.operation-card{margin-top:18px;min-height:215px;background:linear-gradient(135deg,#f4fff0,#f8f6ff 54%,#eef3ff);position:relative;overflow:hidden;border:0}
+.operation-card::after{content:"";position:absolute;right:-40px;bottom:-80px;width:230px;height:230px;border-radius:68px;background:rgba(91,193,47,.12);transform:rotate(22deg)}
+.module-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.module-chip{padding:7px 10px;border-radius:99px;background:#fff;border:1px solid rgba(0,0,0,.07);font-size:11px;font-weight:850}
+.map-card{min-height:460px;padding:0;overflow:hidden;position:relative;background:#e9ede8}
+.map-grid{position:absolute;inset:-12%;background:repeating-linear-gradient(116deg,transparent 0 55px,rgba(255,255,255,.86) 56px 60px),repeating-linear-gradient(27deg,transparent 0 82px,rgba(255,255,255,.56) 83px 87px);transform:rotate(-3deg)}
+.route{position:absolute;left:15%;bottom:16%;width:64%;height:52%;border-left:6px solid #343934;border-bottom:6px solid #343934;border-radius:0 0 0 100px;transform:rotate(-7deg);opacity:.85}
+.pin{position:absolute;width:21px;height:21px;border-radius:50%;background:#111;border:4px solid #fff;box-shadow:0 5px 16px rgba(0,0,0,.22)}.pin.one{left:25%;bottom:27%}.pin.two{right:22%;top:23%}
+.map-label{position:absolute;left:18px;top:18px;padding:8px 11px;border-radius:11px;background:rgba(255,255,255,.92);font-size:11px;font-weight:900;border:1px solid rgba(0,0,0,.05)}
+.bottom-strip{margin-top:18px;border:1px solid var(--line);border-radius:19px;padding:13px 15px;display:flex;align-items:center;gap:11px;color:var(--muted);font-size:12px}
+.demo-dot{width:9px;height:9px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 4px rgba(91,193,47,.12)}
+
+@media(max-width:1180px){.dashboard-grid{grid-template-columns:1fr}.map-card{min-height:370px}.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:820px){body{padding:0}.demo-shell{min-height:100vh;border:0;border-radius:0;grid-template-columns:104px minmax(0,1fr)}.sidebar-zone{padding-left:12px}.sidebar{width:76px;min-height:650px}.nav-item,.nav-icon-wrap{width:56px}.nav-icon-wrap{flex-basis:56px}.nav-label{left:51px}.content{padding:16px 14px 20px 4px}.search{display:none}.page-head{align-items:center}.demo-tag{display:none}.user-name,.chev{display:none}}
 </style>
 </head>
 <body>
 <div class="demo-shell">
-  <aside class="sidebar-wrap">
-    <nav class="sidebar" aria-label="Demo navegación">
-      <div class="brand-mark">AQ</div>
-      <div class="nav-stack">
-        <button class="nav-item" data-page="Dashboard"><span class="nav-icon">▥</span><span class="nav-label">Dashboard</span></button>
-        <button class="nav-item active" data-page="Fincas"><span class="nav-icon">⌂</span><span class="nav-label">Fincas</span></button>
-        <button class="nav-item" data-page="Bananeras"><span class="nav-icon">♨</span><span class="nav-label">Bananeras</span></button>
-        <button class="nav-item" data-page="Ganadería"><span class="nav-icon">◉</span><span class="nav-label">Ganadería</span></button>
-        <button class="nav-item" data-page="Sensores"><span class="nav-icon">⌁</span><span class="nav-label">Sensores</span></button>
-        <button class="nav-item" data-page="Dispositivos"><span class="nav-icon">▣</span><span class="nav-label">Dispositivos</span></button>
-        <button class="nav-item" data-page="Configuración"><span class="nav-icon">⚙</span><span class="nav-label">Config.</span></button>
+  <aside class="sidebar-zone">
+    <nav class="sidebar" aria-label="Navegación demo TAYULABS">
+      <div class="sidebar-logo">AQ</div>
+      <div class="nav-list" id="navList">
+        <button class="nav-item active" data-page="Dashboard" data-subtitle="Vista principal de la plataforma.">
+          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/dashboard-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/dashboard-color.png" alt=""></span><span class="nav-label">Dashboard</span>
+        </button>
+        <button class="nav-item" data-page="Fincas" data-subtitle="Agricultura, sitios, zonas y operación de campo.">
+          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/fincas-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/fincas-color.png" alt=""></span><span class="nav-label">Fincas</span>
+        </button>
+        <button class="nav-item" data-page="Camaroneras" data-subtitle="Producción acuícola, piscinas y automatización.">
+          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/camaroneras-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/camaroneras-color.png" alt=""></span><span class="nav-label">Camaroneras</span>
+        </button>
+        <button class="nav-item" data-page="Bananeras" data-subtitle="Gestión e IoT para producción bananera.">
+          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/bananeras-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/bananeras-color.png" alt=""></span><span class="nav-label">Bananeras</span>
+        </button>
+        <button class="nav-item" data-page="Ganadería" data-subtitle="Trazabilidad, hatos, potreros y monitoreo.">
+          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/ganaderia-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/ganaderia-color.png" alt=""></span><span class="nav-label">Ganadería</span>
+        </button>
+        <button class="nav-item" data-page="Flotas" data-subtitle="Seguimiento GPS de vehículos y activos.">
+          <span class="nav-icon-wrap"><span style="font-size:18px">⌖</span></span><span class="nav-label">Flotas</span>
+        </button>
+        <div class="nav-divider"></div>
+        <button class="nav-item" data-page="Sensores" data-subtitle="Lecturas, variables e históricos IoT.">
+          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/sensores-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/sensores-color.png" alt=""></span><span class="nav-label">Sensores</span>
+        </button>
+        <button class="nav-item" data-page="Dispositivos" data-subtitle="Inventario y gestión de equipos.">
+          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/dispositivos-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/dispositivos-color.png" alt=""></span><span class="nav-label">Dispositivos</span>
+        </button>
+        <button class="nav-item" data-page="Tramas" data-subtitle="Telemetría y mensajes recibidos.">
+          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/tramas-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/tramas-color.png" alt=""></span><span class="nav-label">Tramas</span>
+        </button>
+        <button class="nav-item" data-page="Equipos Modbus" data-subtitle="Variables y equipos RS485 / Modbus.">
+          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/modbus-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/modbus-color.png" alt=""></span><span class="nav-label">Equipos Modbus</span>
+        </button>
+        <button class="nav-item" data-page="Configuración" data-subtitle="Ajustes generales de la plataforma.">
+          <span class="nav-icon-wrap"><img class="nav-icon-white" src="imagenes/icons/configuracion-white.png" alt=""><img class="nav-icon-color" src="imagenes/icons/configuracion-color.png" alt=""></span><span class="nav-label">Configuración</span>
+        </button>
+        <button class="nav-item" data-page="Administración" data-subtitle="Usuarios, permisos y estructura de la empresa.">
+          <span class="nav-icon-wrap"><span style="font-size:18px">◫</span></span><span class="nav-label">Administración</span>
+        </button>
       </div>
       <div class="sidebar-bottom">
-        <button class="nav-item" data-page="Salir"><span class="nav-icon">↪</span><span class="nav-label">Salir</span></button>
+        <button class="nav-item" data-page="Cerrar sesión" data-subtitle="Cerrar la sesión actual.">
+          <span class="nav-icon-wrap"><span style="font-size:19px">↪</span></span><span class="nav-label">Cerrar sesión</span>
+        </button>
       </div>
     </nav>
   </aside>
@@ -145,58 +205,87 @@ body{padding:24px}
     <header class="topbar">
       <input class="search" placeholder="Buscar en la plataforma…">
       <div class="top-spacer"></div>
-      <button class="bell" title="Alarmas">♧<span class="badge">2</span></button>
-      <div class="user"><span class="avatar">DT</span><span class="name">DEMO TEST</span><span>⌄</span></div>
+      <button class="round-action" title="Cambiar tema" aria-label="Cambiar tema">
+        <svg viewBox="0 0 24 24"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"></path><circle cx="12" cy="12" r="4"></circle></svg>
+      </button>
+      <button class="round-action" title="Alarmas" aria-label="Alarmas">
+        <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M10 21h4"></path></svg>
+        <span class="notification-badge">2</span>
+      </button>
+      <div class="user-pill"><span class="user-avatar">DT</span><span class="user-name">DEMO TEST</span><span class="chev">⌄</span></div>
     </header>
 
     <div class="page-head">
-      <div><h1 id="pageTitle">Fincas</h1><p id="pageSubtitle">Vista demo del nuevo lenguaje visual de navegación.</p></div>
+      <div class="page-title-wrap">
+        <h1 id="pageTitle">Dashboard</h1>
+        <p id="pageSubtitle">Vista principal de la plataforma.</p>
+      </div>
       <span class="demo-tag">DEMO AISLADO · NO MODIFICA PRODUCCIÓN</span>
     </div>
 
-    <section class="hero-grid">
+    <section class="dashboard-grid">
       <div>
-        <div class="card">
-          <h3 id="cardTitle">Fincas y zonas</h3>
-          <p class="hint">El elemento activo sale de la barra negra y une visualmente icono + nombre.</p>
+        <article class="card">
+          <h3 id="moduleTitle">Resumen de operación</h3>
+          <p class="hint" id="moduleHint">Una aproximación visual usando la estructura real de TAYULABS Cloud.</p>
           <div class="kpis">
-            <div class="kpi"><span>FINCAS</span><b>4</b></div>
-            <div class="kpi"><span>ZONAS</span><b>12</b></div>
-            <div class="kpi"><span>EQUIPOS</span><b>28</b></div>
+            <div class="kpi"><span>DISPOSITIVOS</span><b>24</b></div>
+            <div class="kpi"><span>ONLINE</span><b>21</b></div>
+            <div class="kpi"><span>ALARMAS ACTIVAS</span><b>2</b></div>
+            <div class="kpi"><span>SITIOS</span><b>6</b></div>
           </div>
-        </div>
-        <div class="card gradient-card">
-          <h3>Operación de campo</h3>
-          <p class="hint">Aquí irían los datos reales del módulo seleccionado.</p>
-        </div>
+        </article>
+
+        <article class="card operation-card">
+          <h3 id="operationTitle">Operación IoT</h3>
+          <p class="hint">El contenido es de demostración; lo importante aquí es evaluar la navegación compacta.</p>
+          <div class="module-chips">
+            <span class="module-chip">NOVA EDGE PRO 01 · Online</span>
+            <span class="module-chip">Sensores · 8 variables</span>
+            <span class="module-chip">RS485 / Modbus</span>
+          </div>
+        </article>
       </div>
-      <div class="card map-mock" aria-label="Mapa de demostración">
-        <div class="route"></div><span class="pin a"></span><span class="pin b"></span>
-      </div>
+
+      <article class="card map-card" aria-label="Mapa de demostración">
+        <div class="map-grid"></div>
+        <div class="route"></div>
+        <span class="pin one"></span><span class="pin two"></span>
+        <span class="map-label">Mapa / tracking</span>
+      </article>
     </section>
 
-    <div class="view-note"><b>Prueba:</b> haz clic en Dashboard, Bananeras, Ganadería, Sensores, etc. La pestaña blanca se mueve y se “fusiona” con el icono activo, sin tocar ningún archivo de la plataforma real.</div>
+    <div class="bottom-strip"><span class="demo-dot"></span><span><b>Prueba de diseño:</b> selecciona cualquier módulo. El icono activo queda integrado con una pestaña blanca que sale del rail negro, pero la plataforma real no se modifica.</span></div>
   </main>
 </div>
+
 <script>
-const subtitles={
-  Dashboard:'Resumen general de la operación.',
-  Fincas:'Vista demo del nuevo lenguaje visual de navegación.',
-  Bananeras:'Gestión bananera con una navegación más compacta.',
-  'Ganadería':'Trazabilidad y operación ganadera.',
-  Sensores:'Lecturas y monitoreo de sensores IoT.',
-  Dispositivos:'Inventario y gestión de dispositivos.',
-  'Configuración':'Preferencias de la plataforma.',
-  Salir:'Acción de cierre de sesión en la versión real.'
+const contentMap={
+  Dashboard:['Resumen de operación','Operación IoT'],
+  Fincas:['Fincas y zonas','Agricultura y operación de campo'],
+  Camaroneras:['Piscinas y producción','Automatización acuícola'],
+  Bananeras:['Producción bananera','Trazabilidad y operación'],
+  'Ganadería':['Hatos y potreros','Trazabilidad ganadera'],
+  Flotas:['Vehículos y activos','Seguimiento GPS'],
+  Sensores:['Lecturas de sensores','Telemetría e históricos'],
+  Dispositivos:['Inventario de equipos','Gestión de dispositivos'],
+  Tramas:['Mensajes recibidos','Telemetría MQTT'],
+  'Equipos Modbus':['Equipos RS485 / Modbus','Variables industriales'],
+  'Configuración':['Configuración general','Preferencias de plataforma'],
+  'Administración':['Administración','Usuarios y permisos'],
+  'Cerrar sesión':['Cerrar sesión','Fin de sesión']
 };
+
 document.querySelectorAll('.nav-item').forEach(button=>{
   button.addEventListener('click',()=>{
     document.querySelectorAll('.nav-item').forEach(item=>item.classList.remove('active'));
     button.classList.add('active');
     const page=button.dataset.page;
     document.getElementById('pageTitle').textContent=page;
-    document.getElementById('pageSubtitle').textContent=subtitles[page]||'';
-    document.getElementById('cardTitle').textContent=page==='Fincas'?'Fincas y zonas':page;
+    document.getElementById('pageSubtitle').textContent=button.dataset.subtitle||'';
+    const labels=contentMap[page]||[page,page];
+    document.getElementById('moduleTitle').textContent=labels[0];
+    document.getElementById('operationTitle').textContent=labels[1];
   });
 });
 </script>
