@@ -45,7 +45,7 @@
     style.textContent = `
       .nav button[data-view="alarmas"]{display:none!important}
       .topbar .actions .btn[onclick*="logout"]{display:none!important}
-      .tayu-topbar-social{display:flex;align-items:center;gap:8px;margin-left:2px}
+      .tayu-topbar-social{display:flex;align-items:center;gap:10px;margin-left:4px}
       .tayu-topbar-bell{
         position:relative;width:42px;height:42px;display:grid;place-items:center;
         border:0;border-radius:50%;background:transparent;color:var(--text);cursor:pointer;
@@ -60,17 +60,17 @@
       .tayu-topbar-badge[hidden]{display:none!important}
       .tayu-user-wrap{position:relative}
       .tayu-user-trigger{
-        display:flex;align-items:center;gap:9px;border:0;background:transparent;color:var(--text);
-        padding:4px 6px;border-radius:14px;cursor:pointer;max-width:260px;
+        display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--text);
+        padding:5px 10px;border-radius:16px;cursor:pointer;max-width:320px;min-height:44px;flex:0 0 auto;
       }
       .tayu-user-trigger:hover{background:var(--panel2)}
       .tayu-user-avatar{
-        width:38px;height:38px;flex:0 0 38px;border-radius:50%;display:grid;place-items:center;
+        width:40px;height:40px;flex:0 0 40px;border-radius:50%;display:grid;place-items:center;
         background:var(--brand);color:#fff;font-size:13px;font-weight:900;letter-spacing:.2px;
         box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 16%,transparent);
       }
       .tayu-user-name{
-        max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+        max-width:185px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
         font-size:13px;font-weight:850;color:var(--text);text-align:left;
       }
       .tayu-user-chevron{width:15px;height:15px;display:grid;place-items:center;color:var(--muted);transition:.18s}
@@ -92,8 +92,8 @@
       }
       .tayu-user-menu-btn:hover{background:var(--panel2)}
       @media(max-width:760px){
-        .topbar .actions{display:flex!important;justify-content:flex-end;align-items:center;gap:6px!important}
-        .tayu-user-name{max-width:110px}
+        .topbar .actions{display:flex!important;justify-content:flex-end;align-items:center;gap:8px!important}
+        .tayu-user-name{max-width:135px}
       }
       @media(max-width:520px){
         .tayu-user-name,.tayu-user-chevron{display:none}
