@@ -18,7 +18,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260912-access-sync1';
+const VERSION='20260912-premium-mobile1';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -35,7 +35,7 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   }
 
   const params=new URLSearchParams(window.location.search);
-  if(params.get('boot')!=='2' || params.get('v')!==VERSION){
+  if(params.get('boot')!=='2'){
     status.textContent='Preparando plataforma…';
     const next=new URL(window.location.href);
     next.searchParams.set('v',VERSION);
@@ -104,7 +104,6 @@ window.addSatelliteLayer=addSatelliteLayer;
   const addons=
     '<scr'+'ipt src="cloud-client-branding.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-access.js?v='+VERSION+'"></scr'+'ipt>\n'+
-    '<scr'+'ipt src="cloud-client-access-refresh.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-topbar-user.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-gps-generic.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-flotas-branding.js?v='+VERSION+'"></scr'+'ipt>\n'+
@@ -115,8 +114,7 @@ window.addSatelliteLayer=addSatelliteLayer;
     '<scr'+'ipt src="cloud-client-sidebar-drawer-guard.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-premium-shell.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-premium-dark-edges.js?v='+VERSION+'"></scr'+'ipt>\n'+
-    '<scr'+'ipt src="cloud-client-premium-mobile.js?v='+VERSION+'"></scr'+'ipt>\n'+
-    '<scr'+'ipt src="cloud-client-mobile-access-sync.js?v='+VERSION+'"></scr'+'ipt>';
+    '<scr'+'ipt src="cloud-client-premium-mobile.js?v='+VERSION+'"></scr'+'ipt>';
   html=html.replace('</body>',addons+'</body>');
 
   document.open();
