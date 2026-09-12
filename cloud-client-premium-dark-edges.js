@@ -10,22 +10,38 @@
     style.id = STYLE_ID;
     style.textContent = `
       @media (min-width:961px){
-        /*
-         * La barra conserva su ancho útil original. El fondo se prolonga hacia
-         * la derecha por detrás del panel principal, igual que en el demo.
-         * Así el panel puede mantener su curva izquierda sin que aparezca una
-         * cápsula separada ni una franja recta.
-         */
-        .sidebar{
-          border-radius:30px!important;
-          z-index:20!important;
-          box-shadow:38px 0 0 0 var(--tayu-premium-rail)!important;
+        /* Fondo extendido del rail, siempre por detrás de la ventana principal. */
+        #app.app::before{
+          content:"";
+          position:fixed;
+          left:14px;
+          top:14px;
+          bottom:14px;
+          width:276px;
+          border-radius:30px;
+          background:var(--tayu-premium-rail);
+          z-index:10;
+          pointer-events:none;
+          transition:width .28s ease,background .22s ease;
         }
 
+        body.sidebar-collapsed #app.app::before{
+          width:132px;
+        }
+
+        /* La barra real queda encima para que la flecha pueda sobresalir. */
+        .sidebar{
+          border-radius:30px!important;
+          z-index:40!important;
+          box-shadow:none!important;
+        }
+
+        /* La ventana principal se monta sobre la extensión del rail. */
         .main{
           position:relative!important;
           z-index:30!important;
           margin-left:252px!important;
+          padding-left:42px!important;
           border-radius:30px!important;
         }
 
@@ -33,10 +49,20 @@
           margin-left:108px!important;
         }
 
-        /* La flecha queda completamente dentro del borde visible del rail. */
+        /* Flecha fuera del logo y por encima del borde del panel principal. */
         .sidebar-collapse-btn{
-          right:0!important;
+          right:-34px!important;
           z-index:70!important;
+        }
+
+        /* Claro: rail negro extendido por detrás, igual que el concepto premium. */
+        body:not(.dark) #app.app::before{
+          background:#171917!important;
+        }
+
+        /* Oscuro: rail gris verdoso extendido por detrás. */
+        body.dark #app.app::before{
+          background:#DDE4DA!important;
         }
 
         body.dark .main{
