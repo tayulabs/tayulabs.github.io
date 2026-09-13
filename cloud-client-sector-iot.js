@@ -1,10 +1,12 @@
 (() => {
   'use strict';
 
-  const SECTORS = new Set(['camaroneras', 'bananeras']);
+  const SECTORS = new Set(['fincas', 'camaroneras', 'bananeras', 'ganaderia']);
   const LABELS = {
+    fincas: 'Fincas',
     camaroneras: 'Camaroneras',
     bananeras: 'Bananeras',
+    ganaderia: 'Ganadería',
   };
   const APP_LABELS = {
     generic: 'Salida genérica',
@@ -23,12 +25,20 @@
     alarm: 'Alarma',
     dry_contact: 'Contacto seco',
     modbus: 'Modbus',
+    interface: 'Interfaz genérica',
     tracking: 'Tracking / ubicación',
+    sensor: 'Sensor',
+  };
+  const TYPE_LABELS = {
+    digital_output: 'Salida',
+    digital_input: 'Entrada',
+    interface: 'Comunicación',
+    location: 'Ubicación',
     sensor: 'Sensor',
   };
 
   const resourceCache = new Map();
-  let rendering = false;
+  const renderingSectors = new Set();
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
     '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
@@ -57,6 +67,8 @@
       .tayu-sector-state.on{color:var(--brand)}.tayu-sector-state.off{color:var(--muted)}
       .tayu-sector-control{margin-top:10px}.tayu-sector-control .btn{width:100%;padding:9px 11px;border-radius:11px;font-size:12px}
       .tayu-sector-note{margin-top:8px;font-size:11px;color:var(--muted);line-height:1.4}
+      .tayu-sector-secondary{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+      .tayu-sector-secondary .tayu-sector-pill{background:var(--panel2)}
       .tayu-sector-empty{padding:20px;border:1px dashed var(--border);border-radius:16px;background:var(--panel2);color:var(--muted);text-align:center}
       @media(max-width:760px){.tayu-sector-resources{grid-template-columns:1fr}.tayu-sector-iot-head .btn{width:100%}}
     `;
@@ -107,19 +119,22 @@
     return Number.isFinite(time) && Date.now() - time < 90000;
   }
 
-  function outputLabel(resource) {
+  function resourceLabel(resource) {
     const assignment = resource?.assignment || {};
     if (assignment.display_name) return assignment.display_name;
     const app = assignment.application || resource?.default_application;
     if (APP_LABELS[app]) return APP_LABELS[app];
     const key = String(resource?.resource_key || '');
     if (/^relay\d+$/i.test(key)) return `Relay ${key.replace(/\D/g, '')}`;
-    return key || 'Salida';
+    if (/^din\d+$/i.test(key)) return `Entrada digital ${key.replace(/\D/g, '')}`;
+    if (key === 'rs485') return 'RS485 / Modbus';
+    if (key === 'gps') return 'GPS / ubicación';
+    return key || 'Recurso';
   }
 
   function applicationLabel(resource) {
-    const app = resource?.assignment?.application || resource?.default_application || 'generic';
-    return APP_LABELS[app] || app;
+    const app = resource?.assignment?.application || resource?.default_application || '';
+    return APP_LABELS[app] || app || TYPE_LABELS[resource?.resource_type] || 'Recurso';
   }
 
   function hideLegacyNovaCamaroneras() {
@@ -173,7 +188,7 @@
 
     return `<article class="tayu-sector-resource" data-sector-output="${esc(key)}" data-device-key="${esc(device.device_key)}" data-sector="${esc(sector)}">
       <div class="tayu-sector-resource-top">
-        <div><h5>${esc(outputLabel(resource))}</h5><small>${esc(key)} · ${esc(applicationLabel(resource))}</small></div>
+        <div><h5>${esc(resourceLabel(resource))}</h5><small>${esc(key)} · ${esc(applicationLabel(resource))}</small></div>
         <span class="tayu-sector-pill">${esc(modeText)}</span>
       </div>
       <div class="tayu-sector-state ${on ? 'on' : 'off'}">${esc(stateText)}</div>
@@ -185,6 +200,16 @@
         </button>
       </div>
     </article>`;
+  }
+
+  function renderSecondaryResources(resources) {
+    const secondary = resources.filter(resource => resource.resource_type !== 'digital_output');
+    if (!secondary.length) return '';
+    return `<div class="tayu-sector-secondary">${secondary.map(resource => {
+      const type = TYPE_LABELS[resource.resource_type] || 'Recurso';
+      const app = applicationLabel(resource);
+      return `<span class="tayu-sector-pill">${esc(type)}: ${esc(resourceLabel(resource))}${app ? ` · ${esc(app)}` : ''}</span>`;
+    }).join('')}</div>`;
   }
 
   function renderDevice(device, resourceData, telemetry, sector) {
@@ -210,14 +235,15 @@
       ${outputs.length
         ? `<div class="tayu-sector-resources">${outputs.map(resource => renderOutput(resource, device, telemetry, sector)).join('')}</div>`
         : '<div class="tayu-sector-note">Este dispositivo no declara salidas digitales controlables.</div>'}
+      ${renderSecondaryResources(resources)}
     </section>`;
   }
 
   async function renderSector(sector, force = false) {
-    if (!SECTORS.has(sector) || rendering) return;
+    if (!SECTORS.has(sector) || renderingSectors.has(sector)) return;
     const view = document.getElementById(sector);
     if (!view) return;
-    rendering = true;
+    renderingSectors.add(sector);
     try {
       hideLegacyNovaCamaroneras();
       const host = ensureHost(sector);
@@ -229,7 +255,7 @@
       host.innerHTML = `<div class="tayu-sector-iot-head">
         <div>
           <h3>IoT y automatización · ${esc(LABELS[sector])}</h3>
-          <p class="hint">Controladores y recursos físicos asignados a sitios de este sector desde Cloud Admin.</p>
+          <p class="hint">Dispositivos y recursos físicos asignados a sitios de este sector desde Cloud Admin.</p>
         </div>
         <button type="button" class="btn ghost" data-sector-iot-refresh="${esc(sector)}">Actualizar</button>
       </div>
@@ -252,7 +278,7 @@
       }));
       listHost.innerHTML = rows.join('');
     } finally {
-      rendering = false;
+      renderingSectors.delete(sector);
     }
   }
 
@@ -302,7 +328,9 @@
   window.addEventListener('tayu:client-access-ready', () => {
     hideLegacyNovaCamaroneras();
     for (const sector of SECTORS) {
-      if (document.getElementById(sector)?.classList.contains('active')) setTimeout(() => renderSector(sector, false), 0);
+      if (document.getElementById(sector)?.classList.contains('active')) {
+        setTimeout(() => renderSector(sector, false), 0);
+      }
     }
   });
 
