@@ -94,6 +94,17 @@ window.addSatelliteLayer=addSatelliteLayer;
   if(!secondInit.test(appCode))throw new Error('No se encontró el segundo inicio Keycloak');
   appCode=appCode.replace(secondInit,"Promise.resolve(Boolean(keycloak && keycloak.authenticated)).then(async authenticated => {");
 
+  const bootGuardNeedle=`    applyRolePermissions();
+    try{await window.loadDashboardCloud?.();}catch(error){console.error('Dashboard VPS:',error)}`;
+  const bootGuardReplacement=`    applyRolePermissions();
+    // La sesión ya está autenticada y el appRoot ya está visible. Si una consulta
+    // inicial al VPS se demora, no mantenemos al usuario atrapado en la portada.
+    setTimeout(()=>{
+      if(keycloak?.authenticated) window.hideAuthBootScreen?.();
+    },6000);
+    try{await window.loadDashboardCloud?.();}catch(error){console.error('Dashboard VPS:',error)}`;
+  if(appCode.includes(bootGuardNeedle))appCode=appCode.replace(bootGuardNeedle,bootGuardReplacement);
+
   appCode=appCode.replace(
     "return keycloak.logout({ redirectUri: window.location.href });",
     `return keycloak.logout({ redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=${VERSION}' });`
