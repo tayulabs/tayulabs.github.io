@@ -39,6 +39,7 @@
 
   const resourceCache = new Map();
   const renderingSectors = new Set();
+  const scheduledTimers = new Map();
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
     '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
@@ -50,6 +51,7 @@
     style.id = 'tayuSectorIotStyles';
     style.textContent = `
       .tayu-sector-iot{margin-bottom:18px}
+      .banana-shell>.tayu-sector-iot{margin:16px 0}
       .tayu-sector-iot-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
       .tayu-sector-iot-head h3{margin:0}.tayu-sector-iot-head p{margin:6px 0 0}
       .tayu-sector-iot-list{display:grid;gap:14px;margin-top:16px}
@@ -149,18 +151,47 @@
     });
   }
 
-  function ensureHost(sector) {
-    injectStyles();
+  function mountInfo(sector) {
     const view = document.getElementById(sector);
     if (!view) return null;
-    let host = view.querySelector(`[data-tayu-sector-iot="${sector}"]`);
-    if (host) return host;
-    host = document.createElement('div');
-    host.className = 'card tayu-sector-iot';
-    host.dataset.tayuSectorIot = sector;
-    host.dataset.tayuSectorOwned = '1';
-    view.insertBefore(host, view.firstChild);
+
+    if (sector === 'bananeras') {
+      const shell = view.querySelector('.banana-shell');
+      if (!shell) return { view, target: null, before: null };
+      const firstContent = [...shell.children].find(child => child.classList?.contains('banana-section-card')) || null;
+      return { view, target: shell, before: firstContent };
+    }
+
+    return { view, target: view, before: view.firstChild };
+  }
+
+  function ensureHost(sector) {
+    injectStyles();
+    const info = mountInfo(sector);
+    if (!info?.view || !info.target) return null;
+
+    let host = info.view.querySelector(`[data-tayu-sector-iot="${sector}"]`);
+    if (!host) {
+      host = document.createElement('div');
+      host.className = 'card tayu-sector-iot';
+      host.dataset.tayuSectorIot = sector;
+      host.dataset.tayuSectorOwned = '1';
+    }
+
+    if (host.parentElement !== info.target || (info.before && host.nextElementSibling !== info.before)) {
+      info.target.insertBefore(host, info.before);
+    }
+
     return host;
+  }
+
+  function scheduleSectorRender(sector, force = false) {
+    if (!SECTORS.has(sector)) return;
+    const old = scheduledTimers.get(sector) || [];
+    old.forEach(timer => clearTimeout(timer));
+    const delays = sector === 'bananeras' ? [40, 350, 1000] : [40, 350];
+    const timers = delays.map(delay => setTimeout(() => renderSector(sector, force), delay));
+    scheduledTimers.set(sector, timers);
   }
 
   async function loadResources(deviceKey, force = false) {
@@ -307,7 +338,7 @@
     const nav = event.target?.closest?.('.nav button[data-view]');
     const sector = nav?.dataset?.view;
     if (SECTORS.has(sector)) {
-      setTimeout(() => renderSector(sector, false), 0);
+      scheduleSectorRender(sector, false);
       return;
     }
 
@@ -328,13 +359,16 @@
   window.addEventListener('tayu:client-access-ready', () => {
     hideLegacyNovaCamaroneras();
     for (const sector of SECTORS) {
-      if (document.getElementById(sector)?.classList.contains('active')) {
-        setTimeout(() => renderSector(sector, false), 0);
-      }
+      if (document.getElementById(sector)?.classList.contains('active')) scheduleSectorRender(sector, false);
     }
   });
 
-  window.addEventListener('pageshow', hideLegacyNovaCamaroneras);
+  window.addEventListener('pageshow', () => {
+    hideLegacyNovaCamaroneras();
+    for (const sector of SECTORS) {
+      if (document.getElementById(sector)?.classList.contains('active')) scheduleSectorRender(sector, false);
+    }
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', hideLegacyNovaCamaroneras, { once: true });
