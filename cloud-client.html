@@ -4,11 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
+<meta name="color-scheme" content="light">
 <title>TAYULABS Cloud</title>
 <style>
-:root{--bg:#fff;--text:#667085;--brand:#55c62b}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif;background:var(--bg)}
-.boot{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(circle at 8% 5%,rgba(91,193,47,.12),rgba(91,193,47,.035) 24%,transparent 42%),#fff}
+:root{--bg:#fff;--text:#667085;--brand:#55c62b;color-scheme:light only}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif;background:#fff!important;color-scheme:light only}
+.boot{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(circle at 8% 5%,rgba(91,193,47,.12),rgba(91,193,47,.035) 24%,transparent 42%),#fff!important}
 .inner{display:flex;flex-direction:column;align-items:center;gap:18px;padding:24px;text-align:center}
 .logo{width:130px;max-height:68px;object-fit:contain}.spinner{width:27px;height:27px;border:3px solid rgba(91,193,47,.18);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite}.text{color:var(--text);font-size:12px;font-weight:800;line-height:1.45}.error{color:#b42318}@keyframes spin{to{transform:rotate(360deg)}}
 </style>
@@ -94,16 +95,14 @@ window.addSatelliteLayer=addSatelliteLayer;
   if(!secondInit.test(appCode))throw new Error('No se encontró el segundo inicio Keycloak');
   appCode=appCode.replace(secondInit,"Promise.resolve(Boolean(keycloak && keycloak.authenticated)).then(async authenticated => {");
 
-  const bootGuardNeedle=`    applyRolePermissions();
+  const bootRevealNeedle=`    applyRolePermissions();
     try{await window.loadDashboardCloud?.();}catch(error){console.error('Dashboard VPS:',error)}`;
-  const bootGuardReplacement=`    applyRolePermissions();
-    // La sesión ya está autenticada y el appRoot ya está visible. Si una consulta
-    // inicial al VPS se demora, no mantenemos al usuario atrapado en la portada.
-    setTimeout(()=>{
-      if(keycloak?.authenticated) window.hideAuthBootScreen?.();
-    },6000);
+  const bootRevealReplacement=`    applyRolePermissions();
+    // La sesión ya está autenticada y el appRoot existe: mostramos la interfaz
+    // inmediatamente. Dashboard, dispositivos y telemetría siguen cargando detrás.
+    window.hideAuthBootScreen?.();
     try{await window.loadDashboardCloud?.();}catch(error){console.error('Dashboard VPS:',error)}`;
-  if(appCode.includes(bootGuardNeedle))appCode=appCode.replace(bootGuardNeedle,bootGuardReplacement);
+  if(appCode.includes(bootRevealNeedle))appCode=appCode.replace(bootRevealNeedle,bootRevealReplacement);
 
   appCode=appCode.replace(
     "return keycloak.logout({ redirectUri: window.location.href });",
