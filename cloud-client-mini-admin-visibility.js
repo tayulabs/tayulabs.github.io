@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  const BODY_OPEN_CLASS = 'tayu-client-admin-visible';
+
   const isManager = () => {
     const role = String(
       window.__tayuClientAccess?.role ||
@@ -22,31 +24,52 @@
       }
 
       #client-admin.tca-standalone-view {
-        display: none;
+        display: none !important;
       }
 
-      #client-admin.tca-standalone-view.active {
-        display: block;
+      body.${BODY_OPEN_CLASS} #client-admin.tca-standalone-view {
+        display: block !important;
       }
     `;
     document.head.appendChild(style);
   }
 
-  function installNavigationBridge(section, button) {
-    const nav = document.querySelector('.sidebar .nav');
-    if (!nav || nav.dataset.tcaStandaloneBridge === '1') return;
+  function syncAdminVisibility(section, button) {
+    const open = Boolean(button?.classList.contains('active'));
+    document.body.classList.toggle(BODY_OPEN_CLASS, open);
 
-    nav.dataset.tcaStandaloneBridge = '1';
-
-    // Usamos captura para cerrar Administración antes de que el guard de
-    // escritorio detenga la propagación del clic con stopImmediatePropagation().
-    nav.addEventListener('click', event => {
-      const target = event.target.closest('button');
-      if (!target || target === button) return;
-
+    if (!open && section) {
       section.classList.remove('active');
       section.style.removeProperty('display');
+    }
+  }
+
+  function installNavigationBridge(section, button) {
+    const nav = document.querySelector('.sidebar .nav');
+    if (!nav || nav.dataset.tcaStandaloneBridge === '3') return;
+
+    nav.dataset.tcaStandaloneBridge = '3';
+
+    // Captura: corre antes del guard de escritorio que usa stopImmediatePropagation().
+    nav.addEventListener('click', event => {
+      const target = event.target.closest('button');
+      if (!target) return;
+
+      const openingAdmin = target === button;
+      document.body.classList.toggle(BODY_OPEN_CLASS, openingAdmin);
+
+      if (!openingAdmin) {
+        section.classList.remove('active');
+        section.style.removeProperty('display');
+      }
     }, true);
+
+    // Respaldo seguro: observa solo la clase del botón de Administración.
+    // No observa el main ni la sección, por lo que no puede crear un ciclo.
+    const observer = new MutationObserver(() => syncAdminVisibility(section, button));
+    observer.observe(button, { attributes:true, attributeFilter:['class'] });
+
+    syncAdminVisibility(section, button);
   }
 
   function detachMiniAdminFromModulePermissions() {
@@ -61,14 +84,14 @@
     button.removeAttribute('data-view');
     button.style.removeProperty('display');
 
-    // applyModulePermissions() busca `.view.active` y redirige a Dashboard
-    // cuando el id activo no está en organization_modules. Sacamos solamente
-    // Administración de esa colección y mantenemos su navegación por separado.
+    // La mantenemos fuera de `.view` para que applyModulePermissions() no la
+    // redirija a Dashboard. Su visibilidad depende solo del botón Administración.
     section.classList.remove('view');
     section.classList.add('tca-standalone-view');
     section.style.removeProperty('display');
 
     installNavigationBridge(section, button);
+    syncAdminVisibility(section, button);
     return true;
   }
 
