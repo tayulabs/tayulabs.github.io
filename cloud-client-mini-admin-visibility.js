@@ -37,13 +37,16 @@
     if (!nav || nav.dataset.tcaStandaloneBridge === '1') return;
 
     nav.dataset.tcaStandaloneBridge = '1';
+
+    // Usamos captura para cerrar Administración antes de que el guard de
+    // escritorio detenga la propagación del clic con stopImmediatePropagation().
     nav.addEventListener('click', event => {
       const target = event.target.closest('button');
       if (!target || target === button) return;
 
       section.classList.remove('active');
       section.style.removeProperty('display');
-    });
+    }, true);
   }
 
   function detachMiniAdminFromModulePermissions() {
