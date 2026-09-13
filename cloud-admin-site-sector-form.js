@@ -2,18 +2,11 @@
   'use strict';
 
   const API_URL = 'https://api.tayulabs.com';
-  const SECTOR_LABELS = {
-    fincas: 'Fincas',
-    camaroneras: 'Camaroneras',
-    bananeras: 'Bananeras',
-    ganaderia: 'Ganadería',
-  };
 
   let activeOrgId = '';
   let routingSites = [];
   let loadingSites = null;
   let hooksInstalled = false;
-  let observerInstalled = false;
 
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -108,7 +101,10 @@
   function renderSectorSelect(select, siteType, selected, preserveTouched = false) {
     const touched = preserveTouched && select.dataset.touched === '1';
     const next = touched ? select.value : (selected || defaultSector(siteType));
-    select.innerHTML = sectorOptions(siteType, next);
+
+    const html = sectorOptions(siteType, next);
+    if (select.innerHTML !== html) select.innerHTML = html;
+
     if (siteType === 'camaronera') {
       select.value = 'camaroneras';
       select.disabled = true;
@@ -168,7 +164,8 @@
         const current = form.elements.sector_key;
         if (!current) return;
         current.dataset.touched = '0';
-        renderSectorSelect(current, normalizeTypeFromForm(form), defaultSector(normalizeTypeFromForm(form)), false);
+        const nextType = normalizeTypeFromForm(form);
+        renderSectorSelect(current, nextType, defaultSector(nextType), false);
       });
     }
 
@@ -215,8 +212,6 @@
       const success = document.getElementById('orgSuccess');
       if (success) success.innerHTML = '<div class="success">Operación y sector actualizados correctamente.</div>';
 
-      await decorateSiteList(true);
-      await ensureSectorField(true);
       document.dispatchEvent(new CustomEvent('tayu:site-sector-updated', {
         detail: { site_id: site.id, sector_key: finalSector }
       }));
@@ -242,64 +237,12 @@
     void persistSectorAfterSiteSave({ slug, sectorKey, startedAt: Date.now() });
   }
 
-  async function decorateSiteList(force = false) {
-    const host = document.getElementById('tab-sites');
-    if (!host?.classList.contains('active') || !activeOrgId) return;
-
-    try {
-      const sites = await loadRoutingSites(force);
-      const items = [...host.querySelectorAll('.list > .list-item')];
-
-      items.forEach(item => {
-        const meta = item.querySelector('.sa-site-meta, small');
-        const metaText = meta?.textContent || '';
-        const site = sites.find(row => row.slug && metaText.includes(String(row.slug)));
-        if (!site) return;
-
-        const actions = item.querySelector('.sa-site-actions') || item;
-
-        let badge = actions.querySelector('.tayu-routing-badge');
-        if (!badge) {
-          badge = document.createElement('span');
-          badge.className = 'tayu-routing-badge';
-          const editButton = actions.querySelector('[data-edit-super-site]');
-          if (editButton) actions.insertBefore(badge, editButton);
-          else actions.appendChild(badge);
-        }
-        badge.textContent = `Sector: ${SECTOR_LABELS[site.sector_key] || 'Sin sector'}`;
-
-        if (!actions.querySelector('[data-routing-site]')) {
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'btn ghost small';
-          button.dataset.routingSite = site.id;
-          button.textContent = 'Sector';
-          const editButton = actions.querySelector('[data-edit-super-site]');
-          if (editButton) actions.insertBefore(button, editButton);
-          else actions.appendChild(button);
-        }
+  function scheduleFieldSync(force = false) {
+    setTimeout(() => {
+      ensureSectorField(force).catch(error => {
+        console.warn('Cloud Admin site sector sync:', error.message);
       });
-    } catch (error) {
-      console.warn('Cloud Admin site sector list:', error.message);
-    }
-  }
-
-  function syncSitesView(force = false) {
-    void ensureSectorField(force);
-    void decorateSiteList(force);
-  }
-
-  function installObserver() {
-    if (observerInstalled) return;
-    const host = document.getElementById('tab-sites');
-    if (!host) return;
-
-    observerInstalled = true;
-    const observer = new MutationObserver(() => {
-      if (!activeOrgId || !host.classList.contains('active')) return;
-      queueMicrotask(() => syncSitesView(false));
-    });
-    observer.observe(host, { childList: true, subtree: true });
+    }, 0);
   }
 
   function installHooks() {
@@ -311,7 +254,7 @@
       activeOrgId = String(id || '');
       routingSites = [];
       const result = await originalOpen.call(this, id, ...rest);
-      setTimeout(() => syncSitesView(true), 0);
+      scheduleFieldSync(true);
       return result;
     };
 
@@ -326,21 +269,30 @@
 
     document.addEventListener('click', event => {
       const tab = event.target?.closest?.('#organizationModal .tabs button');
-      if (!tab || !tab.textContent.toLowerCase().includes('sitios')) return;
-      setTimeout(() => syncSitesView(true), 0);
+      if (tab?.textContent.toLowerCase().includes('sitios')) {
+        scheduleFieldSync(true);
+        return;
+      }
+
+      if (event.target?.closest?.('[data-edit-super-site], #cancelSuperSiteEdit')) {
+        scheduleFieldSync(false);
+      }
+    });
+
+    document.addEventListener('tayu:site-sector-updated', () => {
+      routingSites = [];
+      scheduleFieldSync(true);
     });
 
     return true;
   }
 
   function boot() {
-    installObserver();
     if (installHooks()) return;
 
     let tries = 0;
     const timer = setInterval(() => {
       tries += 1;
-      installObserver();
       if (installHooks() || tries >= 80) clearInterval(timer);
     }, 100);
   }
