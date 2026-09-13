@@ -34,6 +34,14 @@
     document.head.appendChild(style);
   }
 
+  function applyAdminIcons(button) {
+    if (!button) return;
+    const colorIcon = button.querySelector('.tayu-nav-img.icon-color');
+    const whiteIcon = button.querySelector('.tayu-nav-img.icon-white');
+    if (colorIcon) colorIcon.src = 'imagenes/icons/administracion-color.png';
+    if (whiteIcon) whiteIcon.src = 'imagenes/icons/administracion-white.png';
+  }
+
   function syncAdminVisibility(section, button) {
     const open = Boolean(button?.classList.contains('active'));
     document.body.classList.toggle(BODY_OPEN_CLASS, open);
@@ -78,6 +86,8 @@
     const button = document.getElementById('clientAdminNavButton');
     const section = document.getElementById('client-admin');
     if (!button || !section) return false;
+
+    applyAdminIcons(button);
 
     // Administración no es un módulo operativo de la organización.
     // Debe depender del rol seguro owner/admin y no de applyModulePermissions().
