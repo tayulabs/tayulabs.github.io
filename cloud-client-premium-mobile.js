@@ -75,13 +75,8 @@
           border:1px solid rgba(36,42,36,.08)!important;
         }
 
-        .sidebar.open{
-          transform:translate3d(0,0,0)!important;
-        }
-
-        .sidebar-collapse-btn{
-          display:none!important;
-        }
+        .sidebar.open{transform:translate3d(0,0,0)!important;}
+        .sidebar-collapse-btn{display:none!important;}
 
         .sidebar .brand{
           flex:0 0 auto!important;
@@ -106,22 +101,10 @@
           object-fit:contain!important;
         }
 
-        body:not(.dark) .sidebar .sidebar-logo-color{
-          opacity:0!important;
-          visibility:hidden!important;
-        }
-        body:not(.dark) .sidebar .sidebar-logo-white{
-          opacity:1!important;
-          visibility:visible!important;
-        }
-        body.dark .sidebar .sidebar-logo-color{
-          opacity:1!important;
-          visibility:visible!important;
-        }
-        body.dark .sidebar .sidebar-logo-white{
-          opacity:0!important;
-          visibility:hidden!important;
-        }
+        body:not(.dark) .sidebar .sidebar-logo-color{opacity:0!important;visibility:hidden!important;}
+        body:not(.dark) .sidebar .sidebar-logo-white{opacity:1!important;visibility:visible!important;}
+        body.dark .sidebar .sidebar-logo-color{opacity:1!important;visibility:visible!important;}
+        body.dark .sidebar .sidebar-logo-white{opacity:0!important;visibility:hidden!important;}
 
         .sidebar .nav{
           flex:1 1 auto!important;
@@ -146,7 +129,6 @@
           padding:0 13px!important;
           border:0!important;
           border-radius:15px!important;
-          display:flex!important;
           align-items:center!important;
           justify-content:flex-start!important;
           gap:11px!important;
@@ -157,18 +139,16 @@
           box-shadow:none!important;
         }
 
-        /* La política de módulos de Cloud Admin siempre gana sobre el estilo móvil. */
+        /* Importante: la visibilidad la decide el frontend base / Cloud Admin. */
         .sidebar .nav button[hidden],
-        .sidebar .nav button[data-tayu-module-allowed="0"]{
+        .sidebar .nav button[data-tayu-module-allowed="0"],
+        .sidebar .nav button[style*="display: none"],
+        .sidebar .nav button[style*="display:none"]{
           display:none!important;
         }
 
-        body:not(.dark) .sidebar .nav button{
-          color:#F7F8F6!important;
-        }
-        body.dark .sidebar .nav button{
-          color:#242A24!important;
-        }
+        body:not(.dark) .sidebar .nav button{color:#F7F8F6!important;}
+        body.dark .sidebar .nav button{color:#242A24!important;}
 
         body:not(.dark) .sidebar .nav button:hover{
           background:#232723!important;
@@ -179,7 +159,6 @@
           color:#151715!important;
           box-shadow:0 6px 18px rgba(0,0,0,.14)!important;
         }
-
         body.dark .sidebar .nav button:hover{
           background:#F1F4EF!important;
           color:#242A24!important;
@@ -209,42 +188,15 @@
           place-items:center!important;
         }
 
-        body:not(.dark) .sidebar .nav button:not(.active) .tayu-nav-img.icon-color{
-          opacity:0!important;
-          visibility:hidden!important;
-        }
-        body:not(.dark) .sidebar .nav button:not(.active) .tayu-nav-img.icon-white{
-          opacity:1!important;
-          visibility:visible!important;
-          filter:none!important;
-        }
-        body:not(.dark) .sidebar .nav button.active .tayu-nav-img.icon-color{
-          opacity:1!important;
-          visibility:visible!important;
-        }
-        body:not(.dark) .sidebar .nav button.active .tayu-nav-img.icon-white{
-          opacity:0!important;
-          visibility:hidden!important;
-        }
+        body:not(.dark) .sidebar .nav button:not(.active) .tayu-nav-img.icon-color{opacity:0!important;visibility:hidden!important;}
+        body:not(.dark) .sidebar .nav button:not(.active) .tayu-nav-img.icon-white{opacity:1!important;visibility:visible!important;filter:none!important;}
+        body:not(.dark) .sidebar .nav button.active .tayu-nav-img.icon-color{opacity:1!important;visibility:visible!important;}
+        body:not(.dark) .sidebar .nav button.active .tayu-nav-img.icon-white{opacity:0!important;visibility:hidden!important;}
+        body.dark .sidebar .nav button .tayu-nav-img.icon-color{opacity:0!important;visibility:hidden!important;}
+        body.dark .sidebar .nav button .tayu-nav-img.icon-white{opacity:1!important;visibility:visible!important;filter:brightness(0) saturate(100%)!important;}
 
-        body.dark .sidebar .nav button .tayu-nav-img.icon-color{
-          opacity:0!important;
-          visibility:hidden!important;
-        }
-        body.dark .sidebar .nav button .tayu-nav-img.icon-white{
-          opacity:1!important;
-          visibility:visible!important;
-          filter:brightness(0) saturate(100%)!important;
-        }
-
-        body:not(.dark) .sidebar .alarm-badge{
-          margin-left:auto!important;
-          box-shadow:0 0 0 3px #171917!important;
-        }
-        body.dark .sidebar .alarm-badge{
-          margin-left:auto!important;
-          box-shadow:0 0 0 3px #FFFFFF!important;
-        }
+        body:not(.dark) .sidebar .alarm-badge{margin-left:auto!important;box-shadow:0 0 0 3px #171917!important;}
+        body.dark .sidebar .alarm-badge{margin-left:auto!important;box-shadow:0 0 0 3px #FFFFFF!important;}
 
         .topbar{
           display:flex!important;
@@ -279,18 +231,13 @@
           min-width:0!important;
           margin-top:3px!important;
         }
-
         .topbar .title h2{
           font-size:25px!important;
           line-height:1.08!important;
           margin:0!important;
           letter-spacing:-.35px!important;
         }
-
-        .topbar .title p{
-          margin:5px 0 0!important;
-          font-size:13px!important;
-        }
+        .topbar .title p{margin:5px 0 0!important;font-size:13px!important;}
 
         .topbar .actions{
           order:2!important;
@@ -300,15 +247,10 @@
           align-items:center!important;
           gap:8px!important;
         }
-
         .topbar .actions .btn,
-        .topbar .actions .icon-btn{
-          width:auto!important;
-        }
+        .topbar .actions .icon-btn{width:auto!important;}
 
-        .card{
-          border-radius:20px!important;
-        }
+        .card{border-radius:20px!important;}
 
         #${BACKDROP_ID}{
           position:fixed;
@@ -322,17 +264,13 @@
           backdrop-filter:blur(2px);
           -webkit-backdrop-filter:blur(2px);
         }
-
         #${BACKDROP_ID}.is-open{
           opacity:1;
           visibility:visible;
           pointer-events:auto;
           transition:opacity .16s ease,visibility 0s;
         }
-
-        body.tayu-mobile-menu-open{
-          overflow:hidden!important;
-        }
+        body.tayu-mobile-menu-open{overflow:hidden!important;}
       }
 
       @media (max-width:560px){
@@ -371,25 +309,6 @@
     return backdrop;
   }
 
-  function moduleKeyForButton(button) {
-    if (!button || button.id === 'clientAdminNavButton') return null;
-    if (button.id === 'gpsGenericNavButton') return 'flotas';
-    const key = String(button.dataset.view || '').trim().toLowerCase();
-    return key || null;
-  }
-
-  function syncModuleVisibility() {
-    if (window.innerWidth > MOBILE_MAX || typeof window.__tayuModuleEnabled !== 'function') return;
-
-    document.querySelectorAll('.sidebar .nav button').forEach(button => {
-      const key = moduleKeyForButton(button);
-      if (!key) return;
-      const allowed = window.__tayuModuleEnabled(key) === true;
-      button.hidden = !allowed;
-      button.dataset.tayuModuleAllowed = allowed ? '1' : '0';
-    });
-  }
-
   function syncOpenState() {
     const sidebar = document.querySelector('.sidebar');
     const backdrop = ensureBackdrop();
@@ -411,29 +330,8 @@
       observer.observe(sidebar, { attributes:true, attributeFilter:['class'] });
     }
 
-    const nav = document.querySelector('.sidebar .nav');
-    if (nav) {
-      const navObserver = new MutationObserver(() => syncModuleVisibility());
-      navObserver.observe(nav, { childList:true, subtree:true });
-    }
-
-    window.addEventListener('tayu:modules-applied', () => {
-      syncModuleVisibility();
-      requestAnimationFrame(syncModuleVisibility);
-    });
-
-    window.addEventListener('tayu:client-access-ready', () => {
-      syncModuleVisibility();
-      requestAnimationFrame(syncModuleVisibility);
-    });
-
-    window.addEventListener('resize', () => {
-      syncOpenState();
-      syncModuleVisibility();
-    }, { passive:true });
-
+    window.addEventListener('resize', syncOpenState, { passive:true });
     syncOpenState();
-    syncModuleVisibility();
   }
 
   if (document.readyState === 'loading') {
