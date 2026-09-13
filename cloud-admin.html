@@ -139,7 +139,7 @@ let dashboard={};
 let currentOrgId=null;
 let currentBundle=null;
 
-function esc(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function esc(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));}
 function isoDate(value){if(!value)return'';return String(value).slice(0,10);}
 function niceDate(value){if(!value)return'—';const d=new Date(String(value).length===10?value+'T00:00:00Z':value);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('es-EC');}
 function showError(id,message){const el=document.getElementById(id);if(!el)return;el.textContent=message||'';el.classList.toggle('show',Boolean(message));}
@@ -196,5 +196,6 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   try{await api('/admin/me');if(localStorage.getItem('tayu-admin-theme')==='dark')document.body.classList.add('dark');await Promise.all([loadDashboard(),loadOrganizations()]);document.getElementById('boot').style.display='none';document.getElementById('app').style.display='block';document.documentElement.classList.remove('auth-pending');}catch(e){document.getElementById('bootText').textContent=`No se pudo cargar la consola: ${e.message}`;document.querySelector('#boot .spinner').style.display='none';}
 }).catch(e=>{document.getElementById('bootText').textContent='No se pudo iniciar la sesión segura.';document.querySelector('#boot .spinner').style.display='none';console.error(e);});
 </script>
+<script src="cloud-admin-device-routing.js?v=20260914-routing2"></script>
 </body>
 </html>
