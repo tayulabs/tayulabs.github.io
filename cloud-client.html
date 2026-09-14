@@ -153,6 +153,26 @@ window.addSatelliteLayer=addSatelliteLayer;
     `return keycloak.logout({ redirectUri: 'https://tayulabs.com/cloud-iot.html?from=logout&v=${VERSION}' });`
   );
 
+  appCode += `
+try{
+  Object.defineProperty(window,'modbusChartConfigs',{configurable:true,get:()=>modbusChartConfigs,set:value=>{modbusChartConfigs=value&&typeof value==='object'?value:{}}});
+  Object.defineProperty(window,'modbusDevices',{configurable:true,get:()=>modbusDevices,set:value=>{modbusDevices=Array.isArray(value)?value:[]}});
+  Object.defineProperty(window,'dashboardWidgetIds',{configurable:true,get:()=>dashboardWidgetIds,set:value=>{dashboardWidgetIds=Array.isArray(value)?value:[]}});
+}catch(error){console.warn('Puente visual Modbus:',error)}
+window.currentMbChartSelection=currentMbChartSelection;
+window.currentMbChartFormConfig=currentMbChartFormConfig;
+window.loadMbChartFormFromSelection=loadMbChartFormFromSelection;
+window.updateMbPreview=updateMbPreview;
+window.loadMbHistoryFromVps=loadMbHistoryFromVps;
+window.mbHistory=mbHistory;
+window.saveModbusChartConfigs=saveModbusChartConfigs;
+window.newWidgetInstance=newWidgetInstance;
+window.saveWidgetLayout=saveWidgetLayout;
+window.renderDashboardWidgets=renderDashboardWidgets;
+window.renderDashboardModbusChart=renderDashboardModbusChart;
+window.addModbusChartWidget=addModbusChartWidget;
+`;
+
   html=html.replace(modulePattern,openModuleScript+appCode+closeScript);
 
   const addons=
@@ -173,7 +193,7 @@ window.addSatelliteLayer=addSatelliteLayer;
     '<scr'+'ipt src="cloud-client-modbus-consistency.js?v='+VERSION+'&fix=modbussync1"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sensor-alerts.js?v='+VERSION+'&fix=sensoralerts1"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-alarm-background.js?v='+VERSION+'&fix=alarmbackground1"></scr'+'ipt>\n'+
-    '<scr'+'ipt src="cloud-client-modbus-actions-stability.js?v='+VERSION+'&fix=modbusactions3"></scr'+'ipt>\n'+
+    '<scr'+'ipt src="cloud-client-modbus-actions-stability.js?v='+VERSION+'&fix=modbusactions4"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sidebar-drawer-guard.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-premium-shell.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-premium-dark-edges.js?v='+VERSION+'"></scr'+'ipt>\n'+
