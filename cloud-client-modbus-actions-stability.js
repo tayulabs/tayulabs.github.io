@@ -142,9 +142,9 @@
   style.id='tayuSidebarUnderlayWidthFix';
   style.textContent=`
     @media (min-width:961px){
-      #app.app::before,
-      body.sidebar-collapsed #app.app::before,
-      body:not(.sidebar-collapsed) #app.app::before{
+      html body #app.app::before,
+      html body.sidebar-collapsed #app.app::before,
+      html body:not(.sidebar-collapsed) #app.app::before{
         width:150px!important;
       }
     }
