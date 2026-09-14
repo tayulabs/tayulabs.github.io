@@ -1,17 +1,17 @@
 (() => {
   'use strict';
 
-  const RESOURCE_TTL_MS = 7000;
+  // Automatización ligera: evalúa el estado ya disponible en memoria y evita
+  // lanzar un segundo ciclo de refresco de telemetría sobre el dashboard.
+  const RESOURCE_TTL_MS = 30000;
   const LOOP_MS = 2000;
-  const TELEMETRY_REFRESH_MS = 5000;
-  const SENSOR_STALE_MS = 30000;
-  const COMMAND_COOLDOWN_MS = 4000;
+  const SENSOR_STALE_MS = 45000;
+  const COMMAND_COOLDOWN_MS = 3000;
 
   const resourceCache = new Map();
   const commandState = new Map();
   const commandBusy = new Set();
   let loopBusy = false;
-  let lastTelemetryRefresh = 0;
   let loopTimer = null;
 
   const devices = () => Array.isArray(window.__tayuRealDevices) ? window.__tayuRealDevices : [];
@@ -90,42 +90,72 @@
     return meta && typeof meta === 'object' ? meta : null;
   }
 
-  function thresholdFromSensor(meta,operator,fallback){
-    if(!meta) return numberOrNull(fallback);
-    if(operator === '<' || operator === '<='){
-      return numberOrNull(meta.alarm_min) ?? numberOrNull(fallback);
-    }
-    if(operator === '>' || operator === '>='){
-      return numberOrNull(meta.alarm_max) ?? numberOrNull(fallback);
-    }
-    return numberOrNull(meta.alarm_min) ?? numberOrNull(meta.alarm_max) ?? numberOrNull(fallback);
+  function thresholdFromSensor(meta,operator){
+    if(!meta) return null;
+    if(operator === '<' || operator === '<=') return numberOrNull(meta.alarm_min);
+    if(operator === '>' || operator === '>=') return numberOrNull(meta.alarm_max);
+    return numberOrNull(meta.alarm_min) ?? numberOrNull(meta.alarm_max);
+  }
+
+  function failSafeDecision(value){
+    if(value === 'hold') return null;
+    if(value === 'on' || value === true || value === 'true') return true;
+    return false;
+  }
+
+  function legacySettings(deviceKey,outputKey){
+    const legacy = deviceByKey(deviceKey)?.configuration?.outputs?.[outputKey] || {};
+    const timers = Array.isArray(legacy.timers)
+      ? legacy.timers
+      : (legacy.timer ? [legacy.timer] : []);
+    return {
+      mode: String(legacy.mode || 'manual').toLowerCase(),
+      automatic: legacy.automatic && typeof legacy.automatic === 'object' ? legacy.automatic : {},
+      timers
+    };
+  }
+
+  function effectiveSettings(resource,deviceKey){
+    const outputKey = String(resource?.resource_key || '');
+    const saved = resource?.assignment?.settings && typeof resource.assignment.settings === 'object'
+      ? resource.assignment.settings
+      : {};
+    const legacy = legacySettings(deviceKey,outputKey);
+    const hasSavedTimers = Array.isArray(saved.timers) || Boolean(saved.timer);
+    const savedTimers = Array.isArray(saved.timers) ? saved.timers : (saved.timer ? [saved.timer] : []);
+    return {
+      ...saved,
+      mode: String(saved.mode || legacy.mode || 'manual').toLowerCase(),
+      automatic: {
+        ...(legacy.automatic || {}),
+        ...(saved.automatic || {})
+      },
+      timers: hasSavedTimers ? savedTimers : legacy.timers
+    };
   }
 
   function automaticDecision(deviceKey,automatic){
     const row = latestRow(deviceKey);
     const rowTime = new Date(row?.time || 0).getTime();
     const age = Number.isFinite(rowTime) ? Date.now() - rowTime : Infinity;
-    if(age > SENSOR_STALE_MS){
-      return automatic?.fail_safe === 'hold' ? null : false;
-    }
+    if(age > SENSOR_STALE_MS) return failSafeDecision(automatic?.fail_safe);
 
     const source = String(automatic?.source || '');
     const raw = readPath(parsePayload(row),source);
     const value = Number(raw);
-    if(!source || !Number.isFinite(value)){
-      return automatic?.fail_safe === 'hold' ? null : false;
-    }
+    if(!source || !Number.isFinite(value)) return failSafeDecision(automatic?.fail_safe);
 
     const onOperator = automatic?.on_operator || '<=';
     const offOperator = automatic?.off_operator || '>=';
-    const useSensorThresholds = automatic?.use_sensor_thresholds !== false;
+    const explicitOn = numberOrNull(automatic?.on_value);
+    const explicitOff = numberOrNull(automatic?.off_value);
+    const useSensorThresholds = automatic?.use_sensor_thresholds === true;
     const meta = useSensorThresholds ? sensorMeta(deviceKey,source) : null;
-    const onValue = useSensorThresholds
-      ? thresholdFromSensor(meta,onOperator,automatic?.on_value)
-      : numberOrNull(automatic?.on_value);
-    const offValue = useSensorThresholds
-      ? thresholdFromSensor(meta,offOperator,automatic?.off_value)
-      : numberOrNull(automatic?.off_value);
+
+    // Los valores configurados en el modo automático tienen prioridad. Los
+    // umbrales de alarma del sensor sólo se usan si se activó expresamente esa opción.
+    const onValue = explicitOn ?? (useSensorThresholds ? thresholdFromSensor(meta,onOperator) : null);
+    const offValue = explicitOff ?? (useSensorThresholds ? thresholdFromSensor(meta,offOperator) : null);
 
     const onMatch = onValue !== null && compare(value,onOperator,onValue);
     const offMatch = offValue !== null && compare(value,offOperator,offValue);
@@ -154,13 +184,13 @@
   function timerSlotActive(slot,now){
     const on = minutes(slot?.on), off = minutes(slot?.off);
     if(on === null || off === null || on === off) return false;
-    const selectedDays = Array.isArray(slot?.days) && slot.days.length ? slot.days.map(Number) : [1,2,3,4,5,6,7];
+    const selectedDays = Array.isArray(slot?.days) && slot.days.length
+      ? slot.days.map(Number)
+      : [1,2,3,4,5,6,7];
     const day = dayNumber(now);
     const current = now.getHours() * 60 + now.getMinutes();
 
-    if(on < off){
-      return selectedDays.includes(day) && current >= on && current < off;
-    }
+    if(on < off) return selectedDays.includes(day) && current >= on && current < off;
 
     // Horario que cruza medianoche, por ejemplo 22:00 -> 05:00.
     return (selectedDays.includes(day) && current >= on)
@@ -168,7 +198,9 @@
   }
 
   function timerDecision(settings){
-    const slots = (Array.isArray(settings?.timers) ? settings.timers : (settings?.timer ? [settings.timer] : []))
+    const slots = (Array.isArray(settings?.timers)
+      ? settings.timers
+      : (settings?.timer ? [settings.timer] : []))
       .filter(slot => minutes(slot?.on) !== null && minutes(slot?.off) !== null && slot.on !== slot.off);
     if(!slots.length) return null;
     const now = new Date();
@@ -191,7 +223,8 @@
   }
 
   function updateVisibleState(deviceKey,outputKey,value){
-    document.querySelectorAll(`[data-sector-output="${CSS.escape(String(outputKey))}"][data-device-key="${CSS.escape(String(deviceKey))}"]`).forEach(card => {
+    const selector = `[data-sector-output="${CSS.escape(String(outputKey))}"][data-device-key="${CSS.escape(String(deviceKey))}"]`;
+    document.querySelectorAll(selector).forEach(card => {
       const state = card.querySelector('.tayu-sector-state');
       if(state){
         state.classList.toggle('on',Boolean(value));
@@ -206,8 +239,7 @@
     const commandKey = `${deviceKey}|${outputKey}`;
     if(commandBusy.has(commandKey)) return;
 
-    const payload = latestPayload(deviceKey);
-    const actual = readOutput(payload,outputKey);
+    const actual = readOutput(latestPayload(deviceKey),outputKey);
     if(actual === desired) return;
 
     const previous = commandState.get(commandKey);
@@ -230,36 +262,24 @@
     }
   }
 
-  function activeResources(data){
-    return (Array.isArray(data?.resources) ? data.resources : [])
-      .filter(resource => resource?.resource_type === 'digital_output' && resource?.assignment?.enabled !== false)
-      .filter(resource => ['automatic','timer'].includes(String(resource?.assignment?.settings?.mode || '').toLowerCase()));
-  }
-
   async function evaluateDevice(device){
     const deviceKey = String(device?.device_key || '');
-    if(!deviceKey) return 0;
+    if(!deviceKey) return;
     const data = await loadResources(deviceKey,false);
-    const resources = activeResources(data);
+    const resources = (Array.isArray(data?.resources) ? data.resources : [])
+      .filter(resource => resource?.resource_type === 'digital_output' && resource?.assignment?.enabled !== false);
 
     for(const resource of resources){
       const outputKey = String(resource?.resource_key || '');
-      const settings = resource?.assignment?.settings || {};
-      const mode = String(settings.mode || '').toLowerCase();
+      if(!outputKey) continue;
+      const settings = effectiveSettings(resource,deviceKey);
+      const mode = String(settings.mode || 'manual').toLowerCase();
       let desired = null;
       if(mode === 'automatic') desired = automaticDecision(deviceKey,settings.automatic || {});
-      if(mode === 'timer') desired = timerDecision(settings);
+      else if(mode === 'timer') desired = timerDecision(settings);
+      else continue;
       if(desired !== null) await commandOutput(deviceKey,outputKey,desired);
     }
-    return resources.length;
-  }
-
-  async function refreshTelemetryIfNeeded(activeCount){
-    if(!activeCount || typeof window.refreshLiveTelemetry !== 'function') return;
-    if(Date.now() - lastTelemetryRefresh < TELEMETRY_REFRESH_MS) return;
-    lastTelemetryRefresh = Date.now();
-    try{ await window.refreshLiveTelemetry(true); }
-    catch(error){ console.warn('Automation telemetry refresh:',error); }
   }
 
   async function evaluateAll(forceResources=false){
@@ -267,13 +287,7 @@
     loopBusy = true;
     try{
       if(forceResources) resourceCache.clear();
-      let activeCount = 0;
-      for(const device of devices()) activeCount += await evaluateDevice(device);
-      await refreshTelemetryIfNeeded(activeCount);
-      if(activeCount){
-        // Reevalúa con la telemetría recién actualizada sin volver a pedir recursos.
-        for(const device of devices()) await evaluateDevice(device);
-      }
+      await Promise.all(devices().map(device => evaluateDevice(device)));
     }finally{
       loopBusy = false;
     }
@@ -282,12 +296,12 @@
   function install(){
     clearInterval(loopTimer);
     loopTimer = setInterval(() => evaluateAll(false),LOOP_MS);
-    window.addEventListener('tayu:client-access-ready',() => setTimeout(() => evaluateAll(true),500));
-    window.addEventListener('pageshow',() => setTimeout(() => evaluateAll(true),300));
+    window.addEventListener('tayu:client-access-ready',() => setTimeout(() => evaluateAll(true),300));
+    window.addEventListener('pageshow',() => setTimeout(() => evaluateAll(true),250));
     document.addEventListener('visibilitychange',() => {
-      if(document.visibilityState === 'visible') setTimeout(() => evaluateAll(true),200);
+      if(document.visibilityState === 'visible') setTimeout(() => evaluateAll(false),150);
     });
-    setTimeout(() => evaluateAll(true),900);
+    setTimeout(() => evaluateAll(true),1200);
 
     window.__tayuAutomationRuntime = {
       evaluate:() => evaluateAll(false),
