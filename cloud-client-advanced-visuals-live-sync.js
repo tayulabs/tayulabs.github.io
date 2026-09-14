@@ -138,7 +138,7 @@
   if(document.getElementById('tayuSectorOperationStabilityLoader'))return;
   const script=document.createElement('script');
   script.id='tayuSectorOperationStabilityLoader';
-  script.src='cloud-client-sector-operation-stability.js?v=20260914-opstable1';
+  script.src='cloud-client-sector-operation-stability.js?v=20260914-opstable2';
   script.async=false;
   document.head.appendChild(script);
 })();
