@@ -118,17 +118,17 @@
 
 (() => {
   'use strict';
-  if(document.getElementById('tayuAdvancedVisualsUiLoader')) return;
+  if(document.getElementById('tayuAdvancedVisualsUiV2Loader')) return;
 
   const ui=document.createElement('script');
-  ui.id='tayuAdvancedVisualsUiLoader';
-  ui.src='cloud-client-advanced-visuals-ui.js?v=20260914-visuals-ui1';
+  ui.id='tayuAdvancedVisualsUiV2Loader';
+  ui.src='cloud-client-advanced-visuals-ui-v2.js?v=20260914-water2';
   ui.async=false;
   ui.onload=()=>{
-    if(document.getElementById('tayuAdvancedVisualsV2Loader')) return;
+    if(document.getElementById('tayuAdvancedVisualsV3Loader')) return;
     const engine=document.createElement('script');
-    engine.id='tayuAdvancedVisualsV2Loader';
-    engine.src='cloud-client-advanced-visuals-v2.js?v=20260914-visuals-v2b';
+    engine.id='tayuAdvancedVisualsV3Loader';
+    engine.src='cloud-client-advanced-visuals-v3.js?v=20260914-v3';
     engine.async=false;
     document.head.appendChild(engine);
   };
