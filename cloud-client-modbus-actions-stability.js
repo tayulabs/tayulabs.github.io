@@ -145,6 +145,16 @@
 
 (() => {
   'use strict';
+  if(document.getElementById('tayuAutomationRuntimeLoader')) return;
+  const script=document.createElement('script');
+  script.id='tayuAutomationRuntimeLoader';
+  script.src='cloud-client-automation-runtime.js?v=20260914-runtime1';
+  script.async=false;
+  document.head.appendChild(script);
+})();
+
+(() => {
+  'use strict';
   if(document.getElementById('tayuSidebarUnderlayWidthFix')) return;
   const style=document.createElement('style');
   style.id='tayuSidebarUnderlayWidthFix';
