@@ -1,15 +1,15 @@
 (() => {
   'use strict';
 
-  const TYPE_OPTIONS = [
+  const CUSTOM=new Set(['tank','liquid','gauge','gauge_semi','kpi']);
+  const TYPE_OPTIONS=[
     ['tank','Tanque animado'],
     ['liquid','Liquid fill circle'],
     ['gauge','Gauge circular'],
     ['gauge_semi','Gauge semicircular'],
     ['kpi','KPI + mini tendencia']
   ];
-  const remembered = new Map();
-  let repairing = false;
+  const remembered=new Map();
 
   function selectionKey(){
     const device=document.getElementById('mbChartDevice')?.value||'';
@@ -19,9 +19,9 @@
 
   function ensureOptions(){
     const select=document.getElementById('mbChartType');
-    if(!select) return null;
+    if(!select)return null;
     TYPE_OPTIONS.forEach(([value,label])=>{
-      if(select.querySelector(`option[value="${value}"]`)) return;
+      if(select.querySelector(`option[value="${value}"]`))return;
       const option=document.createElement('option');
       option.value=value;
       option.textContent=label;
@@ -30,93 +30,137 @@
     return select;
   }
 
-  function invokePreviewKeeping(type){
-    const select=ensureOptions();
-    if(!select||typeof window.updateMbPreview!=='function') return;
-    select.value=type;
-    let result;
-    try{
-      result=window.updateMbPreview();
-    }catch(error){
-      console.warn('Vista previa IoT:',error);
-    }
-    // El renderer avanzado usa temporalmente "line" para que Chart.js pueda
-    // cargar el histórico. Restauramos el valor en el mismo ciclo de evento,
-    // sin esperar la consulta al VPS.
-    if(select.querySelector(`option[value="${type}"]`)) select.value=type;
-    Promise.resolve(result).finally(()=>{
-      const current=document.getElementById('mbChartType');
-      const key=selectionKey();
-      if(current&&remembered.get(key)===type&&current.querySelector(`option[value="${type}"]`)) current.value=type;
-    });
+  function installStyle(){
+    if(document.getElementById('tayuAdvancedVisualStableStyle'))return;
+    const style=document.createElement('style');
+    style.id='tayuAdvancedVisualStableStyle';
+    style.textContent='.tayu-av-preview-locked #mbPreviewChart{display:none!important}.tayu-av-preview-locked .tayu-av-host[data-av-preview]{display:flex!important}';
+    document.head.appendChild(style);
   }
 
-  function bindSelect(){
-    const select=ensureOptions();
-    if(!select||select.dataset.tayuVisualStable==='1') return false;
-    select.dataset.tayuVisualStable='1';
-
-    // Quitamos únicamente el onchange inline de este selector. Así evitamos que
-    // el wrapper avanzado deje visible el valor temporal "line" mientras espera
-    // el histórico.
-    select.removeAttribute('onchange');
-    select.addEventListener('change',event=>{
-      event.stopPropagation();
-      const key=selectionKey();
-      const type=String(select.value||'line');
-      if(key) remembered.set(key,type);
-      invokePreviewKeeping(type);
-    });
-    return true;
+  function previewBox(){
+    return document.getElementById('mbPreviewChart')?.parentElement||null;
   }
 
-  function repairSelection(){
-    if(repairing) return;
-    repairing=true;
-    try{
-      bindSelect();
-      const section=document.getElementById('modbus');
-      if(section&&!section.classList.contains('active')) return;
+  function lockPreview(type){
+    const box=previewBox();
+    const canvas=document.getElementById('mbPreviewChart');
+    if(!box||!canvas)return;
+    const custom=CUSTOM.has(type);
+    box.classList.toggle('tayu-av-preview-locked',custom);
+    if(custom)canvas.style.setProperty('display','none','important');
+    else canvas.style.removeProperty('display');
+  }
+
+  function rememberCurrent(){
+    const select=ensureOptions();
+    const key=selectionKey();
+    if(!select||!key)return;
+    remembered.set(key,String(select.value||'line'));
+    lockPreview(select.value);
+  }
+
+  function restore(){
+    const select=ensureOptions();
+    const key=selectionKey();
+    if(!select||!key)return;
+    const wanted=remembered.get(key);
+    if(wanted&&select.querySelector(`option[value="${wanted}"]`))select.value=wanted;
+    lockPreview(wanted||select.value);
+  }
+
+  function wrapFormLoader(){
+    const original=window.loadMbChartFormFromSelection;
+    if(typeof original!=='function'||original.__tayuVisualStable2)return;
+    const wrapped=function(...args){
+      const key=selectionKey();
+      const wanted=key?remembered.get(key):null;
+      if(wanted)lockPreview(wanted);
+      const result=original.apply(this,args);
+      if(wanted){
+        const select=ensureOptions();
+        if(select?.querySelector(`option[value="${wanted}"]`))select.value=wanted;
+        lockPreview(wanted);
+      }
+      return result;
+    };
+    wrapped.__tayuVisualStable2=true;
+    window.loadMbChartFormFromSelection=wrapped;
+  }
+
+  function wrapPreview(){
+    const original=window.updateMbPreview;
+    if(typeof original!=='function'||original.__tayuVisualStable2)return;
+    const wrapped=function(...args){
       const select=ensureOptions();
       const key=selectionKey();
-      if(!select||!key) return;
-
-      const desired=remembered.get(key);
-      if(!desired){
-        // Si una configuración guardada ya es de tipo avanzado, la recordamos
-        // para que los refrescos posteriores tampoco la devuelvan a Línea.
-        if(TYPE_OPTIONS.some(([value])=>value===select.value)) remembered.set(key,select.value);
-        return;
+      const wanted=(key&&remembered.get(key))||select?.value||'line';
+      if(CUSTOM.has(wanted)){
+        lockPreview(wanted);
+        if(select?.querySelector(`option[value="${wanted}"]`))select.value=wanted;
       }
-      if(select.value!==desired&&select.querySelector(`option[value="${desired}"]`)){
-        invokePreviewKeeping(desired);
+      const result=original.apply(this,args);
+      if(CUSTOM.has(wanted)){
+        if(select?.querySelector(`option[value="${wanted}"]`))select.value=wanted;
+        lockPreview(wanted);
+        Promise.resolve(result).finally(()=>{
+          const current=ensureOptions();
+          if(current?.querySelector(`option[value="${wanted}"]`))current.value=wanted;
+          lockPreview(wanted);
+        });
       }
-    }finally{
-      repairing=false;
-    }
+      return result;
+    };
+    wrapped.__tayuVisualStable2=true;
+    window.updateMbPreview=wrapped;
   }
 
-  function boot(){
-    bindSelect();
-    setTimeout(repairSelection,120);
-    setTimeout(repairSelection,450);
+  function wrapVariableRefresh(){
+    const original=window.refreshMbVariables;
+    if(typeof original!=='function'||original.__tayuVisualStable2)return;
+    const wrapped=function(...args){
+      const key=selectionKey();
+      const wanted=key?remembered.get(key):null;
+      if(wanted)lockPreview(wanted);
+      const result=original.apply(this,args);
+      restore();
+      return result;
+    };
+    wrapped.__tayuVisualStable2=true;
+    window.refreshMbVariables=wrapped;
+  }
 
-    document.addEventListener('click',event=>{
-      if(event.target?.closest?.('.nav button[data-view="modbus"]')) setTimeout(repairSelection,180);
-    },true);
+  function install(){
+    installStyle();
+    ensureOptions();
+    wrapFormLoader();
+    wrapPreview();
+    wrapVariableRefresh();
 
     document.addEventListener('change',event=>{
-      if(['mbChartDevice','mbChartVariable'].includes(event.target?.id||'')){
-        setTimeout(repairSelection,40);
-        setTimeout(repairSelection,250);
+      const id=event.target?.id||'';
+      if(id==='mbChartType')rememberCurrent();
+      if(id==='mbChartDevice'||id==='mbChartVariable'){
+        setTimeout(restore,0);
+        setTimeout(restore,120);
       }
     },true);
 
-    setInterval(repairSelection,500);
-    window.addEventListener('pageshow',()=>setTimeout(repairSelection,160));
-    window.addEventListener('tayu:client-access-ready',()=>setTimeout(repairSelection,180));
+    document.addEventListener('click',event=>{
+      if(event.target?.closest?.('.nav button[data-view="modbus"]')){
+        setTimeout(restore,80);
+        setTimeout(restore,240);
+      }
+    },true);
+
+    setInterval(()=>{
+      if(document.getElementById('modbus')?.classList.contains('active'))restore();
+    },250);
+
+    setTimeout(restore,80);
+    setTimeout(restore,300);
   }
 
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
-  else boot();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
 })();
