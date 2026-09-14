@@ -115,3 +115,13 @@
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
   else boot();
 })();
+
+(() => {
+  'use strict';
+  if(document.getElementById('tayuAdvancedVisualsLoader')) return;
+  const script=document.createElement('script');
+  script.id='tayuAdvancedVisualsLoader';
+  script.src='cloud-client-advanced-visuals.js?v=20260914-visuals1';
+  script.async=false;
+  document.head.appendChild(script);
+})();
