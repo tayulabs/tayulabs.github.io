@@ -66,10 +66,54 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   if(!html.includes(loadGuardNeedle))throw new Error('No se encontró loadDashboardCloud para aplicar protección de sincronización');
   html=html.replace(loadGuardNeedle,loadGuardReplacement);
 
+  // Compatibilidad nativa de las visualizaciones IoT con el formulario Modbus.
+  // El tipo elegido nunca se degrada a "line" durante un refresco interno.
+  const visualTypeNeedle=`type:document.getElementById('mbChartType')?.value||'line',`;
+  const visualTypeReplacement=`type:(window.__tayuSelectedModbusVisualType || document.getElementById('mbChartType')?.value || 'line'),`;
+  if(!html.includes(visualTypeNeedle))throw new Error('No se encontró el tipo de gráfica Modbus para aplicar compatibilidad visual');
+  html=html.replace(visualTypeNeedle,visualTypeReplacement);
+
+  const visualLoadNeedle=`set('mbChartType',cfg.type||'line');`;
+  const visualLoadReplacement=`set('mbChartType',window.__tayuSelectedModbusVisualType || cfg.type || 'line');`;
+  if(!html.includes(visualLoadNeedle))throw new Error('No se encontró la carga del tipo de gráfica Modbus');
+  html=html.replace(visualLoadNeedle,visualLoadReplacement);
+
+  const previewTypeNeedle=`mbPreviewChart.config.type=cfg.type||'line';`;
+  const previewTypeReplacement=`mbPreviewChart.config.type=window.__tayuCustomVisualTypes?.has?.(cfg.type)?'line':(cfg.type||'line');`;
+  if(!html.includes(previewTypeNeedle))throw new Error('No se encontró el tipo del preview Modbus');
+  html=html.replace(previewTypeNeedle,previewTypeReplacement);
+
+  const dashboardTypeNeedle=`   const cfg=modbusChartConfigs[instanceId];
+   if(!cfg)return;
+
+   const d=modbusDevices.find(x=>x.id===cfg.deviceId);`;
+  const dashboardTypeReplacement=`   const cfg=modbusChartConfigs[instanceId];
+   if(!cfg)return;
+   if(window.__tayuCustomVisualTypes?.has?.(cfg.type)){
+     if(c._chart){try{c._chart.destroy();}catch(_){} c._chart=null;}
+     c.style.display='none';
+     return;
+   }
+
+   const d=modbusDevices.find(x=>x.id===cfg.deviceId);`;
+  if(!html.includes(dashboardTypeNeedle))throw new Error('No se encontró el renderer de gráficas Modbus del dashboard');
+  html=html.replace(dashboardTypeNeedle,dashboardTypeReplacement);
+
   const openScript='<scr'+'ipt>';
   const openModuleScript='<scr'+'ipt type="module">';
   const closeScript='</scr'+'ipt>';
   const satelliteCompat=openScript+`
+window.__tayuCustomVisualTypes=new Set(['tank','liquid','gauge','gauge_semi','kpi']);
+window.__tayuSelectedModbusVisualType=null;
+document.addEventListener('change',event=>{
+  const id=event.target?.id||'';
+  if(id==='mbChartType'){
+    const value=String(event.target.value||'line');
+    window.__tayuSelectedModbusVisualType=window.__tayuCustomVisualTypes.has(value)?value:null;
+  }else if(id==='mbChartDevice'||id==='mbChartVariable'){
+    window.__tayuSelectedModbusVisualType=null;
+  }
+},true);
 function addSatelliteLayer(map){
   if(!map || !window.L)return null;
   return L.tileLayer(
@@ -129,7 +173,7 @@ window.addSatelliteLayer=addSatelliteLayer;
     '<scr'+'ipt src="cloud-client-modbus-consistency.js?v='+VERSION+'&fix=modbussync1"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sensor-alerts.js?v='+VERSION+'&fix=sensoralerts1"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-alarm-background.js?v='+VERSION+'&fix=alarmbackground1"></scr'+'ipt>\n'+
-    '<scr'+'ipt src="cloud-client-modbus-actions-stability.js?v='+VERSION+'&fix=modbusactions2"></scr'+'ipt>\n'+
+    '<scr'+'ipt src="cloud-client-modbus-actions-stability.js?v='+VERSION+'&fix=modbusactions3"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sidebar-drawer-guard.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-premium-shell.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-premium-dark-edges.js?v='+VERSION+'"></scr'+'ipt>\n'+
