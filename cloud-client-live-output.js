@@ -211,10 +211,12 @@
       applyOperationUi(card,settings);
 
       const runtime=window.__tayuAutomationRuntime;
-      runtime?.invalidate?.(deviceKey);
       try{
-        if(typeof runtime?.reload==='function')await runtime.reload();
-        else if(typeof runtime?.evaluate==='function')await runtime.evaluate();
+        if(typeof runtime?.reloadDevice==='function') await runtime.reloadDevice(deviceKey);
+        else{
+          runtime?.invalidate?.(deviceKey);
+          if(typeof runtime?.evaluate==='function') await runtime.evaluate();
+        }
       }catch(error){
         console.warn('Recarga de automatización:',error);
       }
@@ -236,7 +238,7 @@
   function ensureAutomationRuntime(){
     if(window.__tayuAutomationRuntime||document.querySelector('script[data-tayu-automation-runtime]'))return;
     const script=document.createElement('script');
-    script.src='cloud-client-automation-runtime.js?v=20260914-automation2';
+    script.src='cloud-client-automation-runtime.js?v=20260914-automation3';
     script.dataset.tayuAutomationRuntime='1';
     script.onerror=()=>console.error('No se pudo cargar el runtime de automatización.');
     document.head.appendChild(script);
