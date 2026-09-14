@@ -1,32 +1,42 @@
 (() => {
   'use strict';
 
-  // Automatización ligera: evalúa el estado ya disponible en memoria y evita
-  // lanzar un segundo ciclo de refresco de telemetría sobre el dashboard.
-  const RESOURCE_TTL_MS = 30000;
+  // Runtime de automatización por eventos lógicos:
+  // - Automático sólo se reevalúa cuando llega una telemetría nueva.
+  // - Timer sólo se reevalúa cuando cambia el minuto o llega un estado nuevo.
+  // - Una orden ya enviada no se repite contra la misma telemetría antigua.
+  const RESOURCE_TTL_MS = 60000;
   const LOOP_MS = 2000;
   const SENSOR_STALE_MS = 45000;
-  const COMMAND_COOLDOWN_MS = 3000;
+  const RETRY_AFTER_MS = 5000;
 
   const resourceCache = new Map();
+  const evaluationState = new Map();
   const commandState = new Map();
   const commandBusy = new Set();
   let loopBusy = false;
   let loopTimer = null;
 
   const devices = () => Array.isArray(window.__tayuRealDevices) ? window.__tayuRealDevices : [];
+  const automationKey = (deviceKey,outputKey) => `${String(deviceKey || '')}|${String(outputKey || '')}`;
 
   function deviceByKey(deviceKey){
     return devices().find(row => String(row?.device_key || '') === String(deviceKey || '')) || null;
   }
 
-  function telemetryRows(deviceKey){
-    return (Array.isArray(window.__tayuLastTelemetry) ? window.__tayuLastTelemetry : [])
-      .filter(row => String(row?.device_key || '') === String(deviceKey || ''))
-      .sort((a,b) => new Date(b?.time || 0) - new Date(a?.time || 0));
+  function latestRow(deviceKey){
+    let latest = null;
+    for(const row of (Array.isArray(window.__tayuLastTelemetry) ? window.__tayuLastTelemetry : [])){
+      if(String(row?.device_key || '') !== String(deviceKey || '')) continue;
+      if(!latest || new Date(row?.time || 0) > new Date(latest?.time || 0)) latest = row;
+    }
+    return latest;
   }
 
-  function latestRow(deviceKey){ return telemetryRows(deviceKey)[0] || null; }
+  function rowTime(row){
+    const value = new Date(row?.time || 0).getTime();
+    return Number.isFinite(value) ? value : 0;
+  }
 
   function parsePayload(row){
     const value = row?.payload;
@@ -36,8 +46,6 @@
     }
     return {};
   }
-
-  function latestPayload(deviceKey){ return parsePayload(latestRow(deviceKey)); }
 
   function readPath(obj,path){
     return String(path || '').split('.').filter(Boolean)
@@ -59,8 +67,7 @@
     return undefined;
   }
 
-  function patchOutput(deviceKey,outputKey,value){
-    const row = latestRow(deviceKey);
+  function patchOutput(row,outputKey,value){
     if(!row) return;
     const payload = parsePayload(row);
     payload[outputKey] = Boolean(value);
@@ -105,9 +112,7 @@
 
   function legacySettings(deviceKey,outputKey){
     const legacy = deviceByKey(deviceKey)?.configuration?.outputs?.[outputKey] || {};
-    const timers = Array.isArray(legacy.timers)
-      ? legacy.timers
-      : (legacy.timer ? [legacy.timer] : []);
+    const timers = Array.isArray(legacy.timers) ? legacy.timers : (legacy.timer ? [legacy.timer] : []);
     return {
       mode: String(legacy.mode || 'manual').toLowerCase(),
       automatic: legacy.automatic && typeof legacy.automatic === 'object' ? legacy.automatic : {},
@@ -126,18 +131,14 @@
     return {
       ...saved,
       mode: String(saved.mode || legacy.mode || 'manual').toLowerCase(),
-      automatic: {
-        ...(legacy.automatic || {}),
-        ...(saved.automatic || {})
-      },
+      automatic: {...(legacy.automatic || {}), ...(saved.automatic || {})},
       timers: hasSavedTimers ? savedTimers : legacy.timers
     };
   }
 
-  function automaticDecision(deviceKey,automatic){
-    const row = latestRow(deviceKey);
-    const rowTime = new Date(row?.time || 0).getTime();
-    const age = Number.isFinite(rowTime) ? Date.now() - rowTime : Infinity;
+  function automaticDecision(deviceKey,automatic,row){
+    const time = rowTime(row);
+    const age = time ? Date.now() - time : Infinity;
     if(age > SENSOR_STALE_MS) return failSafeDecision(automatic?.fail_safe);
 
     const source = String(automatic?.source || '');
@@ -151,19 +152,15 @@
     const explicitOff = numberOrNull(automatic?.off_value);
     const useSensorThresholds = automatic?.use_sensor_thresholds === true;
     const meta = useSensorThresholds ? sensorMeta(deviceKey,source) : null;
-
-    // Los valores configurados en el modo automático tienen prioridad. Los
-    // umbrales de alarma del sensor sólo se usan si se activó expresamente esa opción.
     const onValue = explicitOn ?? (useSensorThresholds ? thresholdFromSensor(meta,onOperator) : null);
     const offValue = explicitOff ?? (useSensorThresholds ? thresholdFromSensor(meta,offOperator) : null);
 
     const onMatch = onValue !== null && compare(value,onOperator,onValue);
     const offMatch = offValue !== null && compare(value,offOperator,offValue);
-
     if(onMatch && offMatch) return null;
     if(onMatch) return true;
     if(offMatch) return false;
-    return null; // banda de histéresis: conserva el último estado
+    return null;
   }
 
   function minutes(value){
@@ -184,27 +181,23 @@
   function timerSlotActive(slot,now){
     const on = minutes(slot?.on), off = minutes(slot?.off);
     if(on === null || off === null || on === off) return false;
-    const selectedDays = Array.isArray(slot?.days) && slot.days.length
-      ? slot.days.map(Number)
-      : [1,2,3,4,5,6,7];
+    const selectedDays = Array.isArray(slot?.days) && slot.days.length ? slot.days.map(Number) : [1,2,3,4,5,6,7];
     const day = dayNumber(now);
     const current = now.getHours() * 60 + now.getMinutes();
-
     if(on < off) return selectedDays.includes(day) && current >= on && current < off;
-
-    // Horario que cruza medianoche, por ejemplo 22:00 -> 05:00.
     return (selectedDays.includes(day) && current >= on)
       || (selectedDays.includes(previousDay(day)) && current < off);
   }
 
-  function timerDecision(settings){
-    const slots = (Array.isArray(settings?.timers)
-      ? settings.timers
-      : (settings?.timer ? [settings.timer] : []))
+  function timerDecision(settings,now){
+    const slots = (Array.isArray(settings?.timers) ? settings.timers : (settings?.timer ? [settings.timer] : []))
       .filter(slot => minutes(slot?.on) !== null && minutes(slot?.off) !== null && slot.on !== slot.off);
     if(!slots.length) return null;
-    const now = new Date();
     return slots.some(slot => timerSlotActive(slot,now));
+  }
+
+  function minuteStamp(date){
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}-${date.getMinutes()}`;
   }
 
   async function loadResources(deviceKey,force=false){
@@ -234,51 +227,100 @@
     });
   }
 
-  async function commandOutput(deviceKey,outputKey,desired){
-    if(typeof window.__tayuApiPost !== 'function') return;
-    const commandKey = `${deviceKey}|${outputKey}`;
-    if(commandBusy.has(commandKey)) return;
+  async function commandOutput(deviceKey,outputKey,desired,row){
+    if(typeof window.__tayuApiPost !== 'function') return false;
+    const key = automationKey(deviceKey,outputKey);
+    if(commandBusy.has(key)) return false;
 
-    const actual = readOutput(latestPayload(deviceKey),outputKey);
-    if(actual === desired) return;
+    const payload = parsePayload(row);
+    const actual = readOutput(payload,outputKey);
+    const telemetryTime = rowTime(row);
+    const previous = commandState.get(key);
 
-    const previous = commandState.get(commandKey);
-    if(previous?.value === desired && Date.now() - previous.at < COMMAND_COOLDOWN_MS) return;
+    if(actual === desired){
+      // Si la telemetría nueva ya confirma el estado, no hay nada que enviar.
+      if(!previous || telemetryTime >= Number(previous.telemetryTime || 0)){
+        commandState.set(key,{value:desired,sentAt:Number(previous?.sentAt||0),telemetryTime,confirmed:true});
+      }
+      return true;
+    }
 
-    commandBusy.add(commandKey);
-    commandState.set(commandKey,{value:desired,at:Date.now()});
+    if(previous?.value === desired){
+      // No repetir la misma orden contra el mismo paquete viejo de telemetría.
+      if(telemetryTime <= Number(previous.telemetryTime || 0)) return true;
+      // Si llegó un paquete nuevo contradictorio, permitimos reintento pero no en ráfaga.
+      if(Date.now() - Number(previous.sentAt || 0) < RETRY_AFTER_MS) return true;
+    }
+
+    commandBusy.add(key);
+    const sentAt = Date.now();
+    commandState.set(key,{value:desired,sentAt,telemetryTime,confirmed:false});
     try{
       await window.__tayuApiPost('/devices/output',{
         device_key:deviceKey,
         output_key:outputKey,
         value:Boolean(desired)
       });
-      patchOutput(deviceKey,outputKey,desired);
+      patchOutput(row,outputKey,desired);
       updateVisibleState(deviceKey,outputKey,desired);
+      return true;
     }catch(error){
       console.warn(`Automation output ${deviceKey}/${outputKey}:`,error);
+      const current = commandState.get(key);
+      if(current?.sentAt === sentAt) commandState.set(key,{...current,failed:true});
+      return false;
     }finally{
-      commandBusy.delete(commandKey);
+      commandBusy.delete(key);
     }
   }
 
-  async function evaluateDevice(device){
+  function clearDeviceRuntimeState(deviceKey){
+    const prefix = `${String(deviceKey || '')}|`;
+    for(const key of [...evaluationState.keys()]) if(key.startsWith(prefix)) evaluationState.delete(key);
+    for(const key of [...commandState.keys()]) if(key.startsWith(prefix)) commandState.delete(key);
+  }
+
+  async function evaluateDevice(device,forceResources=false){
     const deviceKey = String(device?.device_key || '');
     if(!deviceKey) return;
-    const data = await loadResources(deviceKey,false);
+    const data = await loadResources(deviceKey,forceResources);
     const resources = (Array.isArray(data?.resources) ? data.resources : [])
       .filter(resource => resource?.resource_type === 'digital_output' && resource?.assignment?.enabled !== false);
+    const row = latestRow(deviceKey);
+    const telemetryTime = rowTime(row);
+    const now = new Date();
+    const minute = minuteStamp(now);
 
     for(const resource of resources){
       const outputKey = String(resource?.resource_key || '');
       if(!outputKey) continue;
+      const key = automationKey(deviceKey,outputKey);
       const settings = effectiveSettings(resource,deviceKey);
       const mode = String(settings.mode || 'manual').toLowerCase();
-      let desired = null;
-      if(mode === 'automatic') desired = automaticDecision(deviceKey,settings.automatic || {});
-      else if(mode === 'timer') desired = timerDecision(settings);
-      else continue;
-      if(desired !== null) await commandOutput(deviceKey,outputKey,desired);
+      const previous = evaluationState.get(key);
+
+      if(mode === 'manual'){
+        if(previous) evaluationState.delete(key);
+        commandState.delete(key);
+        continue;
+      }
+
+      if(mode === 'automatic'){
+        // Una misma muestra del sensor nunca se evalúa repetidamente.
+        if(previous?.mode === 'automatic' && previous.telemetryTime === telemetryTime) continue;
+        const desired = automaticDecision(deviceKey,settings.automatic || {},row);
+        evaluationState.set(key,{mode,telemetryTime,minute,desired});
+        if(desired !== null) await commandOutput(deviceKey,outputKey,desired,row);
+        continue;
+      }
+
+      if(mode === 'timer'){
+        // Timer sólo necesita reaccionar a cambio de minuto o a un estado físico nuevo.
+        if(previous?.mode === 'timer' && previous.minute === minute && previous.telemetryTime === telemetryTime) continue;
+        const desired = timerDecision(settings,now);
+        evaluationState.set(key,{mode,telemetryTime,minute,desired});
+        if(desired !== null) await commandOutput(deviceKey,outputKey,desired,row);
+      }
     }
   }
 
@@ -286,27 +328,47 @@
     if(loopBusy) return;
     loopBusy = true;
     try{
-      if(forceResources) resourceCache.clear();
-      await Promise.all(devices().map(device => evaluateDevice(device)));
+      await Promise.all(devices().map(device => evaluateDevice(device,forceResources)));
     }finally{
       loopBusy = false;
     }
   }
 
+  async function reloadDevice(deviceKey){
+    const key = String(deviceKey || '');
+    if(!key) return;
+    resourceCache.delete(key);
+    clearDeviceRuntimeState(key);
+    const device = deviceByKey(key);
+    if(device) await evaluateDevice(device,true);
+  }
+
+  async function reloadAll(){
+    resourceCache.clear();
+    evaluationState.clear();
+    commandState.clear();
+    await evaluateAll(true);
+  }
+
   function install(){
     clearInterval(loopTimer);
     loopTimer = setInterval(() => evaluateAll(false),LOOP_MS);
-    window.addEventListener('tayu:client-access-ready',() => setTimeout(() => evaluateAll(true),300));
-    window.addEventListener('pageshow',() => setTimeout(() => evaluateAll(true),250));
+    window.addEventListener('tayu:client-access-ready',() => setTimeout(() => reloadAll(),300));
+    window.addEventListener('pageshow',() => setTimeout(() => evaluateAll(false),250));
     document.addEventListener('visibilitychange',() => {
       if(document.visibilityState === 'visible') setTimeout(() => evaluateAll(false),150);
     });
-    setTimeout(() => evaluateAll(true),1200);
+    setTimeout(() => reloadAll(),1200);
 
     window.__tayuAutomationRuntime = {
       evaluate:() => evaluateAll(false),
-      reload:() => evaluateAll(true),
-      invalidate:deviceKey => resourceCache.delete(String(deviceKey || ''))
+      reload:reloadAll,
+      reloadDevice,
+      invalidate:deviceKey => {
+        const key = String(deviceKey || '');
+        resourceCache.delete(key);
+        clearDeviceRuntimeState(key);
+      }
     };
   }
 
