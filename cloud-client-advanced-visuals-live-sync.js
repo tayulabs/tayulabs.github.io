@@ -52,8 +52,6 @@
     const v=d?.variables?.find(item=>item.id===cfg.variableId);
     if(!d||!v)return;
 
-    // Para el Dashboard priorizamos SIEMPRE el valor vivo de modbusDevices.
-    // Este objeto se actualiza con la última telemetría recibida por la plataforma.
     let value=Number(v.value);
     if(!Number.isFinite(value)){
       try{
@@ -122,8 +120,6 @@
 
   function install(){
     clearInterval(timer);
-    // Comprobación ligera solo mientras Dashboard está visible. No consulta red,
-    // no reconstruye widgets y no repinta si valor/rango/color no cambiaron.
     timer=setInterval(schedule,2000);
     document.addEventListener('click',event=>{
       if(event.target?.closest?.('.nav button[data-view="dashboard"]'))setTimeout(schedule,80);
@@ -135,4 +131,14 @@
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
+})();
+
+(() => {
+  'use strict';
+  if(document.getElementById('tayuSectorOperationStabilityLoader'))return;
+  const script=document.createElement('script');
+  script.id='tayuSectorOperationStabilityLoader';
+  script.src='cloud-client-sector-operation-stability.js?v=20260914-opstable1';
+  script.async=false;
+  document.head.appendChild(script);
 })();
