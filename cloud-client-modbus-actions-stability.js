@@ -128,8 +128,16 @@
     if(document.getElementById('tayuAdvancedVisualsV4Loader')) return;
     const engine=document.createElement('script');
     engine.id='tayuAdvancedVisualsV4Loader';
-    engine.src='cloud-client-advanced-visuals-v4.js?v=20260914-levelcolors1';
+    engine.src='cloud-client-advanced-visuals-v4.js?v=20260914-levelcolors2';
     engine.async=false;
+    engine.onload=()=>{
+      if(document.getElementById('tayuAdvancedVisualsLiveSyncLoader')) return;
+      const sync=document.createElement('script');
+      sync.id='tayuAdvancedVisualsLiveSyncLoader';
+      sync.src='cloud-client-advanced-visuals-live-sync.js?v=20260914-livecolors1';
+      sync.async=false;
+      document.head.appendChild(sync);
+    };
     document.head.appendChild(engine);
   };
   document.head.appendChild(ui);
