@@ -1,16 +1,17 @@
 (() => {
   'use strict';
 
-  const VERSION='20260914-production1';
+  const VERSION='20260914-production2';
   if(window.__tayuSectorOperationStabilityVersion===VERSION)return;
   window.__tayuSectorOperationStabilityVersion=VERSION;
 
   const SECTORS=new Set(['fincas','camaroneras','bananeras','ganaderia']);
   const observers=[];
-  let memoryTimer=null;
+  let telemetryWatchTimer=null;
+  let lastTelemetrySignature='';
 
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[c]));
 
   function numberOrNull(value){
@@ -159,6 +160,25 @@
     }
   }
 
+  function telemetrySignature(){
+    const latest=new Map();
+    for(const row of(Array.isArray(window.__tayuLastTelemetry)?window.__tayuLastTelemetry:[])){
+      const key=String(row?.device_key||'');
+      if(!key)continue;
+      const time=new Date(row?.time||0).getTime();
+      if(!Number.isFinite(time))continue;
+      if(time>Number(latest.get(key)||0))latest.set(key,time);
+    }
+    return[...latest.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([key,time])=>`${key}:${time}`).join('|');
+  }
+
+  function checkTelemetryChange(){
+    const signature=telemetrySignature();
+    if(signature===lastTelemetrySignature)return;
+    lastTelemetrySignature=signature;
+    syncActiveEditors();
+  }
+
   function bindObservers(){
     observers.splice(0).forEach(observer=>observer.disconnect());
     for(const sector of SECTORS){
@@ -176,6 +196,7 @@
   function install(){
     ensureStyles();
     bindObservers();
+    lastTelemetrySignature=telemetrySignature();
     syncActiveEditors();
 
     document.addEventListener('change',event=>{
@@ -189,10 +210,10 @@
       if(SECTORS.has(nav?.dataset?.view))setTimeout(syncActiveEditors,120);
     },true);
 
-    // Sólo sincroniza texto desde la memoria ya cargada. No hace llamadas API,
-    // no refresca históricos y no reconstruye el sector.
-    clearInterval(memoryTimer);
-    memoryTimer=setInterval(syncActiveEditors,2000);
+    // Observamos sólo timestamps ya existentes en memoria. No hacemos llamadas
+    // API ni recorremos las tarjetas si la telemetría no cambió.
+    clearInterval(telemetryWatchTimer);
+    telemetryWatchTimer=setInterval(checkTelemetryChange,750);
     window.addEventListener('pageshow',()=>setTimeout(syncActiveEditors,100));
     window.addEventListener('tayu:client-access-ready',()=>setTimeout(syncActiveEditors,150));
   }
