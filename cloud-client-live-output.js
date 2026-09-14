@@ -76,16 +76,9 @@
     const previous=readOutput(deviceKey,outputKey);
     const previousText=button?.textContent||'';
     try{
-      if(button){
-        button.disabled=true;
-        updateButtonUi(button,next,true);
-      }
+      if(button){button.disabled=true;updateButtonUi(button,next,true);}
       if(typeof window.__tayuApiPost!=='function')throw new Error('API de la plataforma no disponible');
-      await window.__tayuApiPost('/devices/output',{
-        device_key:deviceKey,
-        output_key:outputKey,
-        value:next
-      });
+      await window.__tayuApiPost('/devices/output',{device_key:deviceKey,output_key:outputKey,value:next});
       patchTelemetry(deviceKey,outputKey,next);
       if(button)updateButtonUi(button,next,false);
       return true;
@@ -100,11 +93,7 @@
     }
   }
 
-  function numberOrNull(value){
-    if(value===''||value==null)return null;
-    const n=Number(value);
-    return Number.isFinite(n)?n:null;
-  }
+  function numberOrNull(value){if(value===''||value==null)return null;const n=Number(value);return Number.isFinite(n)?n:null;}
 
   function collectOperation(editor){
     const get=role=>editor.querySelector(`[data-op-role="${role}"]`)?.value??'';
@@ -128,20 +117,39 @@
 
   const operationKey=(deviceKey,outputKey)=>`${deviceKey}|${outputKey}`;
 
+  function fillOperationEditor(editor,settings){
+    if(!editor||!settings)return;
+    const mode=String(settings.mode||'manual').toLowerCase();
+    const set=(role,value)=>{const el=editor.querySelector(`[data-op-role="${role}"]`);if(el&&value!==undefined&&value!==null)el.value=String(value);};
+    set('mode',mode);
+    set('automatic.source',settings.automatic?.source||'');
+    set('automatic.on_operator',settings.automatic?.on_operator||'<=');
+    set('automatic.on_value',settings.automatic?.on_value??'');
+    set('automatic.off_operator',settings.automatic?.off_operator||'>=');
+    set('automatic.off_value',settings.automatic?.off_value??'');
+    set('automatic.fail_safe',settings.automatic?.fail_safe||'off');
+    editor.querySelectorAll('[data-op-panel]').forEach(panel=>panel.hidden=panel.dataset.opPanel!==mode);
+    const badge=editor.querySelector('.tayu-op-head .tayu-sector-pill');
+    if(badge)badge.textContent=mode==='automatic'?'⚙ Automático':mode==='timer'?'🕒 Timer':'👆 Manual';
+    const timers=Array.isArray(settings.timers)?settings.timers:[];
+    editor.querySelectorAll('[data-op-timer-slot]').forEach((slot,index)=>{
+      const timer=timers[index]||{on:'',off:'',days:[1,2,3,4,5,6,7]};
+      const on=slot.querySelector('[data-op-timer="on"]');
+      const off=slot.querySelector('[data-op-timer="off"]');
+      if(on)on.value=timer.on||'';
+      if(off)off.value=timer.off||'';
+      const days=Array.isArray(timer.days)&&timer.days.length?timer.days.map(Number):[1,2,3,4,5,6,7];
+      slot.querySelectorAll('[data-op-day]').forEach(input=>{input.checked=days.includes(Number(input.dataset.opDay));});
+    });
+  }
+
   function applyOperationUi(card,settings){
     if(!card||!settings)return;
     const mode=String(settings.mode||'manual').toLowerCase();
     const badge=card.querySelector('.tayu-sector-resource-top > .tayu-sector-pill');
     if(badge)badge.textContent=mode==='automatic'?'Automático':mode==='timer'?'Timer':'Manual';
-
-    const editor=card.querySelector('[data-op-editor]');
-    if(editor){
-      const modeSelect=editor.querySelector('[data-op-role="mode"]');
-      if(modeSelect&&modeSelect.value!==mode)modeSelect.value=mode;
-      editor.querySelectorAll('[data-op-panel]').forEach(panel=>panel.hidden=panel.dataset.opPanel!==mode);
-      const editorBadge=editor.querySelector('.tayu-op-head .tayu-sector-pill');
-      if(editorBadge)editorBadge.textContent=mode==='automatic'?'⚙ Automático':mode==='timer'?'🕒 Timer':'👆 Manual';
-    }
+    card.querySelector('.tayu-sector-mode-detail')?.remove();
+    fillOperationEditor(card.querySelector('[data-op-editor]'),settings);
 
     const button=card.querySelector('[data-sector-toggle]');
     if(!button)return;
@@ -151,13 +159,8 @@
     const online=Boolean(card.closest('.tayu-sector-device')?.querySelector('.tayu-sector-status.online'));
     button.dataset.next=on?'0':'1';
     button.classList.toggle('ghost',on);
-
     if(!online){button.disabled=true;button.textContent='DISPOSITIVO OFFLINE';return;}
-    if(mode!=='manual'){
-      button.disabled=true;
-      button.textContent=mode==='automatic'?'CONTROL AUTOMÁTICO':'CONTROL TIMER';
-      return;
-    }
+    if(mode!=='manual'){button.disabled=true;button.textContent=mode==='automatic'?'CONTROL AUTOMÁTICO':'CONTROL TIMER';return;}
     button.disabled=!hasState;
     button.textContent=!hasState?'ESPERANDO ESTADO':on?'APAGAR':'ENCENDER';
   }
@@ -165,11 +168,21 @@
   function applyKnownOverrides(root=document){
     const cards=[];
     if(root?.matches?.('[data-sector-output][data-device-key]'))cards.push(root);
+    const parent=root?.closest?.('[data-sector-output][data-device-key]');
+    if(parent&&!cards.includes(parent))cards.push(parent);
     root?.querySelectorAll?.('[data-sector-output][data-device-key]').forEach(card=>cards.push(card));
     cards.forEach(card=>{
       const settings=operationOverrides.get(operationKey(card.dataset.deviceKey,card.dataset.sectorOutput));
       if(settings)applyOperationUi(card,settings);
     });
+  }
+
+  function patchResourceData(data,outputKey,settings){
+    const resource=data?.resources?.find(item=>String(item?.resource_key)===String(outputKey));
+    if(!resource)return data;
+    resource.assignment=resource.assignment&&typeof resource.assignment==='object'?resource.assignment:{};
+    resource.assignment.settings=JSON.parse(JSON.stringify(settings));
+    return data;
   }
 
   async function saveOperationFixed(editor,button){
@@ -206,21 +219,18 @@
         settings
       });
 
+      patchResourceData(data,outputKey,settings);
       operationOverrides.set(key,settings);
       const card=editor.closest('[data-sector-output]');
       applyOperationUi(card,settings);
 
-      const runtime=window.__tayuAutomationRuntime;
       try{
-        if(typeof runtime?.reloadDevice==='function') await runtime.reloadDevice(deviceKey);
-        else{
-          runtime?.invalidate?.(deviceKey);
-          if(typeof runtime?.evaluate==='function') await runtime.evaluate();
+        if(typeof window.__tayuAutomationRuntime?.applySettings==='function'){
+          await window.__tayuAutomationRuntime.applySettings(deviceKey,outputKey,settings,data);
+        }else{
+          window.__tayuAutomationRuntime?.invalidate?.(deviceKey);
         }
-      }catch(error){
-        console.warn('Recarga de automatización:',error);
-      }
-      applyOperationUi(card,settings);
+      }catch(error){console.warn('Aplicación local del modo:',error);}
 
       if(msg){
         msg.style.color='var(--brand)';
@@ -238,7 +248,7 @@
   function ensureAutomationRuntime(){
     if(window.__tayuAutomationRuntime||document.querySelector('script[data-tayu-automation-runtime]'))return;
     const script=document.createElement('script');
-    script.src='cloud-client-automation-runtime.js?v=20260914-automation3';
+    script.src='cloud-client-automation-runtime.js?v=20260914-automation4';
     script.dataset.tayuAutomationRuntime='1';
     script.onerror=()=>console.error('No se pudo cargar el runtime de automatización.');
     document.head.appendChild(script);
@@ -251,32 +261,28 @@
     const save=event.target?.closest?.('[data-op-save]');
     if(save){
       const editor=save.closest('[data-op-editor]');
-      if(editor){
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        saveOperationFixed(editor,save);
-        return;
-      }
+      if(editor){event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();saveOperationFixed(editor,save);return;}
     }
-
     const outputButton=event.target?.closest?.('[data-sector-toggle]');
     if(!outputButton)return;
     const card=outputButton.closest('[data-sector-output][data-device-key]');
     if(!card)return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
+    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
     if(outputButton.disabled)return;
     smoothSetOutput(card.dataset.deviceKey,card.dataset.sectorOutput,outputButton.dataset.next==='1',outputButton);
   },true);
 
   const observer=new MutationObserver(records=>{
-    records.forEach(record=>record.addedNodes.forEach(node=>{
-      if(node?.nodeType===1)applyKnownOverrides(node);
-    }));
+    for(const record of records){
+      for(const node of record.addedNodes){
+        if(node?.nodeType===1)applyKnownOverrides(node);
+      }
+    }
   });
-  if(document.documentElement)observer.observe(document.documentElement,{childList:true,subtree:true});
+  ['fincas','camaroneras','bananeras','ganaderia'].forEach(id=>{
+    const view=document.getElementById(id);
+    if(view)observer.observe(view,{childList:true,subtree:true});
+  });
 
   ensureAutomationRuntime();
   setTimeout(()=>applyKnownOverrides(document),0);
