@@ -43,24 +43,63 @@
     return true;
   }
 
+  function optimizeTelemetryRefresh(){
+    if(window.__tayuTelemetryPerformanceApplied)return;
+    const select=document.getElementById('realtimeRefreshInterval');
+    const current=Number(select?.value||0);
+    if(!select || !current || typeof window.saveGeneralSettings!=='function')return;
+
+    // Conserva 1 s si el usuario ya lo tenía. Si estaba en 5/10 s, usa 2 s:
+    // suficientemente rápido para telemetría en vivo sin forzar históricos y
+    // gráficas pesadas a trabajar cada segundo.
+    if(current>2000){
+      window.__tayuTelemetryPerformanceApplied=true;
+      select.value='2000';
+      Promise.resolve(window.saveGeneralSettings()).catch(error=>{
+        window.__tayuTelemetryPerformanceApplied=false;
+        console.warn('No se pudo optimizar el refresco de telemetría:',error);
+      });
+    }else{
+      window.__tayuTelemetryPerformanceApplied=true;
+    }
+  }
+
+  function scheduleTelemetryOptimization(){
+    [600,1600,3500].forEach(delay=>setTimeout(optimizeTelemetryRefresh,delay));
+  }
+
   function boot() {
     decorate();
     if (attachObserver()) return;
     let attempts = 0;
     const timer = setInterval(() => {
       attempts += 1;
-      decorate();
-      if (attachObserver() || attempts >= 100) clearInterval(timer);
-    }, 100);
+      if (attachObserver() || attempts >= 24) {
+        clearInterval(timer);
+        return;
+      }
+      if (attempts % 4 === 0) decorate();
+    }, 250);
   }
 
-  window.addEventListener('tayu:client-access-ready', () => setTimeout(boot, 0));
+  window.addEventListener('tayu:client-access-ready', () => {
+    setTimeout(boot, 0);
+    scheduleTelemetryOptimization();
+  });
+
   document.addEventListener('click', event => {
     if (event.target?.closest?.('.nav button[data-view="dispositivos"], #tdRefresh')) {
       setTimeout(boot, 0);
     }
   }, true);
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true});
-  else boot();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      boot();
+      scheduleTelemetryOptimization();
+    }, {once:true});
+  } else {
+    boot();
+    scheduleTelemetryOptimization();
+  }
 })();
