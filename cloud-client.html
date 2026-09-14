@@ -19,7 +19,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260914-iot-production1';
+const VERSION='20260914-iot-production2';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -186,8 +186,8 @@ if(typeof refreshLiveTelemetry==='function')window.refreshLiveTelemetry=refreshL
     '<scr'+'ipt src="cloud-client-device-iot-stability.js?v='+VERSION+'&fix=iotstable2"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sector-iot.js?v='+VERSION+'&fix=sectoriot4"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sector-operation.js?v='+VERSION+'&fix=sectoroperation2"></scr'+'ipt>\n'+
-    '<scr'+'ipt id="tayuSectorOperationStabilityLoader" src="cloud-client-sector-operation-stability.js?v='+VERSION+'&fix=production1"></scr'+'ipt>\n'+
-    '<scr'+'ipt src="cloud-client-live-output.js?v='+VERSION+'&fix=smoothrelay6"></scr'+'ipt>\n'+
+    '<scr'+'ipt id="tayuSectorOperationStabilityLoader" src="cloud-client-sector-operation-stability.js?v='+VERSION+'&fix=production3"></scr'+'ipt>\n'+
+    '<scr'+'ipt src="cloud-client-live-output.js?v='+VERSION+'&fix=smoothrelay7"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-modbus-consistency.js?v='+VERSION+'&fix=modbussync1"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sensor-alerts.js?v='+VERSION+'&fix=sensoralerts1"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-alarm-background.js?v='+VERSION+'&fix=alarmbackground1"></scr'+'ipt>\n'+
