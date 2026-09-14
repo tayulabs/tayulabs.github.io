@@ -125,12 +125,29 @@
   ui.src='cloud-client-advanced-visuals-ui-v2.js?v=20260914-water2';
   ui.async=false;
   ui.onload=()=>{
-    if(document.getElementById('tayuAdvancedVisualsV3Loader')) return;
+    if(document.getElementById('tayuAdvancedVisualsV4Loader')) return;
     const engine=document.createElement('script');
-    engine.id='tayuAdvancedVisualsV3Loader';
-    engine.src='cloud-client-advanced-visuals-v3.js?v=20260914-v3';
+    engine.id='tayuAdvancedVisualsV4Loader';
+    engine.src='cloud-client-advanced-visuals-v4.js?v=20260914-levelcolors1';
     engine.async=false;
     document.head.appendChild(engine);
   };
   document.head.appendChild(ui);
+})();
+
+(() => {
+  'use strict';
+  if(document.getElementById('tayuSidebarUnderlayWidthFix')) return;
+  const style=document.createElement('style');
+  style.id='tayuSidebarUnderlayWidthFix';
+  style.textContent=`
+    @media (min-width:961px){
+      #app.app::before,
+      body.sidebar-collapsed #app.app::before,
+      body:not(.sidebar-collapsed) #app.app::before{
+        width:150px!important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
 })();
