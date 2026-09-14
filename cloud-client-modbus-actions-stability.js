@@ -118,18 +118,19 @@
 
 (() => {
   'use strict';
-  if(document.getElementById('tayuAdvancedVisualsLoader')) return;
-  const script=document.createElement('script');
-  script.id='tayuAdvancedVisualsLoader';
-  script.src='cloud-client-advanced-visuals.js?v=20260914-visuals2';
-  script.async=false;
-  script.onload=()=>{
+  if(document.getElementById('tayuAdvancedVisualsUiLoader')) return;
+
+  const ui=document.createElement('script');
+  ui.id='tayuAdvancedVisualsUiLoader';
+  ui.src='cloud-client-advanced-visuals-ui.js?v=20260914-visuals-ui1';
+  ui.async=false;
+  ui.onload=()=>{
     if(document.getElementById('tayuAdvancedVisualsV2Loader')) return;
-    const fixed=document.createElement('script');
-    fixed.id='tayuAdvancedVisualsV2Loader';
-    fixed.src='cloud-client-advanced-visuals-v2.js?v=20260914-visuals-v2';
-    fixed.async=false;
-    document.head.appendChild(fixed);
+    const engine=document.createElement('script');
+    engine.id='tayuAdvancedVisualsV2Loader';
+    engine.src='cloud-client-advanced-visuals-v2.js?v=20260914-visuals-v2b';
+    engine.async=false;
+    document.head.appendChild(engine);
   };
-  document.head.appendChild(script);
+  document.head.appendChild(ui);
 })();
