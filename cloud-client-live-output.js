@@ -1,12 +1,12 @@
 (() => {
   'use strict';
 
-  const operationOverrides = new Map();
-  const saveBusy = new Set();
+  const operationOverrides=new Map();
+  const saveBusy=new Set();
 
   function parsePayload(row){
     const value=row?.payload;
-    if(value && typeof value==='object') return value;
+    if(value&&typeof value==='object')return value;
     if(typeof value==='string'){
       try{return JSON.parse(value);}catch(_){return {};}
     }
@@ -14,21 +14,17 @@
   }
 
   function latestRow(deviceKey){
-    const rows=(Array.isArray(window.__tayuLastTelemetry)?window.__tayuLastTelemetry:[])
-      .filter(row=>String(row?.device_key)===String(deviceKey))
-      .sort((a,b)=>new Date(b?.time||0)-new Date(a?.time||0));
-    return rows[0]||null;
+    let latest=null;
+    for(const row of (Array.isArray(window.__tayuLastTelemetry)?window.__tayuLastTelemetry:[])){
+      if(String(row?.device_key)!==String(deviceKey))continue;
+      if(!latest||new Date(row?.time||0)>new Date(latest?.time||0))latest=row;
+    }
+    return latest;
   }
 
   function readOutput(deviceKey,outputKey){
     const payload=parsePayload(latestRow(deviceKey));
-    const candidates=[
-      payload?.[outputKey],
-      payload?.outputs?.[outputKey],
-      payload?.io?.[outputKey],
-      payload?.relays?.[outputKey],
-      payload?.[`${outputKey}_state`]
-    ];
+    const candidates=[payload?.[outputKey],payload?.outputs?.[outputKey],payload?.io?.[outputKey],payload?.relays?.[outputKey],payload?.[`${outputKey}_state`]];
     const value=candidates.find(item=>item!==undefined&&item!==null);
     if(value===true||value===false)return value;
     if(value===1||value==='1'||String(value).toLowerCase()==='on'||String(value).toLowerCase()==='true')return true;
@@ -39,11 +35,10 @@
   function patchTelemetry(deviceKey,outputKey,value){
     const row=latestRow(deviceKey);
     if(!row)return;
-    let payload=parsePayload(row);
-    if(!payload || typeof payload!=='object')payload={};
+    const payload=parsePayload(row);
     payload[outputKey]=Boolean(value);
-    if(payload.outputs && typeof payload.outputs==='object')payload.outputs[outputKey]=Boolean(value);
-    if(payload.relays && typeof payload.relays==='object')payload.relays[outputKey]=Boolean(value);
+    if(payload.outputs&&typeof payload.outputs==='object')payload.outputs[outputKey]=Boolean(value);
+    if(payload.relays&&typeof payload.relays==='object')payload.relays[outputKey]=Boolean(value);
     row.payload=payload;
   }
 
@@ -54,15 +49,11 @@
     if(state){
       state.classList.toggle('on',Boolean(value));
       state.classList.toggle('off',!value);
-      state.textContent=pending
-        ? (value?'● ENCENDIENDO…':'○ APAGANDO…')
-        : (value?'● ENCENDIDO':'○ APAGADO');
+      state.textContent=pending?(value?'● ENCENDIENDO…':'○ APAGANDO…'):(value?'● ENCENDIDO':'○ APAGADO');
     }
     button.dataset.next=value?'0':'1';
     button.classList.toggle('ghost',Boolean(value));
-    button.textContent=pending
-      ? (value?'ENCENDIENDO…':'APAGANDO…')
-      : (value?'APAGAR':'ENCENDER');
+    button.textContent=pending?(value?'ENCENDIENDO…':'APAGANDO…'):(value?'APAGAR':'ENCENDER');
   }
 
   function updateNovaCard(button,value,pending=false){
@@ -71,25 +62,13 @@
     card.classList.toggle('on',Boolean(value));
     card.classList.toggle('off',!value);
     const state=card.querySelector('.relay-state');
-    if(state)state.textContent=pending
-      ? (value?'● ENCENDIENDO…':'○ APAGANDO…')
-      : (value?'● ENCENDIDO':'○ APAGADO');
-    button.textContent=pending
-      ? (value?'ENCENDIENDO…':'APAGANDO…')
-      : (value?'APAGAR':'ENCENDER');
+    if(state)state.textContent=pending?(value?'● ENCENDIENDO…':'○ APAGANDO…'):(value?'● ENCENDIDO':'○ APAGADO');
+    button.textContent=pending?(value?'ENCENDIENDO…':'APAGANDO…'):(value?'APAGAR':'ENCENDER');
   }
 
   function updateButtonUi(button,value,pending=false){
     updateSectorCard(button,value,pending);
     updateNovaCard(button,value,pending);
-  }
-
-  async function lightweightRefresh(){
-    try{
-      if(typeof window.refreshLiveTelemetry==='function')await window.refreshLiveTelemetry();
-    }catch(error){
-      console.warn('Telemetría ligera después de comando:',error);
-    }
   }
 
   async function smoothSetOutput(deviceKey,outputKey,value,button){
@@ -107,20 +86,13 @@
         output_key:outputKey,
         value:next
       });
-
       patchTelemetry(deviceKey,outputKey,next);
       if(button)updateButtonUi(button,next,false);
-
-      setTimeout(async()=>{
-        await lightweightRefresh();
-        const confirmed=readOutput(deviceKey,outputKey);
-        if(button && confirmed!==undefined)updateButtonUi(button,confirmed,false);
-      },700);
       return true;
     }catch(error){
       console.error('Control IoT:',error);
-      if(button && previous!==undefined)updateButtonUi(button,previous,false);
-      else if(button && previousText)button.textContent=previousText;
+      if(button&&previous!==undefined)updateButtonUi(button,previous,false);
+      else if(button&&previousText)button.textContent=previousText;
       alert(`No se pudo controlar ${outputKey}: ${error.message||error}`);
       return false;
     }finally{
@@ -130,7 +102,8 @@
 
   function numberOrNull(value){
     if(value===''||value==null)return null;
-    const n=Number(value);return Number.isFinite(n)?n:null;
+    const n=Number(value);
+    return Number.isFinite(n)?n:null;
   }
 
   function collectOperation(editor){
@@ -153,19 +126,18 @@
     };
   }
 
-  function operationKey(deviceKey,outputKey){return `${deviceKey}|${outputKey}`;}
+  const operationKey=(deviceKey,outputKey)=>`${deviceKey}|${outputKey}`;
 
   function applyOperationUi(card,settings){
     if(!card||!settings)return;
     const mode=String(settings.mode||'manual').toLowerCase();
     const badge=card.querySelector('.tayu-sector-resource-top > .tayu-sector-pill');
     if(badge)badge.textContent=mode==='automatic'?'Automático':mode==='timer'?'Timer':'Manual';
-    card.querySelector('.tayu-sector-mode-detail')?.remove();
 
     const editor=card.querySelector('[data-op-editor]');
     if(editor){
       const modeSelect=editor.querySelector('[data-op-role="mode"]');
-      if(modeSelect && modeSelect.value!==mode)modeSelect.value=mode;
+      if(modeSelect&&modeSelect.value!==mode)modeSelect.value=mode;
       editor.querySelectorAll('[data-op-panel]').forEach(panel=>panel.hidden=panel.dataset.opPanel!==mode);
       const editorBadge=editor.querySelector('.tayu-op-head .tayu-sector-pill');
       if(editorBadge)editorBadge.textContent=mode==='automatic'?'⚙ Automático':mode==='timer'?'🕒 Timer':'👆 Manual';
@@ -191,7 +163,9 @@
   }
 
   function applyKnownOverrides(root=document){
-    const cards=root.matches?.('[data-sector-output][data-device-key]')?[root]:[...root.querySelectorAll?.('[data-sector-output][data-device-key]')||[]];
+    const cards=[];
+    if(root?.matches?.('[data-sector-output][data-device-key]'))cards.push(root);
+    root?.querySelectorAll?.('[data-sector-output][data-device-key]').forEach(card=>cards.push(card));
     cards.forEach(card=>{
       const settings=operationOverrides.get(operationKey(card.dataset.deviceKey,card.dataset.sectorOutput));
       if(settings)applyOperationUi(card,settings);
@@ -233,9 +207,19 @@
       });
 
       operationOverrides.set(key,settings);
-      applyOperationUi(editor.closest('[data-sector-output]'),settings);
-      window.__tayuAutomationRuntime?.invalidate?.(deviceKey);
-      window.__tayuAutomationRuntime?.evaluate?.();
+      const card=editor.closest('[data-sector-output]');
+      applyOperationUi(card,settings);
+
+      const runtime=window.__tayuAutomationRuntime;
+      runtime?.invalidate?.(deviceKey);
+      try{
+        if(typeof runtime?.reload==='function')await runtime.reload();
+        else if(typeof runtime?.evaluate==='function')await runtime.evaluate();
+      }catch(error){
+        console.warn('Recarga de automatización:',error);
+      }
+      applyOperationUi(card,settings);
+
       if(msg){
         msg.style.color='var(--brand)';
         msg.textContent=settings.mode==='manual'?'Guardado. Control manual activo.':settings.mode==='automatic'?'Guardado. Control automático activo.':'Guardado. Timer activo.';
@@ -261,14 +245,14 @@
   window.setGenericOutput=smoothSetOutput;
   window.setNovaRelay=(deviceKey,relay,state,button)=>smoothSetOutput(deviceKey,`relay${Number(relay)}`,state,button);
 
-  // Intercepta antes de los listeners antiguos de document para evitar el
-  // refresco completo que producía lag y estados de modo desincronizados.
   window.addEventListener('click',event=>{
     const save=event.target?.closest?.('[data-op-save]');
     if(save){
       const editor=save.closest('[data-op-editor]');
       if(editor){
-        event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         saveOperationFixed(editor,save);
         return;
       }
@@ -278,7 +262,9 @@
     if(!outputButton)return;
     const card=outputButton.closest('[data-sector-output][data-device-key]');
     if(!card)return;
-    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
     if(outputButton.disabled)return;
     smoothSetOutput(card.dataset.deviceKey,card.dataset.sectorOutput,outputButton.dataset.next==='1',outputButton);
   },true);
