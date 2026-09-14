@@ -42,6 +42,16 @@
     row.payload=payload;
   }
 
+  function setText(element,text){
+    if(element&&element.textContent!==text)element.textContent=text;
+  }
+
+  function setValue(element,value){
+    if(!element)return;
+    const next=String(value??'');
+    if(element.value!==next)element.value=next;
+  }
+
   function updateSectorCard(button,value,pending=false){
     const card=button?.closest?.('[data-sector-output]');
     if(!card)return;
@@ -49,11 +59,11 @@
     if(state){
       state.classList.toggle('on',Boolean(value));
       state.classList.toggle('off',!value);
-      state.textContent=pending?(value?'● ENCENDIENDO…':'○ APAGANDO…'):(value?'● ENCENDIDO':'○ APAGADO');
+      setText(state,pending?(value?'● ENCENDIENDO…':'○ APAGANDO…'):(value?'● ENCENDIDO':'○ APAGADO'));
     }
     button.dataset.next=value?'0':'1';
     button.classList.toggle('ghost',Boolean(value));
-    button.textContent=pending?(value?'ENCENDIENDO…':'APAGANDO…'):(value?'APAGAR':'ENCENDER');
+    setText(button,pending?(value?'ENCENDIENDO…':'APAGANDO…'):(value?'APAGAR':'ENCENDER'));
   }
 
   function updateNovaCard(button,value,pending=false){
@@ -61,9 +71,8 @@
     if(!card)return;
     card.classList.toggle('on',Boolean(value));
     card.classList.toggle('off',!value);
-    const state=card.querySelector('.relay-state');
-    if(state)state.textContent=pending?(value?'● ENCENDIENDO…':'○ APAGANDO…'):(value?'● ENCENDIDO':'○ APAGADO');
-    button.textContent=pending?(value?'ENCENDIENDO…':'APAGANDO…'):(value?'APAGAR':'ENCENDER');
+    setText(card.querySelector('.relay-state'),pending?(value?'● ENCENDIENDO…':'○ APAGANDO…'):(value?'● ENCENDIDO':'○ APAGADO'));
+    setText(button,pending?(value?'ENCENDIENDO…':'APAGANDO…'):(value?'APAGAR':'ENCENDER'));
   }
 
   function updateButtonUi(button,value,pending=false){
@@ -85,7 +94,7 @@
     }catch(error){
       console.error('Control IoT:',error);
       if(button&&previous!==undefined)updateButtonUi(button,previous,false);
-      else if(button&&previousText)button.textContent=previousText;
+      else if(button&&previousText)setText(button,previousText);
       alert(`No se pudo controlar ${outputKey}: ${error.message||error}`);
       return false;
     }finally{
@@ -144,38 +153,30 @@
   function fillOperationEditor(editor,settings){
     if(!editor||!settings)return;
     const mode=String(settings.mode||'manual').toLowerCase();
-    const set=(role,value)=>{
-      const element=editor.querySelector(`[data-op-role="${role}"]`);
-      if(element&&value!==undefined&&value!==null)element.value=String(value);
-    };
-    set('mode',mode);
-    set('automatic.source',settings.automatic?.source||'');
-    set('automatic.on_operator','<=');
-    set('automatic.on_value',settings.automatic?.on_value??'');
-    set('automatic.off_operator','>=');
-    set('automatic.off_value',settings.automatic?.off_value??'');
-    set('automatic.fail_safe',settings.automatic?.fail_safe||'off');
-    editor.querySelectorAll('[data-op-panel]').forEach(panel=>panel.hidden=panel.dataset.opPanel!==mode);
-    const badge=editor.querySelector('.tayu-op-head .tayu-sector-pill');
-    if(badge)badge.textContent=mode==='automatic'?'⚙ Automático':mode==='timer'?'🕒 Timer':'👆 Manual';
+    setValue(editor.querySelector('[data-op-role="mode"]'),mode);
+    setValue(editor.querySelector('[data-op-role="automatic.source"]'),settings.automatic?.source||'');
+    setValue(editor.querySelector('[data-op-role="automatic.on_operator"]'),'<=');
+    setValue(editor.querySelector('[data-op-role="automatic.on_value"]'),settings.automatic?.on_value??'');
+    setValue(editor.querySelector('[data-op-role="automatic.off_operator"]'),'>=');
+    setValue(editor.querySelector('[data-op-role="automatic.off_value"]'),settings.automatic?.off_value??'');
+    setValue(editor.querySelector('[data-op-role="automatic.fail_safe"]'),settings.automatic?.fail_safe||'off');
+    editor.querySelectorAll('[data-op-panel]').forEach(panel=>{const hidden=panel.dataset.opPanel!==mode;if(panel.hidden!==hidden)panel.hidden=hidden;});
+    setText(editor.querySelector('.tayu-op-head .tayu-sector-pill'),mode==='automatic'?'⚙ Automático':mode==='timer'?'🕒 Timer':'👆 Manual');
 
     const timers=Array.isArray(settings.timers)?settings.timers:[];
     editor.querySelectorAll('[data-op-timer-slot]').forEach((slot,index)=>{
       const timer=timers[index]||{on:'',off:'',days:[1,2,3,4,5,6,7]};
-      const on=slot.querySelector('[data-op-timer="on"]');
-      const off=slot.querySelector('[data-op-timer="off"]');
-      if(on)on.value=timer.on||'';
-      if(off)off.value=timer.off||'';
+      setValue(slot.querySelector('[data-op-timer="on"]'),timer.on||'');
+      setValue(slot.querySelector('[data-op-timer="off"]'),timer.off||'');
       const days=Array.isArray(timer.days)&&timer.days.length?timer.days.map(Number):[1,2,3,4,5,6,7];
-      slot.querySelectorAll('[data-op-day]').forEach(input=>{input.checked=days.includes(Number(input.dataset.opDay));});
+      slot.querySelectorAll('[data-op-day]').forEach(input=>{const checked=days.includes(Number(input.dataset.opDay));if(input.checked!==checked)input.checked=checked;});
     });
   }
 
   function applyOperationUi(card,settings){
     if(!card||!settings)return;
     const mode=String(settings.mode||'manual').toLowerCase();
-    const badge=card.querySelector('.tayu-sector-resource-top > .tayu-sector-pill');
-    if(badge)badge.textContent=mode==='automatic'?'Automático':mode==='timer'?'Timer':'Manual';
+    setText(card.querySelector('.tayu-sector-resource-top > .tayu-sector-pill'),mode==='automatic'?'Automático':mode==='timer'?'Timer':'Manual');
     card.querySelector('.tayu-sector-mode-detail')?.remove();
     fillOperationEditor(card.querySelector('[data-op-editor]'),settings);
 
@@ -187,21 +188,19 @@
     const online=Boolean(card.closest('.tayu-sector-device')?.querySelector('.tayu-sector-status.online'));
     button.dataset.next=on?'0':'1';
     button.classList.toggle('ghost',on);
-    if(!online){button.disabled=true;button.textContent='DISPOSITIVO OFFLINE';return;}
+    if(!online){button.disabled=true;setText(button,'DISPOSITIVO OFFLINE');return;}
     if(mode!=='manual'){
       button.disabled=true;
-      button.textContent=mode==='automatic'?'CONTROL AUTOMÁTICO':'CONTROL TIMER';
+      setText(button,mode==='automatic'?'CONTROL AUTOMÁTICO':'CONTROL TIMER');
       return;
     }
     button.disabled=!hasState;
-    button.textContent=!hasState?'ESPERANDO ESTADO':on?'APAGAR':'ENCENDER';
+    setText(button,!hasState?'ESPERANDO ESTADO':on?'APAGAR':'ENCENDER');
   }
 
   function applyKnownOverrides(root=document){
     const cards=[];
     if(root?.matches?.('[data-sector-output][data-device-key]'))cards.push(root);
-    const parent=root?.closest?.('[data-sector-output][data-device-key]');
-    if(parent&&!cards.includes(parent))cards.push(parent);
     root?.querySelectorAll?.('[data-sector-output][data-device-key]').forEach(card=>cards.push(card));
     cards.forEach(card=>{
       const settings=operationOverrides.get(operationKey(card.dataset.deviceKey,card.dataset.sectorOutput));
@@ -228,18 +227,18 @@
     const settings=collectOperation(editor);
     const rule=sensorRule(deviceKey,settings.automatic.source);
 
-    if(settings.mode==='automatic'&&!settings.automatic.source){if(msg)msg.textContent='Selecciona un sensor para el modo automático.';return;}
-    if(settings.mode==='automatic'&&!rule){if(msg)msg.textContent='El sensor seleccionado no está disponible en Sensores.';return;}
+    if(settings.mode==='automatic'&&!settings.automatic.source){if(msg)setText(msg,'Selecciona un sensor para el modo automático.');return;}
+    if(settings.mode==='automatic'&&!rule){if(msg)setText(msg,'El sensor seleccionado no está disponible en Sensores.');return;}
     if(settings.mode==='automatic'&&(rule.min===null||rule.max===null)){
-      if(msg)msg.textContent='Configura mínimo y máximo para este sensor en Sensores antes de activar Automático.';
+      if(msg)setText(msg,'Configura mínimo y máximo para este sensor en Sensores antes de activar Automático.');
       return;
     }
-    if(settings.mode==='timer'&&!settings.timers.some(slot=>slot.on&&slot.off)){if(msg)msg.textContent='Configura al menos un horario completo.';return;}
+    if(settings.mode==='timer'&&!settings.timers.some(slot=>slot.on&&slot.off)){if(msg)setText(msg,'Configura al menos un horario completo.');return;}
 
     saveBusy.add(key);
     if(button)button.disabled=true;
     try{
-      if(msg){msg.style.color='var(--muted)';msg.textContent='Guardando…';}
+      if(msg){msg.style.color='var(--muted)';setText(msg,'Guardando…');}
       const data=await window.__tayuApi(`/devices/iot-resources?device_key=${encodeURIComponent(deviceKey)}`);
       const resource=data?.resources?.find(item=>String(item.resource_key)===String(outputKey));
       if(!resource)throw new Error('No se encontró el recurso físico.');
@@ -272,11 +271,11 @@
 
       if(msg){
         msg.style.color='var(--brand)';
-        msg.textContent=settings.mode==='manual'?'Guardado. Control manual activo.':settings.mode==='automatic'?'Guardado. Control automático activo con umbrales de Sensores.':'Guardado. Timer activo.';
+        setText(msg,settings.mode==='manual'?'Guardado. Control manual activo.':settings.mode==='automatic'?'Guardado. Control automático activo con umbrales de Sensores.':'Guardado. Timer activo.');
       }
     }catch(error){
       console.error('Guardar modo IoT:',error);
-      if(msg){msg.style.color='var(--danger)';msg.textContent=error.message||'No se pudo guardar.';}
+      if(msg){msg.style.color='var(--danger)';setText(msg,error.message||'No se pudo guardar.');}
     }finally{
       saveBusy.delete(key);
       if(button)button.disabled=false;
@@ -284,16 +283,14 @@
   }
 
   function ensureAutomationRuntime(){
-    const VERSION='20260914-production1';
+    const VERSION='20260914-production2';
     if(window.__tayuAutomationRuntime?.version===VERSION)return;
     window.__tayuAutomationRuntime?.dispose?.();
     document.getElementById('tayuAutomationRuntimeLoader')?.remove();
 
     const script=document.createElement('script');
-    // Usamos el mismo ID que el loader histórico de Modbus para impedir que
-    // una segunda instancia del runtime vuelva a cargarse más tarde.
     script.id='tayuAutomationRuntimeLoader';
-    script.src='cloud-client-automation-runtime.js?v=20260914-production1';
+    script.src='cloud-client-automation-runtime.js?v=20260914-production2';
     script.dataset.tayuAutomationRuntime='1';
     script.async=false;
     script.onerror=()=>console.error('No se pudo cargar el runtime de automatización.');
@@ -328,11 +325,14 @@
   },true);
 
   const observer=new MutationObserver(records=>{
+    const nodes=[];
     for(const record of records){
       for(const node of record.addedNodes){
-        if(node?.nodeType===1)applyKnownOverrides(node);
+        if(node?.nodeType!==1)continue;
+        if(node.matches?.('[data-sector-output][data-device-key]')||node.querySelector?.('[data-sector-output][data-device-key]'))nodes.push(node);
       }
     }
+    nodes.forEach(applyKnownOverrides);
   });
   ['fincas','camaroneras','bananeras','ganaderia'].forEach(id=>{
     const view=document.getElementById(id);
