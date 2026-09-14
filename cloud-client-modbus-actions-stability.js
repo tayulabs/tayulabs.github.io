@@ -121,15 +121,15 @@
   if(document.getElementById('tayuAdvancedVisualsLoader')) return;
   const script=document.createElement('script');
   script.id='tayuAdvancedVisualsLoader';
-  script.src='cloud-client-advanced-visuals.js?v=20260914-visuals1';
+  script.src='cloud-client-advanced-visuals.js?v=20260914-visuals2';
   script.async=false;
   script.onload=()=>{
-    if(document.getElementById('tayuAdvancedVisualsStabilityLoader')) return;
-    const stability=document.createElement('script');
-    stability.id='tayuAdvancedVisualsStabilityLoader';
-    stability.src='cloud-client-advanced-visuals-stability.js?v=20260914-visuals-stable1';
-    stability.async=false;
-    document.head.appendChild(stability);
+    if(document.getElementById('tayuAdvancedVisualsV2Loader')) return;
+    const fixed=document.createElement('script');
+    fixed.id='tayuAdvancedVisualsV2Loader';
+    fixed.src='cloud-client-advanced-visuals-v2.js?v=20260914-visuals-v2';
+    fixed.async=false;
+    document.head.appendChild(fixed);
   };
   document.head.appendChild(script);
 })();
