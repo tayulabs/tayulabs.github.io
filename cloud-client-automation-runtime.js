@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const VERSION='20260914-production1';
+  const VERSION='20260914-production2';
   if(window.__tayuAutomationRuntime?.version===VERSION)return;
 
   const SENSOR_STALE_MS=45000;
@@ -17,10 +17,9 @@
 
   let evaluationBusy=false;
   let evaluationPending=false;
-  let telemetryWatchTimer=null;
   let minuteTimer=null;
-  let lastTelemetrySignature='';
   let bootStarted=false;
+  let installed=false;
 
   const devices=()=>Array.isArray(window.__tayuRealDevices)?window.__tayuRealDevices:[];
   const automationKey=(deviceKey,outputKey)=>`${String(deviceKey||'')}|${String(outputKey||'')}`;
@@ -59,10 +58,7 @@
   }
 
   function readOutput(payload,outputKey){
-    const values=[
-      payload?.[outputKey],payload?.outputs?.[outputKey],payload?.io?.[outputKey],
-      payload?.relays?.[outputKey],payload?.[`${outputKey}_state`]
-    ];
+    const values=[payload?.[outputKey],payload?.outputs?.[outputKey],payload?.io?.[outputKey],payload?.relays?.[outputKey],payload?.[`${outputKey}_state`]];
     const value=values.find(item=>item!==undefined&&item!==null);
     if(value===true||value===false)return value;
     if(value===1||value==='1'||String(value).toLowerCase()==='on'||String(value).toLowerCase()==='true')return true;
@@ -147,16 +143,8 @@
     const offOperator=automatic?.off_operator||'>=';
     const useSensorThresholds=automatic?.use_sensor_thresholds!==false;
     const meta=useSensorThresholds?sensorMeta(deviceKey,source):null;
-
-    // Si el modo está vinculado a Sensores, los umbrales actuales del sensor
-    // son la fuente de verdad. Así cambiar mín/máx en Sensores no requiere
-    // volver a guardar cada relay.
-    const onValue=useSensorThresholds
-      ? thresholdFromSensor(meta,onOperator)
-      : numberOrNull(automatic?.on_value);
-    const offValue=useSensorThresholds
-      ? thresholdFromSensor(meta,offOperator)
-      : numberOrNull(automatic?.off_value);
+    const onValue=useSensorThresholds?thresholdFromSensor(meta,onOperator):numberOrNull(automatic?.on_value);
+    const offValue=useSensorThresholds?thresholdFromSensor(meta,offOperator):numberOrNull(automatic?.off_value);
 
     const onMatch=onValue!==null&&compare(value,onOperator,onValue);
     const offMatch=offValue!==null&&compare(value,offOperator,offValue);
@@ -234,7 +222,8 @@
       if(!state)return;
       state.classList.toggle('on',Boolean(value));
       state.classList.toggle('off',!value);
-      state.textContent=value?'● ENCENDIDO':'○ APAGADO';
+      const text=value?'● ENCENDIDO':'○ APAGADO';
+      if(state.textContent!==text)state.textContent=text;
     });
   }
 
@@ -257,14 +246,9 @@
     }
 
     commandBusy.add(key);
-    const sentAt=Date.now();
-    commandState.set(key,{value:desired,sentAt,telemetryTime,confirmed:false});
+    commandState.set(key,{value:desired,sentAt:Date.now(),telemetryTime,confirmed:false});
     try{
-      await window.__tayuApiPost('/devices/output',{
-        device_key:deviceKey,
-        output_key:outputKey,
-        value:Boolean(desired)
-      });
+      await window.__tayuApiPost('/devices/output',{device_key:deviceKey,output_key:outputKey,value:Boolean(desired)});
       patchOutput(row,outputKey,desired);
       updateVisibleState(deviceKey,outputKey,desired);
       return true;
@@ -340,6 +324,7 @@
     evaluationBusy=true;
     try{
       const keys=[...activeDevices];
+      if(!keys.length)return;
       const telemetryMap=latestTelemetryMap();
       for(let index=0;index<keys.length;index+=ACTIVE_CONCURRENCY){
         await Promise.all(keys.slice(index,index+ACTIVE_CONCURRENCY).map(key=>evaluateCachedDevice(key,telemetryMap,force)));
@@ -347,19 +332,6 @@
     }finally{
       evaluationBusy=false;
       if(evaluationPending){evaluationPending=false;queueMicrotask(()=>evaluateActive(false));}
-    }
-  }
-
-  function telemetrySignature(){
-    const latest=latestTelemetryMap();
-    return[...activeDevices].sort().map(key=>`${key}:${rowTime(latest.get(key))}`).join('|');
-  }
-
-  function checkTelemetryChange(){
-    const signature=telemetrySignature();
-    if(signature&&signature!==lastTelemetrySignature){
-      lastTelemetrySignature=signature;
-      evaluateActive(false);
     }
   }
 
@@ -417,31 +389,39 @@
     for(let index=0;index<keys.length;index+=BOOT_CONCURRENCY){
       await Promise.all(keys.slice(index,index+BOOT_CONCURRENCY).map(key=>loadResources(key,true)));
     }
-    lastTelemetrySignature=telemetrySignature();
     await evaluateActive(true);
   }
 
   function bootOnce(){
     if(bootStarted)return;
     bootStarted=true;
-    setTimeout(()=>reloadAll().catch(error=>console.warn('Automation boot:',error)),350);
+    setTimeout(()=>reloadAll().catch(error=>console.warn('Automation boot:',error)),250);
   }
 
+  const onTelemetryUpdated=()=>evaluateActive(false);
+  const onPageshow=()=>setTimeout(()=>evaluateActive(false),80);
+  const onVisibility=()=>{if(document.visibilityState==='visible')setTimeout(()=>evaluateActive(false),60);};
+
   function dispose(){
-    clearInterval(telemetryWatchTimer);
     clearTimeout(minuteTimer);
-    telemetryWatchTimer=null;
     minuteTimer=null;
+    if(installed){
+      window.removeEventListener('tayu:telemetry-updated',onTelemetryUpdated);
+      window.removeEventListener('pageshow',onPageshow);
+      document.removeEventListener('visibilitychange',onVisibility);
+      installed=false;
+    }
   }
 
   function install(){
     dispose();
-    telemetryWatchTimer=setInterval(checkTelemetryChange,750);
+    installed=true;
     scheduleMinuteTick();
+    window.addEventListener('tayu:telemetry-updated',onTelemetryUpdated);
+    window.addEventListener('pageshow',onPageshow);
+    document.addEventListener('visibilitychange',onVisibility);
     window.addEventListener('tayu:client-access-ready',bootOnce,{once:true});
-    window.addEventListener('pageshow',()=>setTimeout(checkTelemetryChange,100));
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(checkTelemetryChange,80);});
-    setTimeout(bootOnce,800);
+    setTimeout(bootOnce,600);
 
     window.__tayuAutomationRuntime={
       version:VERSION,
