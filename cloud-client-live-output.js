@@ -15,7 +15,7 @@
 
   function latestRow(deviceKey){
     let latest=null;
-    for(const row of (Array.isArray(window.__tayuLastTelemetry)?window.__tayuLastTelemetry:[])){
+    for(const row of(Array.isArray(window.__tayuLastTelemetry)?window.__tayuLastTelemetry:[])){
       if(String(row?.device_key)!==String(deviceKey))continue;
       if(!latest||new Date(row?.time||0)>new Date(latest?.time||0))latest=row;
     }
@@ -24,8 +24,8 @@
 
   function readOutput(deviceKey,outputKey){
     const payload=parsePayload(latestRow(deviceKey));
-    const candidates=[payload?.[outputKey],payload?.outputs?.[outputKey],payload?.io?.[outputKey],payload?.relays?.[outputKey],payload?.[`${outputKey}_state`]];
-    const value=candidates.find(item=>item!==undefined&&item!==null);
+    const values=[payload?.[outputKey],payload?.outputs?.[outputKey],payload?.io?.[outputKey],payload?.relays?.[outputKey],payload?.[`${outputKey}_state`]];
+    const value=values.find(item=>item!==undefined&&item!==null);
     if(value===true||value===false)return value;
     if(value===1||value==='1'||String(value).toLowerCase()==='on'||String(value).toLowerCase()==='true')return true;
     if(value===0||value==='0'||String(value).toLowerCase()==='off'||String(value).toLowerCase()==='false')return false;
@@ -93,18 +93,42 @@
     }
   }
 
-  function numberOrNull(value){if(value===''||value==null)return null;const n=Number(value);return Number.isFinite(n)?n:null;}
+  function numberOrNull(value){
+    if(value===''||value===null||value===undefined)return null;
+    const number=Number(value);
+    return Number.isFinite(number)?number:null;
+  }
+
+  function deviceByKey(deviceKey){
+    return (Array.isArray(window.__tayuRealDevices)?window.__tayuRealDevices:[])
+      .find(item=>String(item?.device_key||'')===String(deviceKey||''))||null;
+  }
+
+  function sensorRule(deviceKey,source){
+    const meta=deviceByKey(deviceKey)?.configuration?.signals?.[source];
+    if(!meta||typeof meta!=='object'||meta.enabled===false||meta.alerts_disabled===true)return null;
+    return{
+      min:numberOrNull(meta.alarm_min),
+      max:numberOrNull(meta.alarm_max),
+      unit:String(meta.unit||''),
+      label:meta.name||meta.label||meta.display_name||source
+    };
+  }
 
   function collectOperation(editor){
     const get=role=>editor.querySelector(`[data-op-role="${role}"]`)?.value??'';
-    return {
-      mode:get('mode')||'manual',
+    const mode=get('mode')||'manual';
+    const source=get('automatic.source')||'';
+    const rule=sensorRule(editor.dataset.deviceKey,source);
+    return{
+      mode,
       automatic:{
-        source:get('automatic.source')||'',
-        on_operator:get('automatic.on_operator')||'<=',
-        on_value:numberOrNull(get('automatic.on_value')),
-        off_operator:get('automatic.off_operator')||'>=',
-        off_value:numberOrNull(get('automatic.off_value')),
+        source,
+        use_sensor_thresholds:true,
+        on_operator:'<=',
+        on_value:rule?.min??null,
+        off_operator:'>=',
+        off_value:rule?.max??null,
         fail_safe:get('automatic.fail_safe')||'off'
       },
       timers:[...editor.querySelectorAll('[data-op-timer-slot]')].map(slot=>({
@@ -120,17 +144,21 @@
   function fillOperationEditor(editor,settings){
     if(!editor||!settings)return;
     const mode=String(settings.mode||'manual').toLowerCase();
-    const set=(role,value)=>{const el=editor.querySelector(`[data-op-role="${role}"]`);if(el&&value!==undefined&&value!==null)el.value=String(value);};
+    const set=(role,value)=>{
+      const element=editor.querySelector(`[data-op-role="${role}"]`);
+      if(element&&value!==undefined&&value!==null)element.value=String(value);
+    };
     set('mode',mode);
     set('automatic.source',settings.automatic?.source||'');
-    set('automatic.on_operator',settings.automatic?.on_operator||'<=');
+    set('automatic.on_operator','<=');
     set('automatic.on_value',settings.automatic?.on_value??'');
-    set('automatic.off_operator',settings.automatic?.off_operator||'>=');
+    set('automatic.off_operator','>=');
     set('automatic.off_value',settings.automatic?.off_value??'');
     set('automatic.fail_safe',settings.automatic?.fail_safe||'off');
     editor.querySelectorAll('[data-op-panel]').forEach(panel=>panel.hidden=panel.dataset.opPanel!==mode);
     const badge=editor.querySelector('.tayu-op-head .tayu-sector-pill');
     if(badge)badge.textContent=mode==='automatic'?'⚙ Automático':mode==='timer'?'🕒 Timer':'👆 Manual';
+
     const timers=Array.isArray(settings.timers)?settings.timers:[];
     editor.querySelectorAll('[data-op-timer-slot]').forEach((slot,index)=>{
       const timer=timers[index]||{on:'',off:'',days:[1,2,3,4,5,6,7]};
@@ -160,7 +188,11 @@
     button.dataset.next=on?'0':'1';
     button.classList.toggle('ghost',on);
     if(!online){button.disabled=true;button.textContent='DISPOSITIVO OFFLINE';return;}
-    if(mode!=='manual'){button.disabled=true;button.textContent=mode==='automatic'?'CONTROL AUTOMÁTICO':'CONTROL TIMER';return;}
+    if(mode!=='manual'){
+      button.disabled=true;
+      button.textContent=mode==='automatic'?'CONTROL AUTOMÁTICO':'CONTROL TIMER';
+      return;
+    }
     button.disabled=!hasState;
     button.textContent=!hasState?'ESPERANDO ESTADO':on?'APAGAR':'ENCENDER';
   }
@@ -191,11 +223,17 @@
     const outputKey=editor.dataset.outputKey;
     const key=operationKey(deviceKey,outputKey);
     if(!deviceKey||!outputKey||saveBusy.has(key))return;
+
     const msg=editor.querySelector('.tayu-op-msg');
     const settings=collectOperation(editor);
+    const rule=sensorRule(deviceKey,settings.automatic.source);
 
-    if(settings.mode==='automatic'&&!settings.automatic.source){if(msg)msg.textContent='Selecciona un sensor RS485 para el modo automático.';return;}
-    if(settings.mode==='automatic'&&(settings.automatic.on_value===null||settings.automatic.off_value===null)){if(msg)msg.textContent='Completa los valores de encendido y apagado.';return;}
+    if(settings.mode==='automatic'&&!settings.automatic.source){if(msg)msg.textContent='Selecciona un sensor para el modo automático.';return;}
+    if(settings.mode==='automatic'&&!rule){if(msg)msg.textContent='El sensor seleccionado no está disponible en Sensores.';return;}
+    if(settings.mode==='automatic'&&(rule.min===null||rule.max===null)){
+      if(msg)msg.textContent='Configura mínimo y máximo para este sensor en Sensores antes de activar Automático.';
+      return;
+    }
     if(settings.mode==='timer'&&!settings.timers.some(slot=>slot.on&&slot.off)){if(msg)msg.textContent='Configura al menos un horario completo.';return;}
 
     saveBusy.add(key);
@@ -205,7 +243,7 @@
       const data=await window.__tayuApi(`/devices/iot-resources?device_key=${encodeURIComponent(deviceKey)}`);
       const resource=data?.resources?.find(item=>String(item.resource_key)===String(outputKey));
       if(!resource)throw new Error('No se encontró el recurso físico.');
-      const device=(window.__tayuRealDevices||[]).find(item=>String(item?.device_key)===String(deviceKey));
+      const device=deviceByKey(deviceKey);
       const legacy=device?.configuration?.outputs?.[outputKey]||{};
       const application=resource.assignment?.application||legacy.application||legacy.type||resource.default_application||'generic';
       const displayName=resource.assignment?.display_name||legacy.name||`Relay ${String(outputKey).replace(/\D/g,'')||outputKey}`;
@@ -234,7 +272,7 @@
 
       if(msg){
         msg.style.color='var(--brand)';
-        msg.textContent=settings.mode==='manual'?'Guardado. Control manual activo.':settings.mode==='automatic'?'Guardado. Control automático activo.':'Guardado. Timer activo.';
+        msg.textContent=settings.mode==='manual'?'Guardado. Control manual activo.':settings.mode==='automatic'?'Guardado. Control automático activo con umbrales de Sensores.':'Guardado. Timer activo.';
       }
     }catch(error){
       console.error('Guardar modo IoT:',error);
@@ -246,10 +284,18 @@
   }
 
   function ensureAutomationRuntime(){
-    if(window.__tayuAutomationRuntime||document.querySelector('script[data-tayu-automation-runtime]'))return;
+    const VERSION='20260914-production1';
+    if(window.__tayuAutomationRuntime?.version===VERSION)return;
+    window.__tayuAutomationRuntime?.dispose?.();
+    document.getElementById('tayuAutomationRuntimeLoader')?.remove();
+
     const script=document.createElement('script');
-    script.src='cloud-client-automation-runtime.js?v=20260914-automation4';
+    // Usamos el mismo ID que el loader histórico de Modbus para impedir que
+    // una segunda instancia del runtime vuelva a cargarse más tarde.
+    script.id='tayuAutomationRuntimeLoader';
+    script.src='cloud-client-automation-runtime.js?v=20260914-production1';
     script.dataset.tayuAutomationRuntime='1';
+    script.async=false;
     script.onerror=()=>console.error('No se pudo cargar el runtime de automatización.');
     document.head.appendChild(script);
   }
@@ -261,13 +307,22 @@
     const save=event.target?.closest?.('[data-op-save]');
     if(save){
       const editor=save.closest('[data-op-editor]');
-      if(editor){event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();saveOperationFixed(editor,save);return;}
+      if(editor){
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        saveOperationFixed(editor,save);
+        return;
+      }
     }
+
     const outputButton=event.target?.closest?.('[data-sector-toggle]');
     if(!outputButton)return;
     const card=outputButton.closest('[data-sector-output][data-device-key]');
     if(!card)return;
-    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
     if(outputButton.disabled)return;
     smoothSetOutput(card.dataset.deviceKey,card.dataset.sectorOutput,outputButton.dataset.next==='1',outputButton);
   },true);
