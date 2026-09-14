@@ -123,5 +123,13 @@
   script.id='tayuAdvancedVisualsLoader';
   script.src='cloud-client-advanced-visuals.js?v=20260914-visuals1';
   script.async=false;
+  script.onload=()=>{
+    if(document.getElementById('tayuAdvancedVisualsStabilityLoader')) return;
+    const stability=document.createElement('script');
+    stability.id='tayuAdvancedVisualsStabilityLoader';
+    stability.src='cloud-client-advanced-visuals-stability.js?v=20260914-visuals-stable1';
+    stability.async=false;
+    document.head.appendChild(stability);
+  };
   document.head.appendChild(script);
 })();
