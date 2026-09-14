@@ -19,7 +19,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260912-mobile-access3';
+const VERSION='20260914-iot-production1';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -36,7 +36,7 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   }
 
   const params=new URLSearchParams(window.location.search);
-  if(params.get('boot')!=='2'){
+  if(params.get('boot')!=='2' || params.get('v')!==VERSION){
     status.textContent='Preparando plataforma…';
     const next=new URL(window.location.href);
     next.searchParams.set('v',VERSION);
@@ -185,12 +185,13 @@ if(typeof refreshLiveTelemetry==='function')window.refreshLiveTelemetry=refreshL
     '<scr'+'ipt src="cloud-client-view-refresh.js?v='+VERSION+'&fix=viewrefresh3"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-device-iot-stability.js?v='+VERSION+'&fix=iotstable2"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sector-iot.js?v='+VERSION+'&fix=sectoriot4"></scr'+'ipt>\n'+
-    '<scr'+'ipt src="cloud-client-sector-operation.js?v='+VERSION+'&fix=sectoroperation1"></scr'+'ipt>\n'+
-    '<scr'+'ipt src="cloud-client-live-output.js?v='+VERSION+'&fix=smoothrelay5"></scr'+'ipt>\n'+
+    '<scr'+'ipt src="cloud-client-sector-operation.js?v='+VERSION+'&fix=sectoroperation2"></scr'+'ipt>\n'+
+    '<scr'+'ipt id="tayuSectorOperationStabilityLoader" src="cloud-client-sector-operation-stability.js?v='+VERSION+'&fix=production1"></scr'+'ipt>\n'+
+    '<scr'+'ipt src="cloud-client-live-output.js?v='+VERSION+'&fix=smoothrelay6"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-modbus-consistency.js?v='+VERSION+'&fix=modbussync1"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sensor-alerts.js?v='+VERSION+'&fix=sensoralerts1"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-alarm-background.js?v='+VERSION+'&fix=alarmbackground1"></scr'+'ipt>\n'+
-    '<scr'+'ipt src="cloud-client-modbus-actions-stability.js?v='+VERSION+'&fix=modbusactions4"></scr'+'ipt>\n'+
+    '<scr'+'ipt src="cloud-client-modbus-actions-stability.js?v='+VERSION+'&fix=modbusactions5"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sidebar-drawer-guard.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-premium-shell.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-premium-dark-edges.js?v='+VERSION+'"></scr'+'ipt>\n'+
