@@ -66,8 +66,6 @@ keycloak.init({onLoad:'login-required',pkceMethod:'S256',checkLoginIframe:false}
   if(!html.includes(loadGuardNeedle))throw new Error('No se encontró loadDashboardCloud para aplicar protección de sincronización');
   html=html.replace(loadGuardNeedle,loadGuardReplacement);
 
-  // Compatibilidad nativa de las visualizaciones IoT con el formulario Modbus.
-  // El tipo elegido nunca se degrada a "line" durante un refresco interno.
   const visualTypeNeedle=`type:document.getElementById('mbChartType')?.value||'line',`;
   const visualTypeReplacement=`type:(window.__tayuSelectedModbusVisualType || document.getElementById('mbChartType')?.value || 'line'),`;
   if(!html.includes(visualTypeNeedle))throw new Error('No se encontró el tipo de gráfica Modbus para aplicar compatibilidad visual');
@@ -142,8 +140,6 @@ window.addSatelliteLayer=addSatelliteLayer;
   const bootRevealNeedle=`    applyRolePermissions();
     try{await window.loadDashboardCloud?.();}catch(error){console.error('Dashboard VPS:',error)}`;
   const bootRevealReplacement=`    applyRolePermissions();
-    // La sesión ya está autenticada y el appRoot existe: mostramos la interfaz
-    // inmediatamente. Dashboard, dispositivos y telemetría siguen cargando detrás.
     window.hideAuthBootScreen?.();
     try{await window.loadDashboardCloud?.();}catch(error){console.error('Dashboard VPS:',error)}`;
   if(appCode.includes(bootRevealNeedle))appCode=appCode.replace(bootRevealNeedle,bootRevealReplacement);
@@ -171,6 +167,7 @@ window.saveWidgetLayout=saveWidgetLayout;
 window.renderDashboardWidgets=renderDashboardWidgets;
 window.renderDashboardModbusChart=renderDashboardModbusChart;
 window.addModbusChartWidget=addModbusChartWidget;
+if(typeof refreshLiveTelemetry==='function')window.refreshLiveTelemetry=refreshLiveTelemetry;
 `;
 
   html=html.replace(modulePattern,openModuleScript+appCode+closeScript);
