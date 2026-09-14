@@ -1,18 +1,46 @@
 (() => {
   'use strict';
 
-  const VERSION='20260914-production2';
+  const VERSION='20260914-production3';
   if(window.__tayuSectorOperationStabilityVersion===VERSION)return;
   window.__tayuSectorOperationStabilityVersion=VERSION;
 
   const SECTORS=new Set(['fincas','camaroneras','bananeras','ganaderia']);
   const observers=[];
-  let telemetryWatchTimer=null;
-  let lastTelemetrySignature='';
+  let telemetryFrame=0;
 
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[c]));
+
+  function ensureTelemetryEventBridge(){
+    if(window.__tayuTelemetryEventBridgeVersion==='20260914-event1')return;
+    const descriptor=Object.getOwnPropertyDescriptor(window,'__tayuLastTelemetry');
+    if(descriptor && descriptor.configurable===false)return;
+
+    let current=window.__tayuLastTelemetry;
+    let scheduled=false;
+    const emit=()=>{
+      if(scheduled)return;
+      scheduled=true;
+      queueMicrotask(()=>{
+        scheduled=false;
+        window.dispatchEvent(new CustomEvent('tayu:telemetry-updated',{detail:{telemetry:current}}));
+      });
+    };
+
+    Object.defineProperty(window,'__tayuLastTelemetry',{
+      configurable:true,
+      enumerable:true,
+      get(){return current;},
+      set(value){
+        current=value;
+        emit();
+      }
+    });
+    window.__tayuEmitTelemetryUpdated=emit;
+    window.__tayuTelemetryEventBridgeVersion='20260914-event1';
+  }
 
   function numberOrNull(value){
     if(value===''||value===null||value===undefined)return null;
@@ -63,12 +91,6 @@
       .sort((a,b)=>String(a.label).localeCompare(String(b.label),'es'));
   }
 
-  function sensorFor(editor){
-    const deviceKey=editor?.dataset?.deviceKey||'';
-    const path=editor?.querySelector?.('[data-op-role="automatic.source"]')?.value||'';
-    return configuredSensors(deviceKey).find(item=>item.path===path)||null;
-  }
-
   function ensureStyles(){
     if(document.getElementById('tayuAutomaticProductionStyles'))return;
     const style=document.createElement('style');
@@ -110,8 +132,28 @@
     }
   }
 
-  function syncEditor(editor){
+  function setValue(element,value){
+    if(!element)return;
+    const next=String(value??'');
+    if(element.value!==next)element.value=next;
+  }
+
+  function setText(element,value){
+    if(!element)return;
+    const next=String(value??'');
+    if(element.textContent!==next)element.textContent=next;
+  }
+
+  function setHtml(element,value){
+    if(!element)return;
+    if(element.innerHTML!==value)element.innerHTML=value;
+  }
+
+  function syncEditor(editor,telemetryOnly=false){
     if(!editor)return;
+    const mode=editor.querySelector('[data-op-role="mode"]')?.value||'manual';
+    if(telemetryOnly&&mode!=='automatic')return;
+
     ensureProductionUi(editor);
     const deviceKey=editor.dataset.deviceKey||'';
     const select=editor.querySelector('[data-op-role="automatic.source"]');
@@ -124,59 +166,61 @@
     const signature=sensors.map(item=>`${item.path}|${item.label}|${item.unit}|${item.min}|${item.max}`).join('||');
     if(select.dataset.tayuProductionSignature!==signature){
       const valid=sensors.some(item=>item.path===selected);
-      select.innerHTML='<option value="">Seleccionar sensor…</option>'+sensors.map(item=>
+      const html='<option value="">Seleccionar sensor…</option>'+sensors.map(item=>
         `<option value="${esc(item.path)}">${esc(item.label)}${item.unit?` (${esc(item.unit)})`:''}</option>`
       ).join('');
+      if(select.innerHTML!==html)select.innerHTML=html;
       select.dataset.tayuProductionSignature=signature;
-      select.value=valid?selected:'';
+      setValue(select,valid?selected:'');
     }
 
-    const sensor=sensorFor(editor);
-    const onOperator=editor.querySelector('[data-op-role="automatic.on_operator"]');
-    const offOperator=editor.querySelector('[data-op-role="automatic.off_operator"]');
-    const onValue=editor.querySelector('[data-op-role="automatic.on_value"]');
-    const offValue=editor.querySelector('[data-op-role="automatic.off_value"]');
-    if(onOperator)onOperator.value='<=';
-    if(offOperator)offOperator.value='>=';
-    if(onValue)onValue.value=sensor?.min??'';
-    if(offValue)offValue.value=sensor?.max??'';
+    const sensor=sensors.find(item=>item.path===select.value)||null;
+    setValue(editor.querySelector('[data-op-role="automatic.on_operator"]'),'<=');
+    setValue(editor.querySelector('[data-op-role="automatic.off_operator"]'),'>=');
+    setValue(editor.querySelector('[data-op-role="automatic.on_value"]'),sensor?.min??'');
+    setValue(editor.querySelector('[data-op-role="automatic.off_value"]'),sensor?.max??'');
 
     if(!sensor){
-      reading.textContent=select.value?'El sensor seleccionado ya no está disponible en Sensores.':'Selecciona un sensor configurado en Sensores.';
-      summary.textContent='La automatización usa directamente los umbrales mínimo y máximo configurados en Sensores.';
+      setText(reading,select.value?'El sensor seleccionado ya no está disponible en Sensores.':'Selecciona un sensor configurado en Sensores.');
+      setText(summary,'La automatización usa directamente los umbrales mínimo y máximo configurados en Sensores.');
       return;
     }
 
     const value=sensor.value===undefined||sensor.value===null?'—':sensor.value;
-    reading.textContent=`Lectura actual: ${value}${sensor.unit?` ${sensor.unit}`:''}`;
-    summary.innerHTML=`<b>Umbrales de Sensores:</b> encender ≤ ${esc(sensor.min??'—')}${sensor.unit?` ${esc(sensor.unit)}`:''} · apagar ≥ ${esc(sensor.max??'—')}${sensor.unit?` ${esc(sensor.unit)}`:''}`;
+    setText(reading,`Lectura actual: ${value}${sensor.unit?` ${sensor.unit}`:''}`);
+    setHtml(summary,`<b>Umbrales de Sensores:</b> encender ≤ ${esc(sensor.min??'—')}${sensor.unit?` ${esc(sensor.unit)}`:''} · apagar ≥ ${esc(sensor.max??'—')}${sensor.unit?` ${esc(sensor.unit)}`:''}`);
   }
 
-  function syncActiveEditors(){
+  function activeEditors(automaticOnly=false){
+    const result=[];
     for(const sector of SECTORS){
       const view=document.getElementById(sector);
       if(!view?.classList.contains('active'))continue;
-      view.querySelectorAll('[data-op-editor]').forEach(syncEditor);
+      view.querySelectorAll('[data-op-editor]').forEach(editor=>{
+        if(!automaticOnly||editor.querySelector('[data-op-role="mode"]')?.value==='automatic')result.push(editor);
+      });
     }
+    return result;
   }
 
-  function telemetrySignature(){
-    const latest=new Map();
-    for(const row of(Array.isArray(window.__tayuLastTelemetry)?window.__tayuLastTelemetry:[])){
-      const key=String(row?.device_key||'');
-      if(!key)continue;
-      const time=new Date(row?.time||0).getTime();
-      if(!Number.isFinite(time))continue;
-      if(time>Number(latest.get(key)||0))latest.set(key,time);
-    }
-    return[...latest.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([key,time])=>`${key}:${time}`).join('|');
+  function syncActiveEditors(telemetryOnly=false){
+    activeEditors(telemetryOnly).forEach(editor=>syncEditor(editor,telemetryOnly));
   }
 
-  function checkTelemetryChange(){
-    const signature=telemetrySignature();
-    if(signature===lastTelemetrySignature)return;
-    lastTelemetrySignature=signature;
-    syncActiveEditors();
+  function scheduleTelemetrySync(){
+    if(telemetryFrame)return;
+    telemetryFrame=requestAnimationFrame(()=>{
+      telemetryFrame=0;
+      syncActiveEditors(true);
+    });
+  }
+
+  function editorsFromAddedNode(node){
+    if(node?.nodeType!==1)return [];
+    const result=[];
+    if(node.matches?.('[data-op-editor]'))result.push(node);
+    node.querySelectorAll?.('[data-op-editor]').forEach(editor=>result.push(editor));
+    return result;
   }
 
   function bindObservers(){
@@ -185,8 +229,14 @@
       const view=document.getElementById(sector);
       if(!view)continue;
       const observer=new MutationObserver(records=>{
-        if(!records.some(record=>record.addedNodes.length))return;
-        requestAnimationFrame(()=>view.querySelectorAll('[data-op-editor]').forEach(syncEditor));
+        const editors=new Set();
+        for(const record of records){
+          for(const node of record.addedNodes){
+            editorsFromAddedNode(node).forEach(editor=>editors.add(editor));
+          }
+        }
+        if(!editors.size)return;
+        requestAnimationFrame(()=>editors.forEach(editor=>syncEditor(editor,false)));
       });
       observer.observe(view,{childList:true,subtree:true});
       observers.push(observer);
@@ -194,28 +244,25 @@
   }
 
   function install(){
+    ensureTelemetryEventBridge();
     ensureStyles();
     bindObservers();
-    lastTelemetrySignature=telemetrySignature();
-    syncActiveEditors();
+    syncActiveEditors(false);
 
     document.addEventListener('change',event=>{
       const editor=event.target?.closest?.('[data-op-editor]');
       if(!editor)return;
-      if(event.target.matches('[data-op-role="automatic.source"],[data-op-role="mode"]'))syncEditor(editor);
+      if(event.target.matches('[data-op-role="automatic.source"],[data-op-role="mode"]'))syncEditor(editor,false);
     },true);
 
     document.addEventListener('click',event=>{
       const nav=event.target?.closest?.('.nav button[data-view]');
-      if(SECTORS.has(nav?.dataset?.view))setTimeout(syncActiveEditors,120);
+      if(SECTORS.has(nav?.dataset?.view))setTimeout(()=>syncActiveEditors(false),80);
     },true);
 
-    // Observamos sólo timestamps ya existentes en memoria. No hacemos llamadas
-    // API ni recorremos las tarjetas si la telemetría no cambió.
-    clearInterval(telemetryWatchTimer);
-    telemetryWatchTimer=setInterval(checkTelemetryChange,750);
-    window.addEventListener('pageshow',()=>setTimeout(syncActiveEditors,100));
-    window.addEventListener('tayu:client-access-ready',()=>setTimeout(syncActiveEditors,150));
+    window.addEventListener('tayu:telemetry-updated',scheduleTelemetrySync);
+    window.addEventListener('pageshow',()=>setTimeout(()=>syncActiveEditors(false),80));
+    window.addEventListener('tayu:client-access-ready',()=>setTimeout(()=>syncActiveEditors(false),100));
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
