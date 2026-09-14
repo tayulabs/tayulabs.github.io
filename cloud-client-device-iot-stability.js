@@ -45,27 +45,29 @@
 
   function optimizeTelemetryRefresh(){
     if(window.__tayuTelemetryPerformanceApplied)return;
+    if(window.__tayuDashboardCloudLoaded!==true)return;
+
     const select=document.getElementById('realtimeRefreshInterval');
     const current=Number(select?.value||0);
     if(!select || !current || typeof window.saveGeneralSettings!=='function')return;
 
-    // Conserva 1 s si el usuario ya lo tenía. Si estaba en 5/10 s, usa 2 s:
-    // suficientemente rápido para telemetría en vivo sin forzar históricos y
-    // gráficas pesadas a trabajar cada segundo.
+    // Conserva 1 s si ya estaba configurado. Si estaba en 5/10 s, usa 2 s:
+    // actualización rápida sin obligar a históricos/gráficas a trabajar a 1 s.
     if(current>2000){
-      window.__tayuTelemetryPerformanceApplied=true;
       select.value='2000';
-      Promise.resolve(window.saveGeneralSettings()).catch(error=>{
-        window.__tayuTelemetryPerformanceApplied=false;
+      Promise.resolve(window.saveGeneralSettings()).then(()=>{
+        window.__tayuTelemetryPerformanceApplied=true;
+      }).catch(error=>{
         console.warn('No se pudo optimizar el refresco de telemetría:',error);
       });
-    }else{
-      window.__tayuTelemetryPerformanceApplied=true;
+      return;
     }
+
+    window.__tayuTelemetryPerformanceApplied=true;
   }
 
   function scheduleTelemetryOptimization(){
-    [600,1600,3500].forEach(delay=>setTimeout(optimizeTelemetryRefresh,delay));
+    [800,1800,3500,6000].forEach(delay=>setTimeout(optimizeTelemetryRefresh,delay));
   }
 
   function boot() {
