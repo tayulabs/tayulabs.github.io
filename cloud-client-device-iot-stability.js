@@ -95,3 +95,13 @@
   script.async=false;
   document.head.appendChild(script);
 })();
+
+(() => {
+  'use strict';
+  if(document.getElementById('tayuLoRaDashboardMapLoader'))return;
+  const script=document.createElement('script');
+  script.id='tayuLoRaDashboardMapLoader';
+  script.src='cloud-client-lora-dashboard-map.js?v=20260915-loramap1';
+  script.async=false;
+  document.head.appendChild(script);
+})();
