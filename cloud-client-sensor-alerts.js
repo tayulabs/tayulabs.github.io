@@ -1,6 +1,6 @@
-/* TAYULABS Cloud - Alertas, alta de sensores y protección del borrador de gráficas.
+/* TAYULABS Cloud - Alertas, alta de sensores y protección del editor de gráficas.
  * Compatible con capabilities.telemetry + configuration.signals.
- * v3: modal visual para Agregar sensor + evita que refreshRealData pise el tipo de gráfica.
+ * v4: modal de sensores + protección persistente del preview ante refreshRealData.
  */
 (() => {
   'use strict';
@@ -8,17 +8,25 @@
   const sensorStateCache = new Map();
   let lastAlarmRefreshAt = 0;
   let liveTimer = null;
+  let chartGuardTimer = null;
   let chartDraft = null;
   let chartDraftBound = false;
+  let restoringChartDraft = false;
+
+  const CHART_FIELDS = [
+    'tayuSensorChartDevice','tayuSensorChartVariable','tayuSensorChartType',
+    'tayuSensorChartPeriod','tayuSensorChartPoints','tayuSensorChartMin',
+    'tayuSensorChartMax','tayuSensorChartTitle'
+  ];
 
   const asObject = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   const esc = value => String(value ?? '')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 
-  function readPath(object, path){
+  function readPath(object,path){
     return String(path || '').split('.').filter(Boolean)
-      .reduce((acc,key)=>acc == null ? undefined : acc[key], object);
+      .reduce((acc,key)=>acc == null ? undefined : acc[key],object);
   }
 
   function realAssets(){
@@ -35,8 +43,8 @@
 
   function latestPayload(deviceKey){
     const rows = (Array.isArray(window.__tayuLastTelemetry) ? window.__tayuLastTelemetry : [])
-      .filter(row => String(row?.device_key || '') === String(deviceKey || ''))
-      .sort((a,b)=>new Date(b?.time || 0) - new Date(a?.time || 0));
+      .filter(row=>String(row?.device_key || '') === String(deviceKey || ''))
+      .sort((a,b)=>new Date(b?.time || 0)-new Date(a?.time || 0));
     let value = rows[0]?.payload;
     if(value && typeof value === 'object') return value;
     if(typeof value === 'string'){
@@ -47,15 +55,15 @@
 
   function profileSensors(){
     const out = [];
-    realAssets().forEach(asset => {
+    realAssets().forEach(asset=>{
       const deviceKey = assetKey(asset);
       if(!deviceKey) return;
       const profileTelemetry = asObject(asset?.capabilities?.telemetry);
       const configuredSignals = asObject(asset?.configuration?.signals);
-      const paths = new Set([...Object.keys(profileTelemetry), ...Object.keys(configuredSignals)]);
+      const paths = new Set([...Object.keys(profileTelemetry),...Object.keys(configuredSignals)]);
       const payload = latestPayload(deviceKey);
 
-      paths.forEach(path => {
+      paths.forEach(path=>{
         const profile = asObject(profileTelemetry[path]);
         const configured = asObject(configuredSignals[path]);
         if(configured.enabled === false) return;
@@ -93,7 +101,7 @@
   }
 
   function assetFor(sensor){
-    return assets().find(asset => assetKey(asset) === String(sensor?.deviceKey || '')) || null;
+    return assets().find(asset=>assetKey(asset) === String(sensor?.deviceKey || '')) || null;
   }
 
   function signalMeta(sensor){
@@ -106,7 +114,7 @@
 
   function currentValue(sensor){
     if(!sensor?.deviceKey || !sensor?.sourcePath) return undefined;
-    return readPath(latestPayload(sensor.deviceKey), sensor.sourcePath);
+    return readPath(latestPayload(sensor.deviceKey),sensor.sourcePath);
   }
 
   function numeric(value){
@@ -180,7 +188,6 @@
     const rows = Array.from(table.rows || []);
     if(!rows.length) return;
     ensureRuleNote();
-
     const header = rows[0];
     let actionHead = header.querySelector('[data-tayu-sensor-action-head]');
     if(!actionHead){
@@ -190,7 +197,6 @@
       actionHead.textContent = 'Acción';
       header.appendChild(actionHead);
     }
-
     const list = sensors();
     rows.slice(1).forEach((row,index)=>{
       const sensor = list[index];
@@ -221,7 +227,7 @@
 
   function requestAlarmRefresh(){
     const now = Date.now();
-    if(now - lastAlarmRefreshAt < 5000) return;
+    if(now-lastAlarmRefreshAt < 5000) return;
     lastAlarmRefreshAt = now;
     Promise.resolve(window.tayuLoadAlarmEvents?.()).catch(error=>console.warn('Actualizar alarmas:',error));
   }
@@ -243,7 +249,7 @@
       }
       const previous = sensorStateCache.get(String(sensor.id));
       sensorStateCache.set(String(sensor.id),evaluation.state);
-      if(evaluation.alarm){anyAlarm = true;if(previous !== evaluation.state) requestAlarmRefresh();}
+      if(evaluation.alarm){anyAlarm=true;if(previous !== evaluation.state) requestAlarmRefresh();}
     });
     if(anyAlarm) requestAlarmRefresh();
   }
@@ -276,7 +282,6 @@
     const payload = latestPayload(deviceKey);
     const flatPayload = flattenTelemetry(payload);
     const paths = new Set([...Object.keys(profileTelemetry),...Object.keys(configuredSignals),...Object.keys(flatPayload)]);
-
     return [...paths]
       .filter(path=>path && path !== 'fw' && !/^relay\d+$/i.test(path))
       .map(path=>{
@@ -289,9 +294,6 @@
           unit:String(configured.unit ?? profile.unit ?? ''),
           type:inferCandidateType(value,profile,configured),
           value,
-          profileDefined:Object.prototype.hasOwnProperty.call(profileTelemetry,path),
-          configured:Object.prototype.hasOwnProperty.call(configuredSignals,path),
-          alertsDisabled:configured.alerts_disabled === true,
           min:configured.alarm_min ?? '',
           max:configured.alarm_max ?? ''
         };
@@ -373,28 +375,28 @@
     const select = document.getElementById('tayuAddSensorDevice');
     if(!list.length || !select){alert('No hay dispositivos disponibles.');return;}
     select.innerHTML = list.map(asset=>`<option value="${esc(assetKey(asset))}">${esc(assetName(asset))} · ${esc(assetKey(asset))}</option>`).join('');
-    const status = document.getElementById('tayuAddSensorStatus');if(status){status.className='tayu-add-sensor-status';status.textContent='';}
+    const status=document.getElementById('tayuAddSensorStatus');if(status){status.className='tayu-add-sensor-status';status.textContent='';}
     refreshAddSensorVariables();
-    const modal = document.getElementById('tayuAddSensorModal');modal?.classList.add('open');modal?.setAttribute('aria-hidden','false');
+    const modal=document.getElementById('tayuAddSensorModal');modal?.classList.add('open');modal?.setAttribute('aria-hidden','false');
   }
 
   function closeAddSensorModal(){
-    const modal = document.getElementById('tayuAddSensorModal');if(!modal)return;modal.classList.remove('open');modal.setAttribute('aria-hidden','true');
+    const modal=document.getElementById('tayuAddSensorModal');if(!modal)return;modal.classList.remove('open');modal.setAttribute('aria-hidden','true');
   }
 
   async function saveAddSensorModal(){
-    const asset = selectedAddAsset(), candidate = selectedAddCandidate();
-    const status = document.getElementById('tayuAddSensorStatus'), button = document.getElementById('tayuAddSensorSave');
+    const asset=selectedAddAsset(),candidate=selectedAddCandidate();
+    const status=document.getElementById('tayuAddSensorStatus'),button=document.getElementById('tayuAddSensorSave');
     if(!asset || !candidate){if(status){status.className='tayu-add-sensor-status error';status.textContent='Selecciona un equipo y una variable.';}return;}
-    const name = document.getElementById('tayuAddSensorName')?.value?.trim() || candidate.name || candidate.path;
-    const unit = document.getElementById('tayuAddSensorUnit')?.value?.trim() || '';
-    const minRaw = document.getElementById('tayuAddSensorMin')?.value ?? '';
-    const maxRaw = document.getElementById('tayuAddSensorMax')?.value ?? '';
+    const name=document.getElementById('tayuAddSensorName')?.value?.trim() || candidate.name || candidate.path;
+    const unit=document.getElementById('tayuAddSensorUnit')?.value?.trim() || '';
+    const minRaw=document.getElementById('tayuAddSensorMin')?.value ?? '';
+    const maxRaw=document.getElementById('tayuAddSensorMax')?.value ?? '';
     try{
       if(typeof window.__tayuApiPost !== 'function') throw new Error('La API de configuración no está disponible.');
       if(status){status.className='tayu-add-sensor-status';status.textContent='Guardando sensor…';}
       if(button) button.disabled=true;
-      const configuration = JSON.parse(JSON.stringify(asObject(asset.configuration)));
+      const configuration=JSON.parse(JSON.stringify(asObject(asset.configuration)));
       configuration.outputs=asObject(configuration.outputs);configuration.signals=asObject(configuration.signals);configuration.assets=Array.isArray(configuration.assets)?configuration.assets:[];
       const existing=asObject(configuration.signals[candidate.path]);
       configuration.signals[candidate.path]={
@@ -418,15 +420,15 @@
   }
 
   async function deleteSensor(id){
-    const sensor = sensors().find(item=>String(item?.id || '') === String(id || ''));
+    const sensor=sensors().find(item=>String(item?.id || '') === String(id || ''));
     if(!sensor?.deviceKey || !sensor?.sourcePath || typeof window.__tayuApiPost !== 'function') return;
     if(!confirm(`¿Quitar “${sensor.name || sensor.sourcePath}” de Sensores y alertas?\n\nLa telemetría y sus gráficas NO se eliminarán.`)) return;
     try{
-      let sourceAsset = assetFor(sensor);
+      let sourceAsset=assetFor(sensor);
       try{
         if(typeof window.__tayuApi === 'function'){
           const remote=await window.__tayuApi('/devices');
-          const fresh=Array.isArray(remote)?remote.find(item=>String(item?.device_key || '')===String(sensor.deviceKey)):null;
+          const fresh=Array.isArray(remote)?remote.find(item=>String(item?.device_key || '') === String(sensor.deviceKey)):null;
           if(fresh?.configuration) sourceAsset={...sourceAsset,configuration:fresh.configuration};
         }
       }catch(error){console.warn('Usando configuración local para quitar sensor:',error);}
@@ -438,7 +440,7 @@
       const local=assetFor(sensor);if(local)local.configuration=cfg;
       sensorStateCache.delete(String(sensor.id));
       await window.refreshRealData?.();enhanceSensorTable();
-    }catch(error){console.error('Quitar sensor/alerta:',error);alert(`No se pudo quitar el sensor de alertas: ${error?.message||error}`);}
+    }catch(error){console.error('Quitar sensor/alerta:',error);alert(`No se pudo quitar el sensor de alertas: ${error?.message || error}`);}
   }
 
   function polishModbusDeleteButtons(){
@@ -447,80 +449,83 @@
     });
   }
 
-  const CHART_FIELDS = [
-    'tayuSensorChartDevice','tayuSensorChartVariable','tayuSensorChartType',
-    'tayuSensorChartPeriod','tayuSensorChartPoints','tayuSensorChartMin',
-    'tayuSensorChartMax','tayuSensorChartTitle'
-  ];
-
   function captureChartDraft(){
     const form=document.getElementById('tayuSensorChartForm');
-    if(!form) return chartDraft;
+    if(!form || restoringChartDraft) return chartDraft;
     const values={};
-    CHART_FIELDS.forEach(id=>{const el=document.getElementById(id);if(el)values[id]=el.value;});
-    if(values.tayuSensorChartDevice || values.tayuSensorChartVariable) chartDraft=values;
+    CHART_FIELDS.forEach(id=>{const el=document.getElementById(id);if(el) values[id]=el.value;});
+    if(values.tayuSensorChartDevice || values.tayuSensorChartVariable){
+      chartDraft={...values,updatedAt:Date.now()};
+    }
     return chartDraft;
   }
 
-  function restoreChartDraft(draft=chartDraft){
-    if(!draft || !document.getElementById('tayuSensorChartForm')) return;
-    const device=document.getElementById('tayuSensorChartDevice');
-    if(device && [...device.options].some(o=>o.value===draft.tayuSensorChartDevice)) device.value=draft.tayuSensorChartDevice;
-    const variable=document.getElementById('tayuSensorChartVariable');
-    if(variable && [...variable.options].some(o=>o.value===draft.tayuSensorChartVariable)) variable.value=draft.tayuSensorChartVariable;
-    CHART_FIELDS.filter(id=>!['tayuSensorChartDevice','tayuSensorChartVariable'].includes(id)).forEach(id=>{
-      const el=document.getElementById(id);if(!el || draft[id]===undefined) return;
-      if(el.tagName==='SELECT' && ![...el.options].some(o=>o.value===String(draft[id]))) return;
-      el.value=String(draft[id]);
-    });
-    const type=document.getElementById('tayuSensorChartType');
-    if(type) type.dispatchEvent(new Event('change',{bubbles:true}));
+  function restoreChartDraft(draft=chartDraft,triggerPreview=true){
+    if(!draft || !document.getElementById('tayuSensorChartForm')) return false;
+    restoringChartDraft=true;
+    let changed=false;
+    try{
+      const device=document.getElementById('tayuSensorChartDevice');
+      if(device && draft.tayuSensorChartDevice && [...device.options].some(o=>o.value===draft.tayuSensorChartDevice) && device.value!==draft.tayuSensorChartDevice){
+        device.value=draft.tayuSensorChartDevice;changed=true;
+      }
+      const variable=document.getElementById('tayuSensorChartVariable');
+      if(variable && draft.tayuSensorChartVariable && [...variable.options].some(o=>o.value===draft.tayuSensorChartVariable) && variable.value!==draft.tayuSensorChartVariable){
+        variable.value=draft.tayuSensorChartVariable;changed=true;
+      }
+      CHART_FIELDS.filter(id=>!['tayuSensorChartDevice','tayuSensorChartVariable'].includes(id)).forEach(id=>{
+        const el=document.getElementById(id);
+        if(!el || draft[id]===undefined) return;
+        const expected=String(draft[id]);
+        if(el.tagName==='SELECT' && ![...el.options].some(o=>o.value===expected)) return;
+        if(el.value!==expected){el.value=expected;changed=true;}
+      });
+    }finally{
+      restoringChartDraft=false;
+    }
+    if(changed && triggerPreview){
+      const type=document.getElementById('tayuSensorChartType');
+      type?.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    return changed;
+  }
+
+  function guardChartDraft(){
+    const form=document.getElementById('tayuSensorChartForm');
+    if(!form){chartDraftBound=false;bindChartDraftGuard();return;}
+    if(!chartDraft){captureChartDraft();return;}
+    restoreChartDraft(chartDraft,true);
   }
 
   function bindChartDraftGuard(){
-    if(chartDraftBound) return;
     const form=document.getElementById('tayuSensorChartForm');
-    if(!form){setTimeout(bindChartDraftGuard,350);return;}
-    chartDraftBound=true;
-    form.addEventListener('input',captureChartDraft,true);
-    form.addEventListener('change',captureChartDraft,true);
-    const add=document.getElementById('tayuSensorChartAdd');
-    add?.addEventListener('click',()=>{
-      const draft=captureChartDraft();
-      setTimeout(async()=>{
-        if(!draft) return;
-        const configs=window.tayuSignalChartConfigs;
-        const ids=Array.isArray(window.dashboardWidgetIds)?window.dashboardWidgetIds:[];
-        if(!configs || typeof configs!=='object') return;
-        const deviceKey=draft.tayuSensorChartDevice || '';
-        const path=draft.tayuSensorChartVariable || '';
-        const widgetId=Object.keys(configs).find(id=>ids.includes(id)&&configs[id]?.deviceKey===deviceKey&&configs[id]?.path===path);
-        if(!widgetId) return;
-        const visualType=draft.tayuSensorChartType || 'line';
-        Object.assign(configs[widgetId],{
-          visualType,
-          type:['line','bar'].includes(visualType)?visualType:'line',
-          period:Number(draft.tayuSensorChartPeriod || configs[widgetId].period || 5),
-          points:Number(draft.tayuSensorChartPoints || configs[widgetId].points || 50),
-          min:draft.tayuSensorChartMin ?? '',
-          max:draft.tayuSensorChartMax ?? '',
-          title:draft.tayuSensorChartTitle || configs[widgetId].title || path
-        });
-        window.tayuSignalChartConfigs=configs;
-        try{await window.saveDashboardCloud?.();}catch(error){console.warn('Persistir tipo visual:',error);}
-        window.renderDashboardWidgets?.();
-        setTimeout(()=>window.renderTayuSensorCustomVisuals?.(true),120);
-        restoreChartDraft(draft);
-      },80);
-    },true);
+    if(!form){setTimeout(bindChartDraftGuard,300);return;}
+    if(!chartDraftBound){
+      chartDraftBound=true;
+      captureChartDraft();
+      form.addEventListener('input',event=>{
+        if(restoringChartDraft) return;
+        captureChartDraft();
+      },true);
+      form.addEventListener('change',event=>{
+        if(restoringChartDraft) return;
+        setTimeout(captureChartDraft,0);
+      },true);
+      document.getElementById('tayuSensorChartAdd')?.addEventListener('click',()=>{
+        captureChartDraft();
+        setTimeout(()=>restoreChartDraft(chartDraft,true),120);
+      },true);
+    }
+    clearInterval(chartGuardTimer);
+    chartGuardTimer=setInterval(guardChartDraft,180);
   }
 
   function wrap(name,after){
     const original=window[name];
-    if(typeof original!=='function' || original.__tayuSensorAlertWrapped) return;
+    if(typeof original !== 'function' || original.__tayuSensorAlertWrapped) return;
     const wrapped=function(...args){
       const result=original.apply(this,args);
-      if(result&&typeof result.then==='function') return result.finally(()=>setTimeout(after,0));
+      if(result && typeof result.then==='function') return result.finally(()=>setTimeout(after,0));
       setTimeout(after,0);return result;
     };
     wrapped.__tayuSensorAlertWrapped=true;window[name]=wrapped;
@@ -530,23 +535,23 @@
     installStyles();ensureAddSensorModal();bindChartDraftGuard();
 
     const originalRender=window.renderSensorTable;
-    if(typeof originalRender==='function'&&!originalRender.__tayuSensorAlertWrapped){
-      const wrapped=function(...args){const draft=captureChartDraft();const result=originalRender.apply(this,args);enhanceSensorTable();setTimeout(()=>{restoreChartDraft(draft);bindChartDraftGuard();},0);return result;};
+    if(typeof originalRender==='function' && !originalRender.__tayuSensorAlertWrapped){
+      const wrapped=function(...args){const result=originalRender.apply(this,args);enhanceSensorTable();setTimeout(()=>{bindChartDraftGuard();restoreChartDraft(chartDraft,true);},0);return result;};
       wrapped.__tayuSensorAlertWrapped=true;window.renderSensorTable=wrapped;
     }
 
     const originalUpdate=window.updateSensor;
-    if(typeof originalUpdate==='function'&&!originalUpdate.__tayuSensorAlertWrapped){
-      const wrappedUpdate=async function(...args){const draft=captureChartDraft();const result=await originalUpdate.apply(this,args);enhanceSensorTable();restoreChartDraft(draft);setTimeout(()=>{syncSensorRows();window.tayuLoadAlarmEvents?.();},1200);return result;};
+    if(typeof originalUpdate==='function' && !originalUpdate.__tayuSensorAlertWrapped){
+      const wrappedUpdate=async function(...args){const result=await originalUpdate.apply(this,args);enhanceSensorTable();setTimeout(()=>{syncSensorRows();window.tayuLoadAlarmEvents?.();restoreChartDraft(chartDraft,true);},0);return result;};
       wrappedUpdate.__tayuSensorAlertWrapped=true;window.updateSensor=wrappedUpdate;
     }
 
     const originalRefresh=window.refreshRealData;
-    if(typeof originalRefresh==='function'&&!originalRefresh.__tayuSensorAlertWrapped){
+    if(typeof originalRefresh==='function' && !originalRefresh.__tayuSensorAlertWrapped){
       const wrappedRefresh=async function(...args){
-        const draft=captureChartDraft();
+        captureChartDraft();
         const result=await originalRefresh.apply(this,args);
-        setTimeout(()=>{enhanceSensorTable();restoreChartDraft(draft);bindChartDraftGuard();},0);
+        setTimeout(()=>{enhanceSensorTable();bindChartDraftGuard();restoreChartDraft(chartDraft,true);},0);
         return result;
       };
       wrappedRefresh.__tayuSensorAlertWrapped=true;window.refreshRealData=wrappedRefresh;
@@ -563,7 +568,7 @@
 
     enhanceSensorTable();polishModbusDeleteButtons();
     setTimeout(()=>{enhanceSensorTable();polishModbusDeleteButtons();bindChartDraftGuard();},350);
-    setTimeout(()=>{enhanceSensorTable();polishModbusDeleteButtons();window.addSensor=openAddSensorModal;bindChartDraftGuard();},1000);
+    setTimeout(()=>{enhanceSensorTable();polishModbusDeleteButtons();window.addSensor=openAddSensorModal;bindChartDraftGuard();restoreChartDraft(chartDraft,true);},1000);
     clearInterval(liveTimer);liveTimer=setInterval(syncSensorRows,1000);
   }
 
