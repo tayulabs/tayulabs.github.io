@@ -19,7 +19,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260916-lora-node-live1';
+const VERSION='20260916-lora-widget1';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -185,6 +185,7 @@ if(typeof refreshLiveTelemetry==='function')window.refreshLiveTelemetry=refreshL
     '<scr'+'ipt src="cloud-client-view-refresh.js?v='+VERSION+'&fix=viewrefresh3"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-device-iot-stability.js?v='+VERSION+'&fix=iotstable2"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-lora-node-live.js?v='+VERSION+'&fix=loranodelive1"></scr'+'ipt>\n'+
+    '<scr'+'ipt src="cloud-client-lora-widget.js?v='+VERSION+'&fix=lorawidget1"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sector-iot.js?v='+VERSION+'&fix=sectoriot4"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sector-operation.js?v='+VERSION+'&fix=sectoroperation2"></scr'+'ipt>\n'+
     '<scr'+'ipt id="tayuSectorOperationStabilityLoader" src="cloud-client-sector-operation-stability.js?v='+VERSION+'&fix=production3"></scr'+'ipt>\n'+
