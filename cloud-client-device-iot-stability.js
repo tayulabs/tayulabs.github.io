@@ -88,26 +88,6 @@
 
 (() => {
   'use strict';
-  if(document.getElementById('tayuLoRaTelemetryBridgeLoader'))return;
-  const script=document.createElement('script');
-  script.id='tayuLoRaTelemetryBridgeLoader';
-  script.src='cloud-client-lora-telemetry-bridge.js?v=20260915-lorabridge1';
-  script.async=false;
-  document.head.appendChild(script);
-})();
-
-(() => {
-  'use strict';
-  if(document.getElementById('tayuLoRaLiveDashboardLoader'))return;
-  const script=document.createElement('script');
-  script.id='tayuLoRaLiveDashboardLoader';
-  script.src='cloud-client-lora-live-dashboard.js?v=20260915-loralive1';
-  script.async=false;
-  document.head.appendChild(script);
-})();
-
-(() => {
-  'use strict';
   if(document.getElementById('tayuSignalUnificationLoader'))return;
   const script=document.createElement('script');
   script.id='tayuSignalUnificationLoader';
