@@ -85,3 +85,13 @@
   script.async=false;
   document.head.appendChild(script);
 })();
+
+(() => {
+  'use strict';
+  if(document.getElementById('tayuSignalUnificationLoader'))return;
+  const script=document.createElement('script');
+  script.id='tayuSignalUnificationLoader';
+  script.src='cloud-client-signal-unification.js?v=20260915-signals1';
+  script.async=false;
+  document.head.appendChild(script);
+})();
