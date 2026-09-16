@@ -50,8 +50,8 @@
     const timer = setInterval(() => {
       attempts += 1;
       decorate();
-      if (attachObserver() || attempts >= 30) clearInterval(timer);
-    }, 180);
+      if (attachObserver() || attempts >= 100) clearInterval(timer);
+    }, 100);
   }
 
   window.addEventListener('tayu:client-access-ready', () => setTimeout(boot, 0));
@@ -63,14 +63,4 @@
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true});
   else boot();
-})();
-
-(() => {
-  'use strict';
-  if(document.getElementById('tayuDevicePresenceLoader'))return;
-  const script=document.createElement('script');
-  script.id='tayuDevicePresenceLoader';
-  script.src='cloud-client-device-presence.js?v=20260915-presence1';
-  script.async=false;
-  document.head.appendChild(script);
 })();
