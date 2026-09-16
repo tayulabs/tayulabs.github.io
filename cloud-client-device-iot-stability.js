@@ -31,6 +31,7 @@
       if (sector) sector.textContent = `Sector: ${sectorLabel(device?.site_sector)}`;
       if (button) button.dataset.deviceKey = key;
     });
+    window.__tayuLoRaNetwork?.refresh?.();
   }
 
   function attachObserver() {
@@ -50,8 +51,8 @@
     const timer = setInterval(() => {
       attempts += 1;
       decorate();
-      if (attachObserver() || attempts >= 100) clearInterval(timer);
-    }, 100);
+      if (attachObserver() || attempts >= 30) clearInterval(timer);
+    }, 180);
   }
 
   window.addEventListener('tayu:client-access-ready', () => setTimeout(boot, 0));
@@ -71,6 +72,16 @@
   const script=document.createElement('script');
   script.id='tayuDevicePresenceLoader';
   script.src='cloud-client-device-presence.js?v=20260915-presence1';
+  script.async=false;
+  document.head.appendChild(script);
+})();
+
+(() => {
+  'use strict';
+  if(document.getElementById('tayuLoRaNetworkLoader'))return;
+  const script=document.createElement('script');
+  script.id='tayuLoRaNetworkLoader';
+  script.src='cloud-client-lora-network.js?v=20260915-lora1';
   script.async=false;
   document.head.appendChild(script);
 })();
