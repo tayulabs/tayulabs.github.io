@@ -31,7 +31,6 @@
       if (sector) sector.textContent = `Sector: ${sectorLabel(device?.site_sector)}`;
       if (button) button.dataset.deviceKey = key;
     });
-    window.__tayuLoRaNetwork?.refresh?.();
   }
 
   function attachObserver() {
@@ -72,36 +71,6 @@
   const script=document.createElement('script');
   script.id='tayuDevicePresenceLoader';
   script.src='cloud-client-device-presence.js?v=20260915-presence1';
-  script.async=false;
-  document.head.appendChild(script);
-})();
-
-(() => {
-  'use strict';
-  if(document.getElementById('tayuLoRaNetworkLoader'))return;
-  const script=document.createElement('script');
-  script.id='tayuLoRaNetworkLoader';
-  script.src='cloud-client-lora-network.js?v=20260915-lora1';
-  script.async=false;
-  document.head.appendChild(script);
-})();
-
-(() => {
-  'use strict';
-  if(document.getElementById('tayuSignalUnificationLoader'))return;
-  const script=document.createElement('script');
-  script.id='tayuSignalUnificationLoader';
-  script.src='cloud-client-signal-unification.js?v=20260915-signals1';
-  script.async=false;
-  document.head.appendChild(script);
-})();
-
-(() => {
-  'use strict';
-  if(document.getElementById('tayuLoRaDashboardMapLoader'))return;
-  const script=document.createElement('script');
-  script.id='tayuLoRaDashboardMapLoader';
-  script.src='cloud-client-lora-dashboard-map.js?v=20260915-loramap1';
   script.async=false;
   document.head.appendChild(script);
 })();
