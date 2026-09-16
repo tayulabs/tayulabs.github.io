@@ -10,10 +10,12 @@ function originLabel(deviceKey,path){
   const meta=deviceByKey(deviceKey)?.configuration?.signals?.[path]||{};
   const origin=String(meta.origin||meta.source||'').toLowerCase();
   const transport=String(meta.transport||'').toLowerCase();
-  if(origin==='lora'||transport.includes('lora'))return'LoRa';
-  if(String(path||'').toLowerCase().startsWith('modbus.'))return'RS485 / Modbus';
-  if(String(path||'').toLowerCase().startsWith('gps.'))return'GPS';
-  if(String(path||'').toLowerCase().startsWith('din'))return'Entrada digital';
+  const p=String(path||'').toLowerCase();
+  const viaLoRa=origin==='lora'||transport.includes('lora');
+  if(p.startsWith('modbus.'))return viaLoRa?'RS485 / Modbus vía LoRa':'RS485 / Modbus';
+  if(p.startsWith('gps.')||p.startsWith('location.'))return viaLoRa?'GPS vía LoRa':'GPS';
+  if(p.startsWith('din')||p.startsWith('inputs.'))return viaLoRa?'Entrada digital vía LoRa':'Entrada digital';
+  if(viaLoRa)return'LoRa';
   return'Dispositivo';
 }
 
