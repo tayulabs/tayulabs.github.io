@@ -10,9 +10,18 @@
   let tableObserver = null;
   let guardTimer = null;
   let observerTable = null;
+  let restoringFocus = false;
+  let restoredAfterRefresh = false;
+  let lastChangeKey = '';
+  let lastChangeAt = 0;
 
   function isThresholdInput(element){
     return Boolean(element && typeof element.matches === 'function' && element.matches(INPUT_SELECTOR));
+  }
+
+  function inputKey(input){
+    if(!isThresholdInput(input)) return '';
+    return `${String(input.dataset.sensorId || '')}::${String(input.dataset.sensorThreshold || '')}`;
   }
 
   function snapshot(input){
@@ -23,6 +32,10 @@
       value: String(input.value ?? '')
     };
     return draft;
+  }
+
+  function draftKey(){
+    return draft ? `${draft.sensorId}::${draft.threshold}` : '';
   }
 
   function findDraftInput(){
@@ -45,8 +58,11 @@
     }
 
     if(document.activeElement !== input){
+      restoredAfterRefresh = true;
+      restoringFocus = true;
       try{ input.focus({preventScroll:true}); }
       catch(_){ try{ input.focus(); }catch(__){} }
+      restoringFocus = false;
     }
     return true;
   }
@@ -70,6 +86,7 @@
   document.addEventListener('focusin', event => {
     if(!isThresholdInput(event.target)) return;
     editing = true;
+    if(!restoringFocus) restoredAfterRefresh = false;
     snapshot(event.target);
   }, true);
 
@@ -82,12 +99,15 @@
   document.addEventListener('change', event => {
     if(!isThresholdInput(event.target)) return;
     snapshot(event.target);
+    lastChangeKey = inputKey(event.target);
+    lastChangeAt = Date.now();
   }, true);
 
   document.addEventListener('focusout', event => {
     const input = event.target;
     if(!isThresholdInput(input)) return;
     const leavingDraft = draft ? {...draft} : null;
+    const leavingKey = inputKey(input);
 
     setTimeout(() => {
       if(!leavingDraft || !draft) return;
@@ -107,12 +127,20 @@
         return;
       }
 
-      /* Blur real del usuario: deja que el evento change guarde el valor en la API. */
+      /*
+       * Si el campo fue reconstruido durante la edicion, el navegador puede considerar
+       * el valor restaurado como valor inicial y no disparar change al salir. En ese caso
+       * lo disparamos una sola vez para que la configuracion llegue a la API.
+       */
+      const nativeChangeJustFired = lastChangeKey === leavingKey && (Date.now() - lastChangeAt) < 250;
+      if(restoredAfterRefresh && !nativeChangeJustFired){
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+
       editing = false;
+      restoredAfterRefresh = false;
       setTimeout(() => {
-        if(!editing && draft &&
-           draft.sensorId === leavingDraft.sensorId &&
-           draft.threshold === leavingDraft.threshold){
+        if(!editing && draft && draftKey() === leavingKey){
           draft = null;
         }
       },1800);
