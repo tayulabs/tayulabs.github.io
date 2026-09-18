@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  window.__tayuNotificationsVersion = '20260918-notifications5';
+
   const API_URL = 'https://api.tayulabs.com';
   const ALLOWED_ROLES = new Set(['owner', 'admin']);
 
