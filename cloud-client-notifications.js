@@ -226,10 +226,11 @@
       #notifications .tayu-notifications-table{table-layout:fixed;min-width:0}
       #notifications .tayu-notifications-table th,
       #notifications .tayu-notifications-table td{white-space:normal;vertical-align:top;word-break:break-word}
-      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(1){width:32%}
-      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(2){width:18%}
-      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(3){width:34%}
-      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(4){width:16%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(1){width:29%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(2){width:16%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(3){width:31%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(4){width:10%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(5){width:14%}
       .tayu-notifications-checks{display:flex;gap:14px;flex-wrap:wrap}
       .tayu-notifications-checks label{margin:0;display:flex;align-items:center;gap:6px}
       .tayu-notifications-checks input{width:auto}
@@ -335,7 +336,7 @@
           </form>
           <div class="table-wrap">
             <table class="table tayu-notifications-table">
-              <thead><tr><th>Regla</th><th>Evento</th><th>Severidades</th><th>Estado</th><th>Acciones</th></tr></thead>
+              <thead><tr><th>Regla</th><th>Evento</th><th>Severidades / alcance</th><th>Estado</th><th>Acciones</th></tr></thead>
               <tbody id="tayuNotifPoliciesBody"></tbody>
             </table>
           </div>
@@ -460,7 +461,12 @@
       <tr>
         <td><b>${esc(d.name)}</b></td>
         <td>${esc(String(d.channel || '').toUpperCase())}</td>
-        <td>${esc(d.recipient_type || d.type || '—')}</td>
+        <td>${esc(
+          (d.recipient_type || d.type) === 'group' ? 'Grupo' :
+          (d.recipient_type || d.type) === 'person' ? 'Persona' :
+          (d.recipient_type || d.type) === 'endpoint' ? 'Endpoint' :
+          (d.recipient_type || d.type || '—')
+        )}</td>
         <td><code>${esc(d.address || d.target || '—')}</code></td>
         <td><span class="tayu-notifications-chip ${d.enabled ? 'on' : ''}">${d.enabled ? 'Activo' : 'Inactivo'}</span></td>
         <td>
