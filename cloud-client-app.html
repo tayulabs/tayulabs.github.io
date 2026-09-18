@@ -3270,54 +3270,10 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     return keycloak.logout({ redirectUri: window.location.href });
   };
 
-  const ACTIVE_ORGANIZATION_STORAGE_KEY = 'tayu.activeOrganizationId';
-
-  function organizationHeaders() {
-    let organizationId = String(window.__tayuActiveOrganizationId || '').trim();
-
-    if (!organizationId) {
-      try {
-        organizationId = String(
-          window.sessionStorage?.getItem(ACTIVE_ORGANIZATION_STORAGE_KEY) || ''
-        ).trim();
-      } catch (_) {}
-    }
-
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(organizationId)
-      ? { 'X-Organization-Id': organizationId }
-      : {};
-  }
-
-  window.__tayuOrganizationHeaders = organizationHeaders;
-  window.__tayuSetActiveOrganization = function(organizationId, options = {}) {
-    const normalized = String(organizationId || '').trim();
-    const reload = options.reload !== false;
-
-    if (normalized && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized)) {
-      throw new Error('organization_id inválido');
-    }
-
-    window.__tayuActiveOrganizationId = normalized || null;
-
-    try {
-      if (normalized) window.sessionStorage?.setItem(ACTIVE_ORGANIZATION_STORAGE_KEY, normalized);
-      else window.sessionStorage?.removeItem(ACTIVE_ORGANIZATION_STORAGE_KEY);
-    } catch (_) {}
-
-    window.dispatchEvent(new CustomEvent('tayu:organization-changed', {
-      detail: { organization_id: normalized || null }
-    }));
-
-    if (reload) window.location.reload();
-  };
-
   async function api(path) {
     await keycloak.updateToken(30);
     const response = await fetch(`${API_URL}${path}`, {
-      headers: {
-        Authorization: `Bearer ${keycloak.token}`,
-        ...organizationHeaders()
-      }
+      headers: { Authorization: `Bearer ${keycloak.token}` }
     });
     if (!response.ok) throw new Error(`API ${response.status}`);
     return response.json();
@@ -3329,8 +3285,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       method: 'POST',
       headers: {
         Authorization: `Bearer ${keycloak.token}`,
-        'Content-Type': 'application/json',
-        ...organizationHeaders()
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
     });
