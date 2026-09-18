@@ -3,6 +3,28 @@
 
   const API_URL = 'https://api.tayulabs.com';
   const ALLOWED_ROLES = new Set(['owner', 'admin']);
+
+  const EVENT_LABELS = {
+    alarm_opened: 'Alarma activada',
+    alarm_resolved: 'Alarma recuperada',
+  };
+
+  const SEVERITY_LABELS = {
+    info: 'Información',
+    warning: 'Advertencia',
+    critical: 'Crítica',
+  };
+
+  const SCOPE_LABELS = {
+    organization: 'Toda la organización',
+    sector: 'Sector',
+    site: 'Sitio',
+    resource: 'Unidad productiva',
+    device_type: 'Tipo de dispositivo',
+    device: 'Dispositivo',
+    alarm_rule: 'Regla de alarma',
+  };
+
   const state = {
     loaded: false,
     tab: 'destinations',
@@ -11,6 +33,14 @@
     policies: [],
     deliveries: [],
     summary: {},
+    scopeOptions: {
+      sectors: [],
+      sites: [],
+      resources: [],
+      device_types: [],
+      devices: [],
+      alarm_rules: [],
+    },
     editingDestination: null,
     editingPolicy: null,
   };
@@ -113,9 +143,14 @@
       .tayu-notifications-checks{display:flex;gap:14px;flex-wrap:wrap}
       .tayu-notifications-checks label{margin:0;display:flex;align-items:center;gap:6px}
       .tayu-notifications-checks input{width:auto}
+      .tayu-notifications-scope-box{border:1px solid var(--border);border-radius:16px;background:var(--panel2);padding:12px}
+      .tayu-notifications-scope-row{display:grid;grid-template-columns:190px minmax(0,1fr) auto;gap:9px;align-items:end;margin:8px 0}
+      .tayu-notifications-scope-summary{display:flex;gap:6px;flex-wrap:wrap}
+      .tayu-notifications-scope-summary span{display:inline-flex;padding:4px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);font-size:11px;font-weight:800}
       @media(max-width:960px){
         .tayu-notifications-summary,.tayu-notifications-form,.tayu-notifications-channel-grid{grid-template-columns:1fr}
         .tayu-notifications-form .full{grid-column:auto}
+        .tayu-notifications-scope-row{grid-template-columns:1fr}
       }
     `;
     document.head.appendChild(style);
@@ -193,6 +228,14 @@
             <div class="full">
               <label>Destinatarios</label>
               <div id="tayuNotifPolicyDestinations" class="tayu-notifications-checks"></div>
+            </div>
+            <div class="full">
+              <label>Alcance</label>
+              <div id="tayuNotifPolicyScopes" class="tayu-notifications-scope-box"></div>
+              <div class="tayu-notifications-actions" style="margin-top:8px">
+                <button class="btn ghost" id="tayuNotifAddScope" type="button">+ Agregar alcance</button>
+                <span class="hint">Mismo tipo = OR · Tipos distintos = AND</span>
+              </div>
             </div>
             <div class="full tayu-notifications-actions">
               <label style="margin:0;display:flex;align-items:center;gap:7px"><input id="tayuNotifPolicyEnabled" type="checkbox" checked style="width:auto"> Activa</label>
@@ -333,16 +376,193 @@
     }
   }
 
+  function scopeOptionPayload(type, item) {
+    if (type === 'organization') {
+      return { scope_ref: null, scope_value: null };
+    }
+
+    if (type === 'sector') {
+      return { scope_ref: null, scope_value: String(item?.key || item?.value || item || '') };
+    }
+
+    if (type === 'device_type') {
+      return { scope_ref: null, scope_value: String(item || '') };
+    }
+
+    if (type === 'site') {
+      return { scope_ref: item?.id || null, scope_value: null };
+    }
+
+    if (type === 'resource') {
+      return {
+        scope_ref: item?.id || null,
+        scope_value: item?.resource_type || null,
+      };
+    }
+
+    if (type === 'device') {
+      return { scope_ref: item?.id || null, scope_value: null };
+    }
+
+    if (type === 'alarm_rule') {
+      return { scope_ref: item?.id || null, scope_value: null };
+    }
+
+    return { scope_ref: null, scope_value: null };
+  }
+
+  function scopeOptionLabel(type, item) {
+    if (type === 'organization') return 'Toda la organización';
+    if (type === 'sector') return item?.name || item?.key || String(item || '');
+    if (type === 'site') return item?.name || item?.slug || item?.id || 'Sitio';
+    if (type === 'resource') {
+      const label = item?.name || item?.code || item?.id || 'Unidad productiva';
+      return item?.resource_type ? label + ' · ' + item.resource_type : label;
+    }
+    if (type === 'device_type') return String(item || '');
+    if (type === 'device') return item?.name || item?.device_key || item?.id || 'Dispositivo';
+    if (type === 'alarm_rule') {
+      const label = item?.name || item?.system_key || item?.id || 'Regla';
+      return item?.device_name ? label + ' · ' + item.device_name : label;
+    }
+    return String(item || '');
+  }
+
+  function scopeChoices(type) {
+    if (type === 'organization') {
+      return [{
+        label: 'Toda la organización',
+        payload: { scope_ref: null, scope_value: null },
+      }];
+    }
+
+    const map = {
+      sector: state.scopeOptions.sectors,
+      site: state.scopeOptions.sites,
+      resource: state.scopeOptions.resources,
+      device_type: state.scopeOptions.device_types,
+      device: state.scopeOptions.devices,
+      alarm_rule: state.scopeOptions.alarm_rules,
+    };
+
+    return (Array.isArray(map[type]) ? map[type] : []).map((item) => ({
+      label: scopeOptionLabel(type, item),
+      payload: scopeOptionPayload(type, item),
+    }));
+  }
+
+  function addScopeRow(initial = {}) {
+    const host = document.getElementById('tayuNotifPolicyScopes');
+    if (!host) return;
+
+    const row = document.createElement('div');
+    row.className = 'tayu-notifications-scope-row';
+    row.innerHTML = `
+      <div>
+        <label>Tipo</label>
+        <select class="tayu-notif-scope-type">
+          ${Object.entries(SCOPE_LABELS).map(([value, label]) =>
+            '<option value="' + esc(value) + '">' + esc(label) + '</option>'
+          ).join('')}
+        </select>
+      </div>
+      <div>
+        <label>Valor</label>
+        <select class="tayu-notif-scope-value"></select>
+      </div>
+      <button class="btn ghost tayu-notif-scope-remove" type="button">Quitar</button>
+    `;
+
+    host.appendChild(row);
+
+    const typeSelect = row.querySelector('.tayu-notif-scope-type');
+    const valueSelect = row.querySelector('.tayu-notif-scope-value');
+
+    function populate(selected = null) {
+      const type = typeSelect.value;
+      const choices = scopeChoices(type);
+
+      valueSelect.disabled = type === 'organization';
+      valueSelect.innerHTML = choices.length
+        ? choices.map((choice) => {
+            const value = JSON.stringify(choice.payload);
+            const isSelected = selected &&
+              String(selected.scope_ref || '') === String(choice.payload.scope_ref || '') &&
+              String(selected.scope_value || '') === String(choice.payload.scope_value || '');
+            return '<option value="' + esc(value) + '"' + (isSelected ? ' selected' : '') + '>' +
+              esc(choice.label) + '</option>';
+          }).join('')
+        : '<option value="">Sin opciones disponibles</option>';
+    }
+
+    typeSelect.value = initial.scope_type || 'organization';
+    populate(initial);
+
+    typeSelect.addEventListener('change', () => populate(null));
+    row.querySelector('.tayu-notif-scope-remove')?.addEventListener('click', () => {
+      row.remove();
+      if (!host.querySelector('.tayu-notifications-scope-row')) {
+        addScopeRow({ scope_type: 'organization', scope_ref: null, scope_value: null });
+      }
+    });
+  }
+
+  function collectScopes() {
+    const rows = Array.from(document.querySelectorAll('#tayuNotifPolicyScopes .tayu-notifications-scope-row'));
+    return rows.map((row) => {
+      const scope_type = row.querySelector('.tayu-notif-scope-type')?.value || 'organization';
+
+      if (scope_type === 'organization') {
+        return { scope_type, scope_ref: null, scope_value: null };
+      }
+
+      const raw = row.querySelector('.tayu-notif-scope-value')?.value || '';
+      if (!raw) throw new Error('Selecciona un valor para cada alcance.');
+
+      const payload = JSON.parse(raw);
+      return {
+        scope_type,
+        scope_ref: payload.scope_ref || null,
+        scope_value: payload.scope_value || null,
+      };
+    });
+  }
+
+  function renderScopeSummary(scopes) {
+    const rows = Array.isArray(scopes) && scopes.length
+      ? scopes
+      : [{ scope_type: 'organization', scope_ref: null, scope_value: null }];
+
+    return rows.map((scope) => {
+      const type = scope.scope_type || 'organization';
+      const label = SCOPE_LABELS[type] || type;
+
+      if (type === 'organization') return label;
+
+      const choices = scopeChoices(type);
+      const match = choices.find((choice) =>
+        String(choice.payload.scope_ref || '') === String(scope.scope_ref || '') &&
+        String(choice.payload.scope_value || '') === String(scope.scope_value || '')
+      );
+
+      const value = match?.label || scope.scope_value || scope.scope_ref || '—';
+      return label + ': ' + value;
+    });
+  }
+
   function renderPolicies() {
     const body = document.getElementById('tayuNotifPoliciesBody');
     if (!body) return;
     body.innerHTML = state.policies.length ? state.policies.map((p) => {
-      const severities = Array.isArray(p.severities) ? p.severities.join(', ') : '—';
+      const severities = Array.isArray(p.severities)
+        ? p.severities.map((value) => SEVERITY_LABELS[value] || value).join(', ')
+        : '—';
+      const scopes = renderScopeSummary(p.scopes);
       return `
         <tr>
           <td><b>${esc(p.name)}</b><br><small class="hint">${esc(p.description || '')}</small></td>
-          <td>${esc(p.event_type || '—')}</td>
-          <td>${esc(severities)}</td>
+          <td>${esc(EVENT_LABELS[p.event_type] || p.event_type || '—')}</td>
+          <td>${esc(severities)}<br><small class="hint">${esc(scopes.join(' · '))}</small></td>
           <td><span class="tayu-notifications-chip ${p.enabled ? 'on' : ''}">${p.enabled ? 'Activa' : 'Inactiva'}</span></td>
           <td>
             <div class="tayu-notifications-actions">
@@ -391,7 +611,7 @@
       return `
         <tr>
           <td>${esc(date)}</td>
-          <td>${esc(d.event_type || '—')}</td>
+          <td>${esc(EVENT_LABELS[d.event_type] || d.event_type || '—')}</td>
           <td>${esc(String(d.channel || '').toUpperCase())}</td>
           <td>${esc(d.destination_name || d.target || '—')}</td>
           <td><span class="tayu-notifications-chip ${esc(d.status || '')}">${esc(d.status || '—')}</span></td>
@@ -423,12 +643,21 @@
       request('/notifications/channels'),
       request('/notifications/destinations'),
       request('/notifications/policies'),
+      request('/notifications/scope-options'),
     ]);
 
     state.summary = results[0] || {};
     state.channels = list(results[1], 'channels');
     state.destinations = list(results[2], 'destinations');
     state.policies = list(results[3], 'policies');
+    state.scopeOptions = results[4] || {
+      sectors: [],
+      sites: [],
+      resources: [],
+      device_types: [],
+      devices: [],
+      alarm_rules: [],
+    };
     state.loaded = true;
 
     renderSummary();
@@ -461,6 +690,12 @@
     if (enabled) enabled.checked = true;
     const cancel = document.getElementById('tayuNotifPolicyCancel');
     if (cancel) cancel.hidden = true;
+
+    const scopes = document.getElementById('tayuNotifPolicyScopes');
+    if (scopes) {
+      scopes.innerHTML = '';
+      addScopeRow({ scope_type: 'organization', scope_ref: null, scope_value: null });
+    }
   }
 
   async function saveDestination(event) {
@@ -504,7 +739,7 @@
       event_type: document.getElementById('tayuNotifPolicyEvent').value,
       severities,
       destination_ids,
-      scopes: [{ scope_type: 'organization', scope_ref: null, scope_value: null }],
+      scopes: collectScopes(),
       enabled: document.getElementById('tayuNotifPolicyEnabled').checked,
     };
     if (state.editingPolicy) body.id = state.editingPolicy;
@@ -556,6 +791,15 @@
       el.checked = ids.has(el.value);
     });
 
+    const scopeHost = document.getElementById('tayuNotifPolicyScopes');
+    if (scopeHost) {
+      scopeHost.innerHTML = '';
+      const scopes = Array.isArray(p.scopes) && p.scopes.length
+        ? p.scopes
+        : [{ scope_type: 'organization', scope_ref: null, scope_value: null }];
+      scopes.forEach((scope) => addScopeRow(scope));
+    }
+
     document.getElementById('tayuNotifPolicyCancel').hidden = false;
     switchTab('policies');
   }
@@ -597,6 +841,7 @@
     document.getElementById('tayuNotificationsRefresh')?.addEventListener('click', () => loadAll().catch(showError));
     document.getElementById('tayuNotifDestinationCancel')?.addEventListener('click', resetDestinationForm);
     document.getElementById('tayuNotifPolicyCancel')?.addEventListener('click', resetPolicyForm);
+    document.getElementById('tayuNotifAddScope')?.addEventListener('click', () => addScopeRow({ scope_type: 'organization' }));
     document.getElementById('tayuNotifDestinationForm')?.addEventListener('submit', (e) => saveDestination(e).catch(showError));
     document.getElementById('tayuNotifPolicyForm')?.addEventListener('submit', (e) => savePolicy(e).catch(showError));
     document.getElementById('tayuNotifHistoryChannel')?.addEventListener('change', () => loadHistory().catch(showError));
