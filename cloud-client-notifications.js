@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.__tayuNotificationsVersion = '20260918-notifications12';
+  window.__tayuNotificationsVersion = '20260918-notifications13';
 
   const API_URL = 'https://api.tayulabs.com';
   const ALLOWED_ROLES = new Set(['owner', 'admin']);
@@ -220,6 +220,48 @@
         filter:none!important;
       }
 
+      .tayu-notifications-nav .nav-icon{
+        transition:transform .15s ease!important;
+      }
+      .tayu-notifications-nav .nav-icon .tayu-nav-img{
+        width:20px!important;
+        height:20px!important;
+        max-width:20px!important;
+        max-height:20px!important;
+        object-fit:contain!important;
+      }
+      .tayu-notifications-nav:hover .nav-icon{
+        transform:scale(1.10);
+      }
+      .tayu-notifications-tooltip{
+        position:fixed;
+        z-index:200000;
+        pointer-events:none;
+        opacity:0;
+        visibility:hidden;
+        transform:translateY(-50%) translateX(-4px);
+        transition:opacity .12s ease,transform .12s ease,visibility .12s ease;
+        padding:8px 11px;
+        border-radius:10px;
+        background:#111814;
+        color:#fff;
+        border:1px solid rgba(255,255,255,.10);
+        box-shadow:0 8px 24px rgba(0,0,0,.22);
+        font-size:12px;
+        line-height:1;
+        font-weight:800;
+        white-space:nowrap;
+      }
+      body.dark .tayu-notifications-tooltip{
+        background:#fff;
+        color:#111;
+        border-color:rgba(0,0,0,.10);
+      }
+      .tayu-notifications-tooltip.show{
+        opacity:1;
+        visibility:visible;
+        transform:translateY(-50%) translateX(0);
+      }
       body.sidebar-collapsed .tayu-notifications-nav{justify-content:center;padding:13px 8px}
       body.sidebar-collapsed .tayu-notifications-nav .nav-label{display:none}
       @media(max-width:960px){body.sidebar-collapsed .tayu-notifications-nav{justify-content:flex-start;padding:13px 14px}body.sidebar-collapsed .tayu-notifications-nav .nav-label{display:inline}}
@@ -480,18 +522,45 @@
     const nav = document.querySelector('.nav');
     if (!nav) return;
 
-    const link = document.createElement('a');
+    const link = document.createElement('button');
     link.id = 'tayuNotificationsNav';
-    link.href = '#notifications';
+    link.type = 'button';
     link.className = 'tayu-notifications-nav';
+    link.setAttribute('aria-label', 'Notificaciones');
+    link.title = 'Notificaciones';
     link.innerHTML = '<span class="nav-icon" aria-hidden="true"><img class="tayu-nav-img icon-color" src="imagenes/icons/notificacion-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/notificacion-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Notificaciones</span>';
 
     const configButton = nav.querySelector('button[data-view="configuracion"]');
     if (configButton) nav.insertBefore(link, configButton);
     else nav.appendChild(link);
 
-    link.addEventListener('click', (event) => {
-      event.preventDefault();
+    let tooltip = document.getElementById('tayuNotificationsTooltip');
+    if (!tooltip) {
+      tooltip = document.createElement('div');
+      tooltip.id = 'tayuNotificationsTooltip';
+      tooltip.className = 'tayu-notifications-tooltip';
+      tooltip.textContent = 'Notificaciones';
+      document.body.appendChild(tooltip);
+    }
+
+    const showTooltip = () => {
+      if (!document.body.classList.contains('sidebar-collapsed')) return;
+      const rect = link.getBoundingClientRect();
+      tooltip.style.left = (rect.right + 10) + 'px';
+      tooltip.style.top = (rect.top + rect.height / 2) + 'px';
+      tooltip.classList.add('show');
+    };
+
+    const hideTooltip = () => {
+      tooltip.classList.remove('show');
+    };
+
+    link.addEventListener('mouseenter', showTooltip);
+    link.addEventListener('mouseleave', hideTooltip);
+    link.addEventListener('focus', showTooltip);
+    link.addEventListener('blur', hideTooltip);
+    link.addEventListener('click', () => {
+      hideTooltip();
       openView();
     });
   }
