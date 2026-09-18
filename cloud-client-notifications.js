@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.__tayuNotificationsVersion = '20260918-notifications6';
+  window.__tayuNotificationsVersion = '20260918-notifications7';
 
   const API_URL = 'https://api.tayulabs.com';
   const ALLOWED_ROLES = new Set(['owner', 'admin']);
@@ -155,11 +155,35 @@
     return data;
   }
 
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  async function requestWithRetry(path, options = {}, attempts = 3) {
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await request(path, options);
+      } catch (error) {
+        lastError = error;
+        if (attempt < attempts) {
+          await sleep(350 * attempt);
+        }
+      }
+    }
+
+    throw lastError || new Error('No se pudo completar la solicitud.');
+  }
+
   function setStatus(message, type = '') {
     const el = document.getElementById('tayuNotificationsStatus');
     if (!el) return;
     el.textContent = message || '';
-    el.className = 'tayu-notifications-status' + (type ? ' ' + type : '');
+    const stateClass = type === 'error'
+      ? ' is-error'
+      : type === 'ok'
+        ? ' is-ok'
+        : '';
+    el.className = 'tayu-notifications-status' + stateClass;
   }
 
   function installStyles() {
@@ -190,7 +214,7 @@
       .tayu-notifications-form .full{grid-column:1/-1}
       .tayu-notifications-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
       .tayu-notifications-status{min-height:20px;margin:10px 0;font-size:13px;font-weight:800;color:var(--muted)}
-      .tayu-notifications-status.ok{color:var(--brand)}.tayu-notifications-status.error{color:var(--danger)}
+      .tayu-notifications-status.is-ok{color:var(--brand)}.tayu-notifications-status.is-error{color:var(--danger)}
       .tayu-notifications-chip{display:inline-flex;padding:5px 9px;border-radius:999px;border:1px solid var(--border);font-size:11px;font-weight:900}
       .tayu-notifications-chip.on,.tayu-notifications-chip.sent{color:var(--brand)}
       .tayu-notifications-chip.failed{color:var(--danger)}
@@ -389,6 +413,13 @@
       el.classList.toggle('active', el.dataset.notifPanel === tab);
     });
     if (tab === 'history') loadHistory().catch(showError);
+    if (tab === 'policies') {
+      loadScopeOptions().then((ok) => {
+        if (!ok) {
+          setStatus('No se pudieron cargar los alcances. Reintenta con Actualizar.', 'error');
+        }
+      }).catch(showError);
+    }
   }
 
   function renderSummary() {
@@ -688,61 +719,91 @@
     if (channel) params.set('channel', channel);
     if (status) params.set('status', status);
 
-    const data = await request('/notifications/deliveries' + (params.toString() ? '?' + params : ''));
+    const data = await requestWithRetry('/notifications/deliveries' + (params.toString() ? '?' + params : ''));
     state.deliveries = list(data, 'deliveries');
     renderHistory();
+  }
+
+  async function loadScopeOptions() {
+    try {
+      const data = await requestWithRetry('/notifications/scope-options');
+      const rawScopeOptions = unwrapObject(data) || {};
+      state.scopeOptions =
+        rawScopeOptions.scope_options ||
+        rawScopeOptions.options ||
+        rawScopeOptions || {
+          sectors: [],
+          sites: [],
+          resources: [],
+          device_types: [],
+          devices: [],
+          alarm_rules: [],
+        };
+
+      window.__tayuNotificationsRaw = {
+        ...(window.__tayuNotificationsRaw || {}),
+        scopeOptions: data,
+      };
+
+      window.__tayuNotificationsState = {
+        ...(window.__tayuNotificationsState || {}),
+        scopeOptions: state.scopeOptions,
+      };
+
+      if (window.__tayuNotificationsErrors) {
+        delete window.__tayuNotificationsErrors.scopeOptions;
+      }
+
+      return true;
+    } catch (error) {
+      window.__tayuNotificationsErrors = {
+        ...(window.__tayuNotificationsErrors || {}),
+        scopeOptions: error?.message || String(error),
+      };
+      return false;
+    }
   }
 
   async function loadAll() {
     if (!allowed()) return;
     setStatus('Actualizando…');
 
-    const endpoints = {
-      summary: '/notifications/summary',
-      channels: '/notifications/channels',
-      destinations: '/notifications/destinations',
-      policies: '/notifications/policies',
-      scopeOptions: '/notifications/scope-options',
-    };
-
-    const entries = Object.entries(endpoints);
-    const settled = await Promise.allSettled(
-      entries.map(([, path]) => request(path))
-    );
+    const endpoints = [
+      ['summary', '/notifications/summary'],
+      ['channels', '/notifications/channels'],
+      ['destinations', '/notifications/destinations'],
+      ['policies', '/notifications/policies'],
+    ];
 
     const raw = {};
     const errors = {};
 
-    settled.forEach((result, index) => {
-      const key = entries[index][0];
-
-      if (result.status === 'fulfilled') {
-        raw[key] = result.value;
-      } else {
+    // Carga secuencial: evita ráfagas contra el API y permite reintentar
+    // cada recurso sin perder los que ya respondieron correctamente.
+    for (const [key, path] of endpoints) {
+      try {
+        raw[key] = await requestWithRetry(path);
+      } catch (error) {
         raw[key] = null;
-        errors[key] = result.reason?.message || String(result.reason || 'Error');
+        errors[key] = error?.message || String(error);
       }
-    });
+    }
 
     state.summary = summaryObject(raw.summary);
-    state.channels = list(raw.channels, 'channels');
-    state.destinations = list(raw.destinations, 'destinations');
-    state.policies = list(raw.policies, 'policies');
 
-    const rawScopeOptions = unwrapObject(raw.scopeOptions) || {};
-    state.scopeOptions =
-      rawScopeOptions.scope_options ||
-      rawScopeOptions.options ||
-      rawScopeOptions || {
-        sectors: [],
-        sites: [],
-        resources: [],
-        device_types: [],
-        devices: [],
-        alarm_rules: [],
-      };
+    const loadedChannels = list(raw.channels, 'channels');
+    const loadedDestinations = list(raw.destinations, 'destinations');
+    const loadedPolicies = list(raw.policies, 'policies');
 
-    window.__tayuNotificationsRaw = raw;
+    if (raw.channels !== null) state.channels = loadedChannels;
+    if (raw.destinations !== null) state.destinations = loadedDestinations;
+    if (raw.policies !== null) state.policies = loadedPolicies;
+
+    window.__tayuNotificationsRaw = {
+      ...(window.__tayuNotificationsRaw || {}),
+      ...raw,
+    };
+
     window.__tayuNotificationsErrors = errors;
     window.__tayuNotificationsState = {
       channels: state.channels,
@@ -759,6 +820,11 @@
     renderDestinations();
     renderPolicies();
 
+    if (state.tab === 'policies') {
+      const scopesOk = await loadScopeOptions();
+      if (!scopesOk) errors.scopeOptions = window.__tayuNotificationsErrors?.scopeOptions || 'Failed to fetch';
+    }
+
     if (state.tab === 'history') {
       try {
         await loadHistory();
@@ -772,9 +838,9 @@
 
     if (failedKeys.length) {
       setStatus(
-        'Carga parcial. Error en: ' +
+        'Carga parcial. No respondió: ' +
         failedKeys.join(', ') +
-        '. Revisa __tayuNotificationsErrors.',
+        '. Los demás datos sí se conservaron.',
         'error'
       );
     } else {
