@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.__tayuNotificationsVersion = '20260918-notifications9';
+  window.__tayuNotificationsVersion = '20260918-notifications10';
 
   const API_URL = 'https://api.tayulabs.com';
   const ALLOWED_ROLES = new Set(['owner', 'admin']);
@@ -19,12 +19,12 @@
 
   const SCOPE_LABELS = {
     organization: 'Toda la organización',
-    sector: 'Sector',
-    site: 'Sitio',
+    sector: 'Sector productivo',
+    site: 'Sitio / finca',
     resource: 'Unidad productiva',
-    device_type: 'Tipo de dispositivo',
-    device: 'Dispositivo',
-    alarm_rule: 'Regla de alarma',
+    device_type: 'Tipo de equipo',
+    device: 'Dispositivo específico',
+    alarm_rule: 'Alarma específica',
   };
 
   const state = {
@@ -193,26 +193,25 @@
     style.id = 'tayuNotificationsStyles';
     style.textContent = `
       .nav .tayu-notifications-nav{
-        width:100%;display:flex;align-items:center;gap:0;margin:6px 0;padding:13px 14px;
+        width:100%;display:flex;align-items:center;gap:10px;margin:6px 0;padding:13px 14px;
         border:0;background:transparent;color:var(--muted);border-radius:16px;
         font-weight:800;text-align:left;cursor:pointer;text-decoration:none;font-family:inherit;font-size:inherit
       }
-      .nav .tayu-notifications-nav:hover,.nav .tayu-notifications-nav.active{
-        background:rgba(85,198,43,.12);color:var(--text)
-      }
+      .nav .tayu-notifications-nav:hover,.nav .tayu-notifications-nav.active{background:rgba(85,198,43,.12);color:var(--text)}
+      body.sidebar-collapsed .tayu-notifications-nav{justify-content:center;padding:13px 8px}
+      body.sidebar-collapsed .tayu-notifications-nav .nav-label{display:none}
+      @media(max-width:960px){body.sidebar-collapsed .tayu-notifications-nav{justify-content:flex-start;padding:13px 14px}body.sidebar-collapsed .tayu-notifications-nav .nav-label{display:inline}}
+
       .tayu-notifications-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
-      .tayu-notifications-tab{
-        border:1px solid var(--border);background:var(--panel2);color:var(--text);
-        padding:10px 14px;border-radius:12px;font-weight:850;cursor:pointer
-      }
+      .tayu-notifications-tab{border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:10px 14px;border-radius:12px;font-weight:850;cursor:pointer}
       .tayu-notifications-tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
       .tayu-notifications-panel{display:none}.tayu-notifications-panel.active{display:block}
       .tayu-notifications-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
       .tayu-notifications-summary>div{background:var(--panel2);border:1px solid var(--border);border-radius:16px;padding:14px}
       .tayu-notifications-summary span{display:block;color:var(--muted);font-size:12px;font-weight:850}
       .tayu-notifications-summary b{display:block;font-size:26px;margin-top:5px}
-      .tayu-notifications-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 20px}
-      .tayu-notifications-form .full{grid-column:1/-1}
+      .tayu-notifications-section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin:4px 0 18px}
+      .tayu-notifications-section-head h3{margin:0 0 5px}.tayu-notifications-section-head p{margin:0}
       .tayu-notifications-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
       .tayu-notifications-status{min-height:20px;margin:10px 0;font-size:13px;font-weight:800;color:var(--muted)}
       .tayu-notifications-status.is-ok{color:var(--brand)}.tayu-notifications-status.is-error{color:var(--danger)}
@@ -225,26 +224,53 @@
       .tayu-notifications-channel-head{display:flex;justify-content:space-between;gap:10px;align-items:center}
       .tayu-notifications-table .btn{padding:8px 10px;border-radius:10px;font-size:12px}
       #notifications .tayu-notifications-table{table-layout:fixed;min-width:0}
-      #notifications .tayu-notifications-table th,
-      #notifications .tayu-notifications-table td{white-space:normal;vertical-align:top;word-break:break-word}
-      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(1){width:29%}
-      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(2){width:16%}
-      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(3){width:31%}
-      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(4){width:10%}
-      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(5){width:14%}
-      .tayu-notifications-checks{display:flex;gap:14px;flex-wrap:wrap}
-      .tayu-notifications-checks label{margin:0;display:flex;align-items:center;gap:6px}
+      #notifications .tayu-notifications-table th,#notifications .tayu-notifications-table td{white-space:normal;vertical-align:top;word-break:break-word}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(1){width:22%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(2){width:17%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(3){width:17%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(4){width:24%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(5){width:9%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(6){width:11%}
+      .tayu-notifications-checks{display:flex;gap:10px;flex-wrap:wrap}
+      .tayu-notifications-checks label{margin:0;display:flex;align-items:center;gap:7px;padding:9px 11px;border:1px solid var(--border);border-radius:12px;background:var(--panel2);color:var(--text)}
       .tayu-notifications-checks input{width:auto}
       .tayu-notifications-hidden{display:none!important}
-      .tayu-notifications-note{margin-top:6px;color:var(--muted);font-size:12px;font-weight:700}
+      .tayu-notifications-note{margin-top:6px;color:var(--muted);font-size:12px;font-weight:650;line-height:1.45}
       .tayu-notifications-scope-box{border:1px solid var(--border);border-radius:16px;background:var(--panel2);padding:12px}
-      .tayu-notifications-scope-row{display:grid;grid-template-columns:190px minmax(0,1fr) auto;gap:9px;align-items:end;margin:8px 0}
-      .tayu-notifications-scope-summary{display:flex;gap:6px;flex-wrap:wrap}
+      .tayu-notifications-scope-row{display:grid;grid-template-columns:210px minmax(0,1fr) auto;gap:9px;align-items:end;margin:8px 0}
+      .tayu-notifications-scope-summary{display:flex;gap:5px;flex-wrap:wrap}
       .tayu-notifications-scope-summary span{display:inline-flex;padding:4px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);font-size:11px;font-weight:800}
+
+      .tayu-notifications-modal{display:none;position:fixed;inset:0;z-index:120000;background:rgba(0,0,0,.46);padding:22px;align-items:center;justify-content:center}
+      .tayu-notifications-modal.open{display:flex}
+      .tayu-notifications-modal-card{width:min(780px,100%);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:26px;box-shadow:var(--shadow);padding:22px}
+      .tayu-notifications-modal-card.wide{width:min(980px,100%)}
+      .tayu-notifications-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+      .tayu-notifications-modal-head h3{margin:0 0 5px;font-size:22px}.tayu-notifications-modal-head p{margin:0}
+      .tayu-notifications-close{width:38px;height:38px;border-radius:12px;border:1px solid var(--border);background:var(--panel2);color:var(--text);cursor:pointer;font-size:20px;line-height:1}
+      .tayu-notifications-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+      .tayu-notifications-form .full{grid-column:1/-1}
+      .tayu-notifications-form-section{grid-column:1/-1;border-top:1px solid var(--border);padding-top:16px;margin-top:2px}
+      .tayu-notifications-form-section:first-child{border-top:0;padding-top:0}
+      .tayu-notifications-form-section h4{margin:0 0 4px;font-size:15px}.tayu-notifications-form-section>p{margin:0 0 12px}
+      .tayu-notifications-status-control{display:flex;justify-content:space-between;align-items:center;gap:16px;border:1px solid var(--border);border-radius:16px;background:var(--panel2);padding:14px}
+      .tayu-notifications-status-control b{display:block;margin-bottom:4px}.tayu-notifications-status-control span{display:block;color:var(--muted);font-size:12px}
+      .tayu-notifications-switch{position:relative;width:48px;height:28px;flex:0 0 48px}
+      .tayu-notifications-switch input{position:absolute;opacity:0;pointer-events:none}
+      .tayu-notifications-switch i{position:absolute;inset:0;border-radius:999px;background:#a7aea5;transition:.2s;cursor:pointer}
+      .tayu-notifications-switch i:after{content:'';position:absolute;width:22px;height:22px;left:3px;top:3px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+      .tayu-notifications-switch input:checked+i{background:var(--brand)}
+      .tayu-notifications-switch input:checked+i:after{transform:translateX(20px)}
+      .tayu-notifications-modal-footer{grid-column:1/-1;display:flex;justify-content:flex-end;gap:9px;border-top:1px solid var(--border);padding-top:16px;margin-top:2px}
+      .tayu-notifications-destination-value{font-weight:750}.tayu-notifications-destination-value small{display:block;color:var(--muted);font-weight:650;margin-top:3px}
+
       @media(max-width:960px){
-        .tayu-notifications-summary,.tayu-notifications-form,.tayu-notifications-channel-grid{grid-template-columns:1fr}
-        .tayu-notifications-form .full{grid-column:auto}
+        .tayu-notifications-summary,.tayu-notifications-channel-grid,.tayu-notifications-form{grid-template-columns:1fr}
+        .tayu-notifications-form .full,.tayu-notifications-form-section,.tayu-notifications-modal-footer{grid-column:auto}
         .tayu-notifications-scope-row{grid-template-columns:1fr}
+        .tayu-notifications-section-head{flex-direction:column}.tayu-notifications-section-head .btn{width:100%}
+        .tayu-notifications-modal{padding:10px;align-items:flex-start;padding-top:36px}
+        .tayu-notifications-modal-card{max-height:90vh;border-radius:20px;padding:16px}
       }
     `;
     document.head.appendChild(style);
@@ -260,8 +286,8 @@
       <div class="card">
         <div class="module-header">
           <div>
-            <h3 style="margin:0">🔔 Notificaciones</h3>
-            <p class="hint" style="margin:6px 0 0">Configura destinatarios, reglas de aviso y revisa el historial de entregas.</p>
+            <h3 style="margin:0">Notificaciones</h3>
+            <p class="hint" style="margin:6px 0 0">Define quién recibe avisos, cuándo se envían y revisa cada entrega.</p>
           </div>
           <button class="btn ghost" type="button" id="tayuNotificationsRefresh">Actualizar</button>
         </div>
@@ -283,29 +309,10 @@
         <div id="tayuNotificationsStatus" class="tayu-notifications-status"></div>
 
         <div class="tayu-notifications-panel active" data-notif-panel="destinations">
-          <h3>Destinatarios</h3>
-          <p class="hint">Para WhatsApp puedes seleccionar directamente uno de los grupos detectados por el servicio.</p>
-          <form id="tayuNotifDestinationForm" class="tayu-notifications-form">
-            <div><label>Nombre</label><input id="tayuNotifDestinationName" required placeholder="Ej: Operaciones"></div>
-            <div><label>Canal</label><select id="tayuNotifDestinationChannel"><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="telegram">Telegram</option></select></div>
-            <div><label>Tipo</label><select id="tayuNotifDestinationType"><option value="group">Grupo</option><option value="person">Persona</option><option value="endpoint">Endpoint</option></select></div>
-            <div id="tayuNotifWhatsappGroupWrap">
-              <label>Grupo de WhatsApp</label>
-              <select id="tayuNotifWhatsappGroup">
-                <option value="">Cargando grupos…</option>
-              </select>
-              <div id="tayuNotifWhatsappGroupNote" class="tayu-notifications-note"></div>
-            </div>
-            <div id="tayuNotifDestinationAddressWrap" class="full tayu-notifications-hidden">
-              <label>Dirección / ID</label>
-              <input id="tayuNotifDestinationAddress" placeholder="120...@g.us">
-            </div>
-            <div class="full tayu-notifications-actions">
-              <label style="margin:0;display:flex;align-items:center;gap:7px"><input id="tayuNotifDestinationEnabled" type="checkbox" checked style="width:auto"> Activo</label>
-              <button class="btn" type="submit">Guardar</button>
-              <button class="btn ghost" id="tayuNotifDestinationCancel" type="button" hidden>Cancelar edición</button>
-            </div>
-          </form>
+          <div class="tayu-notifications-section-head">
+            <div><h3>Destinatarios</h3><p class="hint">Personas, grupos o sistemas que recibirán tus avisos.</p></div>
+            <button class="btn" type="button" id="tayuNotifNewDestination">+ Nuevo destinatario</button>
+          </div>
           <div class="table-wrap">
             <table class="table tayu-notifications-table">
               <thead><tr><th>Nombre</th><th>Canal</th><th>Tipo</th><th>Destino</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -315,41 +322,13 @@
         </div>
 
         <div class="tayu-notifications-panel" data-notif-panel="policies">
-          <h3>Reglas de notificación</h3>
-          <p class="hint">En esta primera versión, las reglas creadas desde la interfaz se aplican a toda la organización.</p>
-          <form id="tayuNotifPolicyForm" class="tayu-notifications-form">
-            <div><label>Nombre</label><input id="tayuNotifPolicyName" required placeholder="Ej: Alertas críticas"></div>
-            <div><label>Evento</label><select id="tayuNotifPolicyEvent"><option value="alarm_opened">Alarma activada</option><option value="alarm_resolved">Alarma recuperada</option></select></div>
-            <div class="full"><label>Descripción</label><input id="tayuNotifPolicyDescription" placeholder="Opcional"></div>
-            <div class="full">
-              <label>Severidades</label>
-              <div class="tayu-notifications-checks">
-                <label><input name="tayuNotifSeverity" type="checkbox" value="info" checked> Información</label>
-                <label><input name="tayuNotifSeverity" type="checkbox" value="warning" checked> Advertencia</label>
-                <label><input name="tayuNotifSeverity" type="checkbox" value="critical" checked> Crítica</label>
-              </div>
-            </div>
-            <div class="full">
-              <label>Destinatarios</label>
-              <div id="tayuNotifPolicyDestinations" class="tayu-notifications-checks"></div>
-            </div>
-            <div class="full">
-              <label>Alcance</label>
-              <div id="tayuNotifPolicyScopes" class="tayu-notifications-scope-box"></div>
-              <div class="tayu-notifications-actions" style="margin-top:8px">
-                <button class="btn ghost" id="tayuNotifAddScope" type="button">+ Agregar alcance</button>
-                <span class="hint">Mismo tipo = OR · Tipos distintos = AND</span>
-              </div>
-            </div>
-            <div class="full tayu-notifications-actions">
-              <label style="margin:0;display:flex;align-items:center;gap:7px"><input id="tayuNotifPolicyEnabled" type="checkbox" checked style="width:auto"> Activa</label>
-              <button class="btn" type="submit">Guardar regla</button>
-              <button class="btn ghost" id="tayuNotifPolicyCancel" type="button" hidden>Cancelar edición</button>
-            </div>
-          </form>
+          <div class="tayu-notifications-section-head">
+            <div><h3>Reglas de notificación</h3><p class="hint">Decide qué evento genera un aviso, quién lo recibe y dónde aplica.</p></div>
+            <button class="btn" type="button" id="tayuNotifNewPolicy">+ Nueva regla</button>
+          </div>
           <div class="table-wrap">
             <table class="table tayu-notifications-table">
-              <thead><tr><th>Regla</th><th>Evento</th><th>Severidades / alcance</th><th>Estado</th><th>Acciones</th></tr></thead>
+              <thead><tr><th>Regla</th><th>Condición</th><th>Destinatarios</th><th>Alcance</th><th>Estado</th><th>Acciones</th></tr></thead>
               <tbody id="tayuNotifPoliciesBody"></tbody>
             </table>
           </div>
@@ -357,13 +336,13 @@
 
         <div class="tayu-notifications-panel" data-notif-panel="channels">
           <h3>Canales</h3>
-          <p class="hint">WhatsApp ya está operativo. Email y Telegram quedan preparados para integrar sus proveedores.</p>
+          <p class="hint">WhatsApp está operativo. Email y Telegram quedan preparados para integrar sus proveedores.</p>
           <div id="tayuNotifChannelsGrid" class="tayu-notifications-channel-grid"></div>
         </div>
 
         <div class="tayu-notifications-panel" data-notif-panel="history">
           <div class="module-header">
-            <div><h3>Historial</h3><p class="hint">Entregas registradas por el backend.</p></div>
+            <div><h3>Historial</h3><p class="hint">Cada intento de entrega registrado por el backend.</p></div>
             <div class="tayu-notifications-actions">
               <select id="tayuNotifHistoryChannel"><option value="">Todos los canales</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="telegram">Telegram</option></select>
               <select id="tayuNotifHistoryStatus"><option value="">Todos los estados</option><option value="queued">En cola</option><option value="processing">Procesando</option><option value="sent">Enviado</option><option value="failed">Fallido</option><option value="skipped">Omitido</option></select>
@@ -375,6 +354,97 @@
               <tbody id="tayuNotifHistoryBody"></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <div class="tayu-notifications-modal" id="tayuNotifDestinationModal" aria-hidden="true">
+        <div class="tayu-notifications-modal-card" role="dialog" aria-modal="true" aria-labelledby="tayuNotifDestinationModalTitle">
+          <div class="tayu-notifications-modal-head">
+            <div><h3 id="tayuNotifDestinationModalTitle">Nuevo destinatario</h3><p class="hint">Configura de forma sencilla quién recibirá las notificaciones.</p></div>
+            <button class="tayu-notifications-close" type="button" data-notif-close="destination" aria-label="Cerrar">×</button>
+          </div>
+          <form id="tayuNotifDestinationForm" class="tayu-notifications-form">
+            <div class="full tayu-notifications-form-section">
+              <h4>1. ¿Quién recibirá el aviso?</h4>
+              <p class="hint">El nombre es solo para identificar este destinatario dentro de Tayulabs.</p>
+            </div>
+            <div>
+              <label id="tayuNotifDestinationNameLabel">Nombre del destinatario</label>
+              <input id="tayuNotifDestinationName" required placeholder="Ej: Operaciones">
+              <div id="tayuNotifDestinationNameHelp" class="tayu-notifications-note">Usa un nombre fácil de reconocer.</div>
+            </div>
+            <div><label>Canal</label><select id="tayuNotifDestinationChannel"><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="telegram">Telegram</option></select></div>
+            <div><label>Tipo de destinatario</label><select id="tayuNotifDestinationType"><option value="group">Grupo</option><option value="person">Persona</option><option value="endpoint">Sistema / endpoint</option></select></div>
+            <div id="tayuNotifWhatsappGroupWrap">
+              <label>Grupo de WhatsApp</label>
+              <select id="tayuNotifWhatsappGroup"><option value="">Cargando grupos…</option></select>
+              <div id="tayuNotifWhatsappGroupNote" class="tayu-notifications-note"></div>
+            </div>
+            <div id="tayuNotifDestinationAddressWrap" class="full tayu-notifications-hidden">
+              <label id="tayuNotifDestinationAddressLabel">Dirección</label>
+              <input id="tayuNotifDestinationAddress">
+              <div id="tayuNotifDestinationAddressHelp" class="tayu-notifications-note"></div>
+            </div>
+            <div class="full tayu-notifications-form-section">
+              <h4>2. Estado</h4>
+              <p class="hint">Puedes dejarlo guardado sin permitir que reciba avisos todavía.</p>
+              <div class="tayu-notifications-status-control">
+                <div><b>Destinatario activo</b><span>Cuando está activo puede ser usado por las reglas de notificación.</span></div>
+                <label class="tayu-notifications-switch"><input id="tayuNotifDestinationEnabled" type="checkbox" checked><i></i></label>
+              </div>
+            </div>
+            <div class="tayu-notifications-modal-footer">
+              <button class="btn ghost" id="tayuNotifDestinationCancel" type="button">Cancelar</button>
+              <button class="btn" type="submit">Guardar destinatario</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="tayu-notifications-modal" id="tayuNotifPolicyModal" aria-hidden="true">
+        <div class="tayu-notifications-modal-card wide" role="dialog" aria-modal="true" aria-labelledby="tayuNotifPolicyModalTitle">
+          <div class="tayu-notifications-modal-head">
+            <div><h3 id="tayuNotifPolicyModalTitle">Nueva regla</h3><p class="hint">Configura la regla por pasos. Todo lo que edites aquí pertenece a esta regla.</p></div>
+            <button class="tayu-notifications-close" type="button" data-notif-close="policy" aria-label="Cerrar">×</button>
+          </div>
+          <form id="tayuNotifPolicyForm" class="tayu-notifications-form">
+            <div class="full tayu-notifications-form-section">
+              <h4>1. ¿Qué debe generar la notificación?</h4>
+              <p class="hint">Dale un nombre claro a la regla y elige qué tipo de evento la activa.</p>
+            </div>
+            <div><label>Nombre de la regla</label><input id="tayuNotifPolicyName" required placeholder="Ej: Sensor sin conexión"></div>
+            <div><label>Evento</label><select id="tayuNotifPolicyEvent"><option value="alarm_opened">Cuando se activa una alarma</option><option value="alarm_resolved">Cuando una alarma vuelve a la normalidad</option></select></div>
+            <div class="full"><label>Descripción</label><input id="tayuNotifPolicyDescription" placeholder="Opcional: explica para qué sirve esta regla"></div>
+            <div class="full"><label>Severidades que deben avisar</label><div class="tayu-notifications-checks"><label><input name="tayuNotifSeverity" type="checkbox" value="info" checked> Información</label><label><input name="tayuNotifSeverity" type="checkbox" value="warning" checked> Advertencia</label><label><input name="tayuNotifSeverity" type="checkbox" value="critical" checked> Crítica</label></div></div>
+
+            <div class="full tayu-notifications-form-section">
+              <h4>2. ¿Quién debe recibirla?</h4>
+              <p class="hint">Selecciona uno o más destinatarios activos.</p>
+              <div id="tayuNotifPolicyDestinations" class="tayu-notifications-checks"></div>
+            </div>
+
+            <div class="full tayu-notifications-form-section">
+              <h4>3. ¿Dónde debe aplicar?</h4>
+              <p class="hint">Puedes aplicarla a toda la organización o limitarla a un sitio, dispositivo o alarma específica.</p>
+              <div id="tayuNotifPolicyScopes" class="tayu-notifications-scope-box"></div>
+              <div class="tayu-notifications-actions" style="margin-top:10px">
+                <button class="btn ghost" id="tayuNotifAddScope" type="button">+ Agregar otra condición</button>
+              </div>
+              <div class="tayu-notifications-note">Si agregas dos opciones del mismo tipo, basta que coincida una. Si combinas tipos distintos, deben cumplirse ambas condiciones.</div>
+            </div>
+
+            <div class="full tayu-notifications-form-section">
+              <h4>4. Estado</h4>
+              <div class="tayu-notifications-status-control">
+                <div><b>Regla activa</b><span>Si la desactivas, la configuración se conserva pero no enviará avisos.</span></div>
+                <label class="tayu-notifications-switch"><input id="tayuNotifPolicyEnabled" type="checkbox" checked><i></i></label>
+              </div>
+            </div>
+            <div class="tayu-notifications-modal-footer">
+              <button class="btn ghost" id="tayuNotifPolicyCancel" type="button">Cancelar</button>
+              <button class="btn" type="submit">Guardar regla</button>
+            </div>
+          </form>
         </div>
       </div>
     `;
@@ -392,7 +462,7 @@
     link.id = 'tayuNotificationsNav';
     link.href = '#notifications';
     link.className = 'tayu-notifications-nav';
-    link.innerHTML = '<span class="nav-icon" aria-hidden="true">🔔</span><span class="nav-label">Notificaciones</span>';
+    link.innerHTML = '<span class="nav-icon" aria-hidden="true"><img class="tayu-nav-img icon-color" src="imagenes/icons/notificacion-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/notificacion-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Notificaciones</span>';
 
     const configButton = nav.querySelector('button[data-view="configuracion"]');
     if (configButton) nav.insertBefore(link, configButton);
@@ -503,16 +573,55 @@
   }
 
   function syncDestinationAddressMode() {
-    const groupMode = destinationUsesWhatsappGroup();
+    const channel = document.getElementById('tayuNotifDestinationChannel')?.value || 'whatsapp';
+    const type = document.getElementById('tayuNotifDestinationType')?.value || 'group';
+    const groupMode = channel === 'whatsapp' && type === 'group';
     const groupWrap = document.getElementById('tayuNotifWhatsappGroupWrap');
     const addressWrap = document.getElementById('tayuNotifDestinationAddressWrap');
     const address = document.getElementById('tayuNotifDestinationAddress');
+    const addressLabel = document.getElementById('tayuNotifDestinationAddressLabel');
+    const addressHelp = document.getElementById('tayuNotifDestinationAddressHelp');
+    const nameLabel = document.getElementById('tayuNotifDestinationNameLabel');
+    const nameHelp = document.getElementById('tayuNotifDestinationNameHelp');
 
     groupWrap?.classList.toggle('tayu-notifications-hidden', !groupMode);
     addressWrap?.classList.toggle('tayu-notifications-hidden', groupMode);
 
+    if (nameLabel) nameLabel.textContent = type === 'person' ? 'Nombre del contacto' : type === 'group' ? 'Nombre del grupo' : 'Nombre del destinatario';
+    if (nameHelp) nameHelp.textContent = type === 'person'
+      ? 'Ej.: Carlos - Mantenimiento. Este nombre solo se usa dentro de Tayulabs.'
+      : type === 'group'
+        ? 'Puedes usar el mismo nombre del grupo de WhatsApp.'
+        : 'Usa un nombre que permita reconocer fácilmente este destino.';
+
+    let label = 'Dirección / ID';
+    let placeholder = '';
+    let help = '';
+
+    if (channel === 'whatsapp' && type === 'person') {
+      label = 'Número de WhatsApp';
+      placeholder = 'Ej: 593987654321';
+      help = 'Incluye el código de país, sin espacios. Para Ecuador empieza por 593.';
+    } else if (channel === 'whatsapp') {
+      label = 'ID de WhatsApp';
+      placeholder = 'Ej: 593987654321@c.us';
+      help = 'Uso avanzado. Para grupos usa el selector de grupos.';
+    } else if (channel === 'email') {
+      label = 'Correo electrónico';
+      placeholder = 'Ej: operaciones@empresa.com';
+      help = 'Ingresa el correo que recibirá las notificaciones.';
+    } else if (channel === 'telegram') {
+      label = 'Usuario / Chat ID de Telegram';
+      placeholder = 'Ej: @operaciones o chat ID';
+      help = 'Este canal estará disponible cuando se configure su proveedor.';
+    }
+
+    if (addressLabel) addressLabel.textContent = label;
+    if (addressHelp) addressHelp.textContent = help;
     if (address) {
       address.required = !groupMode;
+      address.placeholder = placeholder;
+      address.inputMode = channel === 'whatsapp' && type === 'person' ? 'tel' : 'text';
     }
 
     if (groupMode) {
@@ -534,6 +643,7 @@
       }
       renderWhatsappGroups(selectedAddress);
       syncDestinationAddressMode();
+      renderDestinations();
       return true;
     } catch (error) {
       state.whatsappGroups = [];
@@ -547,35 +657,50 @@
     }
   }
 
+  function destinationDisplayValue(d) {
+    const channel = String(d.channel || '').toLowerCase();
+    const type = String(d.recipient_type || d.type || '').toLowerCase();
+    const address = String(d.address || d.target || '');
+
+    if (channel === 'whatsapp' && type === 'group') {
+      const group = state.whatsappGroups.find((item) => String(item.id || '') === address);
+      return { main: group?.name || d.name || 'Grupo de WhatsApp', detail: group ? 'Grupo de WhatsApp' : '' };
+    }
+
+    if (channel === 'whatsapp' && type === 'person') {
+      const phone = address.replace(/@c\.us$/i, '').replace(/\D/g, '');
+      return { main: phone ? '+' + phone : address || '—', detail: 'WhatsApp' };
+    }
+
+    return { main: address || '—', detail: '' };
+  }
+
   function renderDestinations() {
     const body = document.getElementById('tayuNotifDestinationsBody');
     if (!body) return;
 
-    body.innerHTML = state.destinations.length ? state.destinations.map((d) => `
-      <tr>
-        <td><b>${esc(d.name)}</b></td>
-        <td>${esc(String(d.channel || '').toUpperCase())}</td>
-        <td>${esc(
-          (d.recipient_type || d.type) === 'group' ? 'Grupo' :
-          (d.recipient_type || d.type) === 'person' ? 'Persona' :
-          (d.recipient_type || d.type) === 'endpoint' ? 'Endpoint' :
-          (d.recipient_type || d.type || '—')
-        )}</td>
-        <td><code>${esc(d.address || d.target || '—')}</code></td>
-        <td><span class="tayu-notifications-chip ${d.enabled ? 'on' : ''}">${d.enabled ? 'Activo' : 'Inactivo'}</span></td>
-        <td>
-          <div class="tayu-notifications-actions">
-            <button class="btn ghost" type="button" data-destination-edit="${esc(d.id)}">Editar</button>
-            <button class="btn ghost" type="button" data-destination-delete="${esc(d.id)}">Eliminar</button>
-          </div>
-        </td>
-      </tr>
-    `).join('') : '<tr><td colspan="6" class="hint">No hay destinatarios configurados.</td></tr>';
+    body.innerHTML = state.destinations.length ? state.destinations.map((d) => {
+      const display = destinationDisplayValue(d);
+      const type = (d.recipient_type || d.type) === 'group' ? 'Grupo' :
+        (d.recipient_type || d.type) === 'person' ? 'Persona' :
+        (d.recipient_type || d.type) === 'endpoint' ? 'Sistema / endpoint' :
+        (d.recipient_type || d.type || '—');
+      return `
+        <tr>
+          <td><b>${esc(d.name)}</b></td>
+          <td>${esc(String(d.channel || '').toUpperCase())}</td>
+          <td>${esc(type)}</td>
+          <td><div class="tayu-notifications-destination-value">${esc(display.main)}${display.detail ? '<small>' + esc(display.detail) + '</small>' : ''}</div></td>
+          <td><span class="tayu-notifications-chip ${d.enabled ? 'on' : ''}">${d.enabled ? 'Activo' : 'Inactivo'}</span></td>
+          <td><div class="tayu-notifications-actions"><button class="btn ghost" type="button" data-destination-edit="${esc(d.id)}">Editar</button><button class="btn ghost" type="button" data-destination-delete="${esc(d.id)}">Eliminar</button></div></td>
+        </tr>
+      `;
+    }).join('') : '<tr><td colspan="6" class="hint">No hay destinatarios configurados.</td></tr>';
 
     const checks = document.getElementById('tayuNotifPolicyDestinations');
     if (checks) {
       checks.innerHTML = state.destinations.filter((d) => d.enabled).map((d) => `
-        <label><input name="tayuNotifPolicyDestination" type="checkbox" value="${esc(d.id)}"> ${esc(d.name)}</label>
+        <label><input name="tayuNotifPolicyDestination" type="checkbox" value="${esc(d.id)}"> ${esc(d.name)} <small class="hint">${esc(String(d.channel || '').toUpperCase())}</small></label>
       `).join('') || '<span class="hint">Primero crea un destinatario activo.</span>';
     }
   }
@@ -663,7 +788,7 @@
     row.className = 'tayu-notifications-scope-row';
     row.innerHTML = `
       <div>
-        <label>Tipo</label>
+        <label>Aplicar por</label>
         <select class="tayu-notif-scope-type">
           ${Object.entries(SCOPE_LABELS).map(([value, label]) =>
             '<option value="' + esc(value) + '">' + esc(label) + '</option>'
@@ -671,7 +796,7 @@
         </select>
       </div>
       <div>
-        <label>Valor</label>
+        <label>Selecciona</label>
         <select class="tayu-notif-scope-value"></select>
       </div>
       <button class="btn ghost tayu-notif-scope-remove" type="button">Quitar</button>
@@ -762,21 +887,20 @@
         ? p.severities.map((value) => SEVERITY_LABELS[value] || value).join(', ')
         : '—';
       const scopes = renderScopeSummary(p.scopes);
+      const destinations = Array.isArray(p.destinations)
+        ? p.destinations.map((d) => d.name || d.address).filter(Boolean)
+        : [];
       return `
         <tr>
-          <td><b>${esc(p.name)}</b><br><small class="hint">${esc(p.description || '')}</small></td>
-          <td>${esc(EVENT_LABELS[p.event_type] || p.event_type || '—')}</td>
-          <td>${esc(severities)}<br><small class="hint">${esc(scopes.join(' · '))}</small></td>
+          <td><b>${esc(p.name)}</b>${p.description ? '<br><small class="hint">' + esc(p.description) + '</small>' : ''}</td>
+          <td><b>${esc(EVENT_LABELS[p.event_type] || p.event_type || '—')}</b><br><small class="hint">${esc(severities)}</small></td>
+          <td>${destinations.length ? destinations.map((name) => '<span class="tayu-notifications-chip">' + esc(name) + '</span>').join(' ') : '<span class="hint">Sin destinatario</span>'}</td>
+          <td><div class="tayu-notifications-scope-summary">${scopes.map((scope) => '<span>' + esc(scope) + '</span>').join('')}</div></td>
           <td><span class="tayu-notifications-chip ${p.enabled ? 'on' : ''}">${p.enabled ? 'Activa' : 'Inactiva'}</span></td>
-          <td>
-            <div class="tayu-notifications-actions">
-              <button class="btn ghost" type="button" data-policy-edit="${esc(p.id)}">Editar</button>
-              <button class="btn ghost" type="button" data-policy-delete="${esc(p.id)}">Eliminar</button>
-            </div>
-          </td>
+          <td><div class="tayu-notifications-actions"><button class="btn ghost" type="button" data-policy-edit="${esc(p.id)}">Editar</button><button class="btn ghost" type="button" data-policy-delete="${esc(p.id)}">Eliminar</button></div></td>
         </tr>
       `;
-    }).join('') : '<tr><td colspan="5" class="hint">No hay reglas configuradas.</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="hint">No hay reglas configuradas.</td></tr>';
   }
 
   function renderChannels() {
@@ -1019,6 +1143,35 @@
     }
   }
 
+  function setModalOpen(id, open) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.toggle('open', Boolean(open));
+    modal.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+
+  function closeDestinationModal() { setModalOpen('tayuNotifDestinationModal', false); }
+  function closePolicyModal() { setModalOpen('tayuNotifPolicyModal', false); }
+
+  function openNewDestination() {
+    resetDestinationForm();
+    const title = document.getElementById('tayuNotifDestinationModalTitle');
+    if (title) title.textContent = 'Nuevo destinatario';
+    setModalOpen('tayuNotifDestinationModal', true);
+    if (destinationUsesWhatsappGroup()) loadWhatsappGroups().catch(() => {});
+    setTimeout(() => document.getElementById('tayuNotifDestinationName')?.focus(), 0);
+  }
+
+  async function openNewPolicy() {
+    resetPolicyForm();
+    await loadScopeOptions();
+    resetPolicyForm();
+    const title = document.getElementById('tayuNotifPolicyModalTitle');
+    if (title) title.textContent = 'Nueva regla';
+    setModalOpen('tayuNotifPolicyModal', true);
+    setTimeout(() => document.getElementById('tayuNotifPolicyName')?.focus(), 0);
+  }
+
   function resetDestinationForm() {
     state.editingDestination = null;
     document.getElementById('tayuNotifDestinationForm')?.reset();
@@ -1032,8 +1185,6 @@
     if (address) address.value = '';
     renderWhatsappGroups('');
     syncDestinationAddressMode();
-    const cancel = document.getElementById('tayuNotifDestinationCancel');
-    if (cancel) cancel.hidden = true;
   }
 
   function resetPolicyForm() {
@@ -1042,9 +1193,6 @@
     document.querySelectorAll('input[name="tayuNotifSeverity"]').forEach((el) => el.checked = true);
     const enabled = document.getElementById('tayuNotifPolicyEnabled');
     if (enabled) enabled.checked = true;
-    const cancel = document.getElementById('tayuNotifPolicyCancel');
-    if (cancel) cancel.hidden = true;
-
     const scopes = document.getElementById('tayuNotifPolicyScopes');
     if (scopes) {
       scopes.innerHTML = '';
@@ -1061,16 +1209,19 @@
     const groupSelect = document.getElementById('tayuNotifWhatsappGroup');
     const addressInput = document.getElementById('tayuNotifDestinationAddress');
     const selectedGroupId = groupMode ? String(groupSelect?.value || '').trim() : '';
-    const address = groupMode ? selectedGroupId : String(addressInput?.value || '').trim();
+    let address = groupMode ? selectedGroupId : String(addressInput?.value || '').trim();
 
-    if (groupMode && !address) {
-      throw new Error('Selecciona un grupo de WhatsApp.');
+    if (groupMode && !address) throw new Error('Selecciona un grupo de WhatsApp.');
+
+    if (channel === 'whatsapp' && recipientType === 'person') {
+      const digits = address.replace(/@c\.us$/i, '').replace(/\D/g, '');
+      if (digits.length < 8) throw new Error('Ingresa un número de WhatsApp válido con código de país.');
+      address = digits + '@c.us';
     }
 
     let name = document.getElementById('tayuNotifDestinationName').value.trim();
-    if (!name && groupMode) {
-      name = groupSelect?.selectedOptions?.[0]?.textContent?.trim() || '';
-    }
+    if (!name && groupMode) name = groupSelect?.selectedOptions?.[0]?.textContent?.trim() || '';
+    if (!name) throw new Error('Escribe un nombre para identificar al destinatario.');
 
     const body = {
       name,
@@ -1082,10 +1233,8 @@
     };
     if (state.editingDestination) body.id = state.editingDestination;
 
-    await request('/notifications/destinations', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
+    await request('/notifications/destinations', { method: 'POST', body: JSON.stringify(body) });
+    closeDestinationModal();
     resetDestinationForm();
     await loadAll();
     setStatus('Destinatario guardado.', 'ok');
@@ -1120,6 +1269,7 @@
       method: 'POST',
       body: JSON.stringify(body),
     });
+    closePolicyModal();
     resetPolicyForm();
     await loadAll();
     setStatus('Regla guardada.', 'ok');
@@ -1129,24 +1279,31 @@
     const d = state.destinations.find((row) => row.id === id);
     if (!d) return;
     state.editingDestination = id;
+    const title = document.getElementById('tayuNotifDestinationModalTitle');
+    if (title) title.textContent = 'Editar destinatario';
     document.getElementById('tayuNotifDestinationName').value = d.name || '';
     document.getElementById('tayuNotifDestinationChannel').value = d.channel || 'whatsapp';
     document.getElementById('tayuNotifDestinationType').value = d.recipient_type || d.type || 'group';
-    document.getElementById('tayuNotifDestinationAddress').value = d.address || d.target || '';
+    let editAddress = d.address || d.target || '';
+    if ((d.channel || '') === 'whatsapp' && (d.recipient_type || d.type || '') === 'person') {
+      editAddress = String(editAddress).replace(/@c\.us$/i, '');
+    }
+    document.getElementById('tayuNotifDestinationAddress').value = editAddress;
     document.getElementById('tayuNotifDestinationEnabled').checked = Boolean(d.enabled);
-    document.getElementById('tayuNotifDestinationCancel').hidden = false;
     renderWhatsappGroups(d.address || d.target || '');
     syncDestinationAddressMode();
+    setModalOpen('tayuNotifDestinationModal', true);
     if ((d.channel || '') === 'whatsapp' && (d.recipient_type || d.type || '') === 'group') {
       loadWhatsappGroups(d.address || d.target || '').catch(() => {});
     }
-    switchTab('destinations');
   }
 
   function editPolicy(id) {
     const p = state.policies.find((row) => row.id === id);
     if (!p) return;
     state.editingPolicy = id;
+    const title = document.getElementById('tayuNotifPolicyModalTitle');
+    if (title) title.textContent = 'Editar regla';
     document.getElementById('tayuNotifPolicyName').value = p.name || '';
     document.getElementById('tayuNotifPolicyDescription').value = p.description || '';
     document.getElementById('tayuNotifPolicyEvent').value = p.event_type || 'alarm_opened';
@@ -1177,8 +1334,7 @@
       scopes.forEach((scope) => addScopeRow(scope));
     }
 
-    document.getElementById('tayuNotifPolicyCancel').hidden = false;
-    switchTab('policies');
+    setModalOpen('tayuNotifPolicyModal', true);
   }
 
   async function removeDestination(id) {
@@ -1216,8 +1372,13 @@
     });
 
     document.getElementById('tayuNotificationsRefresh')?.addEventListener('click', () => loadAll().catch(showError));
-    document.getElementById('tayuNotifDestinationCancel')?.addEventListener('click', resetDestinationForm);
-    document.getElementById('tayuNotifPolicyCancel')?.addEventListener('click', resetPolicyForm);
+    document.getElementById('tayuNotifNewDestination')?.addEventListener('click', openNewDestination);
+    document.getElementById('tayuNotifNewPolicy')?.addEventListener('click', () => openNewPolicy().catch(showError));
+    document.getElementById('tayuNotifDestinationCancel')?.addEventListener('click', closeDestinationModal);
+    document.getElementById('tayuNotifPolicyCancel')?.addEventListener('click', closePolicyModal);
+    document.querySelectorAll('[data-notif-close="destination"]').forEach((el) => el.addEventListener('click', closeDestinationModal));
+    document.querySelectorAll('[data-notif-close="policy"]').forEach((el) => el.addEventListener('click', closePolicyModal));
+
     document.getElementById('tayuNotifDestinationChannel')?.addEventListener('change', () => {
       syncDestinationAddressMode();
       if (destinationUsesWhatsappGroup()) loadWhatsappGroups().catch(() => {});
@@ -1229,17 +1390,29 @@
     document.getElementById('tayuNotifWhatsappGroup')?.addEventListener('change', (event) => {
       const address = document.getElementById('tayuNotifDestinationAddress');
       if (address) address.value = event.target.value || '';
-
       const name = document.getElementById('tayuNotifDestinationName');
-      if (name && !name.value.trim()) {
-        name.value = event.target.selectedOptions?.[0]?.textContent?.trim() || '';
-      }
+      if (name && !name.value.trim()) name.value = event.target.selectedOptions?.[0]?.textContent?.trim() || '';
     });
+
     document.getElementById('tayuNotifAddScope')?.addEventListener('click', () => addScopeRow({ scope_type: 'organization' }));
     document.getElementById('tayuNotifDestinationForm')?.addEventListener('submit', (e) => saveDestination(e).catch(showError));
     document.getElementById('tayuNotifPolicyForm')?.addEventListener('submit', (e) => savePolicy(e).catch(showError));
     document.getElementById('tayuNotifHistoryChannel')?.addEventListener('change', () => loadHistory().catch(showError));
     document.getElementById('tayuNotifHistoryStatus')?.addEventListener('change', () => loadHistory().catch(showError));
+
+    ['tayuNotifDestinationModal', 'tayuNotifPolicyModal'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('click', (event) => {
+        if (event.target.id !== id) return;
+        if (id === 'tayuNotifDestinationModal') closeDestinationModal();
+        else closePolicyModal();
+      });
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      closeDestinationModal();
+      closePolicyModal();
+    });
 
     document.getElementById('notifications')?.addEventListener('click', (event) => {
       const button = event.target.closest('button');
@@ -1248,10 +1421,7 @@
       else if (button.dataset.destinationDelete) removeDestination(button.dataset.destinationDelete).catch(showError);
       else if (button.dataset.policyEdit) editPolicy(button.dataset.policyEdit);
       else if (button.dataset.policyDelete) removePolicy(button.dataset.policyDelete).catch(showError);
-      else if (button.dataset.channel) toggleChannel(
-        button.dataset.channel,
-        button.dataset.channelEnabled === 'true'
-      ).catch(showError);
+      else if (button.dataset.channel) toggleChannel(button.dataset.channel, button.dataset.channelEnabled === 'true').catch(showError);
     });
   }
 
@@ -1264,6 +1434,8 @@
     bind();
     resetDestinationForm();
     resetPolicyForm();
+    closeDestinationModal();
+    closePolicyModal();
   }
 
   window.__tayuNotificationsReload = () => loadAll();
