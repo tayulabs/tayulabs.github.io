@@ -16,7 +16,6 @@
     dispositivos: { button: '.nav button[data-view="dispositivos"]', view: '#dispositivos' },
     tramas: { button: '.nav button[data-view="tramas"]', view: '#tramas' },
     modbus: { button: '.nav button[data-view="modbus"]', view: '#modbus' },
-    notifications: { button: '.nav button[data-view="notifications"]', view: '#notifications' },
     configuracion: { button: '.nav button[data-view="configuracion"]', view: '#configuracion' },
   };
 
@@ -80,12 +79,6 @@
   function isModuleEnabled(key) {
     const normalized = String(key || '').trim().toLowerCase();
     if (!normalized) return false;
-
-    if (normalized === 'notifications') {
-      const role = String(window.__tayuClientAccess?.role || '').trim().toLowerCase();
-      return role === 'owner' || role === 'admin';
-    }
-
     if (!hasModulePolicy) return true;
 
     if (moduleMap.has(normalized)) {
@@ -255,19 +248,6 @@
     const role = String(access?.role || '').trim().toLowerCase();
 
     window.__tayuClientAccess = access || null;
-
-    const organizationId = String(access?.organization_id || '').trim();
-    if (organizationId) {
-      if (typeof window.__tayuSetActiveOrganization === 'function') {
-        window.__tayuSetActiveOrganization(organizationId, { reload: false });
-      } else {
-        window.__tayuActiveOrganizationId = organizationId;
-        try {
-          window.sessionStorage?.setItem('tayu.activeOrganizationId', organizationId);
-        } catch (_) {}
-      }
-    }
-
     document.documentElement.dataset.tayuRole = role;
     if (document.body) document.body.dataset.tayuRole = role;
 
@@ -300,32 +280,12 @@
       console.warn('TAYULABS access: token refresh skipped', error);
     }
 
-    const requestMe = (useOrganization = true) => fetch(`${API_URL}/me`, {
+    const response = await fetch(`${API_URL}/me`, {
       cache: 'no-store',
       headers: {
-        Authorization: `Bearer ${keycloak.token}`,
-        ...(useOrganization && typeof window.__tayuOrganizationHeaders === 'function'
-          ? window.__tayuOrganizationHeaders()
-          : {})
+        Authorization: `Bearer ${keycloak.token}`
       }
     });
-
-    let response = await requestMe(true);
-
-    if (response.status === 403 && Object.keys(
-      typeof window.__tayuOrganizationHeaders === 'function'
-        ? window.__tayuOrganizationHeaders()
-        : {}
-    ).length) {
-      if (typeof window.__tayuSetActiveOrganization === 'function') {
-        window.__tayuSetActiveOrganization(null, { reload: false });
-      } else {
-        try {
-          window.sessionStorage?.removeItem('tayu.activeOrganizationId');
-        } catch (_) {}
-      }
-      response = await requestMe(false);
-    }
 
     if (!response.ok) {
       throw new Error(`GET /me failed (${response.status})`);
