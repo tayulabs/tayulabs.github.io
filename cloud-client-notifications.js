@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.__tayuNotificationsVersion = '20260918-notifications8';
+  window.__tayuNotificationsVersion = '20260918-notifications9';
 
   const API_URL = 'https://api.tayulabs.com';
   const ALLOWED_ROLES = new Set(['owner', 'admin']);
@@ -34,6 +34,7 @@
     destinations: [],
     policies: [],
     deliveries: [],
+    whatsappGroups: [],
     summary: {},
     scopeOptions: {
       sectors: [],
@@ -234,6 +235,8 @@
       .tayu-notifications-checks{display:flex;gap:14px;flex-wrap:wrap}
       .tayu-notifications-checks label{margin:0;display:flex;align-items:center;gap:6px}
       .tayu-notifications-checks input{width:auto}
+      .tayu-notifications-hidden{display:none!important}
+      .tayu-notifications-note{margin-top:6px;color:var(--muted);font-size:12px;font-weight:700}
       .tayu-notifications-scope-box{border:1px solid var(--border);border-radius:16px;background:var(--panel2);padding:12px}
       .tayu-notifications-scope-row{display:grid;grid-template-columns:190px minmax(0,1fr) auto;gap:9px;align-items:end;margin:8px 0}
       .tayu-notifications-scope-summary{display:flex;gap:6px;flex-wrap:wrap}
@@ -281,12 +284,22 @@
 
         <div class="tayu-notifications-panel active" data-notif-panel="destinations">
           <h3>Destinatarios</h3>
-          <p class="hint">Para WhatsApp puedes registrar un grupo con su ID terminado en <code>@g.us</code>.</p>
+          <p class="hint">Para WhatsApp puedes seleccionar directamente uno de los grupos detectados por el servicio.</p>
           <form id="tayuNotifDestinationForm" class="tayu-notifications-form">
             <div><label>Nombre</label><input id="tayuNotifDestinationName" required placeholder="Ej: Operaciones"></div>
             <div><label>Canal</label><select id="tayuNotifDestinationChannel"><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="telegram">Telegram</option></select></div>
             <div><label>Tipo</label><select id="tayuNotifDestinationType"><option value="group">Grupo</option><option value="person">Persona</option><option value="endpoint">Endpoint</option></select></div>
-            <div><label>Dirección / ID</label><input id="tayuNotifDestinationAddress" required placeholder="120...@g.us"></div>
+            <div id="tayuNotifWhatsappGroupWrap">
+              <label>Grupo de WhatsApp</label>
+              <select id="tayuNotifWhatsappGroup">
+                <option value="">Cargando grupos…</option>
+              </select>
+              <div id="tayuNotifWhatsappGroupNote" class="tayu-notifications-note"></div>
+            </div>
+            <div id="tayuNotifDestinationAddressWrap" class="full tayu-notifications-hidden">
+              <label>Dirección / ID</label>
+              <input id="tayuNotifDestinationAddress" placeholder="120...@g.us">
+            </div>
             <div class="full tayu-notifications-actions">
               <label style="margin:0;display:flex;align-items:center;gap:7px"><input id="tayuNotifDestinationEnabled" type="checkbox" checked style="width:auto"> Activo</label>
               <button class="btn" type="submit">Guardar</button>
@@ -421,6 +434,9 @@
       el.classList.toggle('active', el.dataset.notifPanel === tab);
     });
     if (tab === 'history') loadHistory().catch(showError);
+    if (tab === 'destinations') {
+      loadWhatsappGroups().catch(() => {});
+    }
     if (tab === 'channels') {
       setStatus('Cargando canales…');
       loadChannels().then((ok) => {
@@ -451,6 +467,84 @@
     );
     document.getElementById('tayuNotifQueuedCount').textContent = String(queued);
     document.getElementById('tayuNotifFailedCount').textContent = String(failed);
+  }
+
+  function destinationUsesWhatsappGroup() {
+    return (
+      document.getElementById('tayuNotifDestinationChannel')?.value === 'whatsapp' &&
+      document.getElementById('tayuNotifDestinationType')?.value === 'group'
+    );
+  }
+
+  function renderWhatsappGroups(selectedAddress = '') {
+    const select = document.getElementById('tayuNotifWhatsappGroup');
+    const note = document.getElementById('tayuNotifWhatsappGroupNote');
+    if (!select) return;
+
+    const groups = Array.isArray(state.whatsappGroups) ? state.whatsappGroups : [];
+    const current = String(selectedAddress || document.getElementById('tayuNotifDestinationAddress')?.value || '');
+
+    if (!groups.length) {
+      select.innerHTML = '<option value="">No hay grupos disponibles</option>';
+      if (note) note.textContent = 'Puedes usar el campo Dirección / ID como respaldo.';
+      return;
+    }
+
+    select.innerHTML =
+      '<option value="">Selecciona un grupo</option>' +
+      groups.map((group) => {
+        const id = String(group.id || '').trim();
+        const name = String(group.name || id).trim();
+        return '<option value="' + esc(id) + '"' + (id === current ? ' selected' : '') + '>' +
+          esc(name) + '</option>';
+      }).join('');
+
+    if (note) note.textContent = groups.length + ' grupo(s) detectado(s).';
+  }
+
+  function syncDestinationAddressMode() {
+    const groupMode = destinationUsesWhatsappGroup();
+    const groupWrap = document.getElementById('tayuNotifWhatsappGroupWrap');
+    const addressWrap = document.getElementById('tayuNotifDestinationAddressWrap');
+    const address = document.getElementById('tayuNotifDestinationAddress');
+
+    groupWrap?.classList.toggle('tayu-notifications-hidden', !groupMode);
+    addressWrap?.classList.toggle('tayu-notifications-hidden', groupMode);
+
+    if (address) {
+      address.required = !groupMode;
+    }
+
+    if (groupMode) {
+      const selected = document.getElementById('tayuNotifWhatsappGroup')?.value || '';
+      if (selected && address) address.value = selected;
+    }
+  }
+
+  async function loadWhatsappGroups(selectedAddress = '') {
+    try {
+      const data = await requestWithRetry('/notifications/whatsapp-groups');
+      state.whatsappGroups = Array.isArray(data?.groups) ? data.groups : [];
+      window.__tayuNotificationsRaw = {
+        ...(window.__tayuNotificationsRaw || {}),
+        whatsappGroups: data,
+      };
+      if (window.__tayuNotificationsErrors) {
+        delete window.__tayuNotificationsErrors.whatsappGroups;
+      }
+      renderWhatsappGroups(selectedAddress);
+      syncDestinationAddressMode();
+      return true;
+    } catch (error) {
+      state.whatsappGroups = [];
+      window.__tayuNotificationsErrors = {
+        ...(window.__tayuNotificationsErrors || {}),
+        whatsappGroups: error?.message || String(error),
+      };
+      renderWhatsappGroups(selectedAddress);
+      syncDestinationAddressMode();
+      return false;
+    }
   }
 
   function renderDestinations() {
@@ -888,6 +982,10 @@
     renderDestinations();
     renderPolicies();
 
+    if (state.tab === 'destinations') {
+      loadWhatsappGroups().catch(() => {});
+    }
+
     if (state.tab === 'policies') {
       const scopesOk = await loadScopeOptions();
       if (!scopesOk) errors.scopeOptions = window.__tayuNotificationsErrors?.scopeOptions || 'Failed to fetch';
@@ -930,6 +1028,10 @@
     if (channel) channel.value = 'whatsapp';
     const type = document.getElementById('tayuNotifDestinationType');
     if (type) type.value = 'group';
+    const address = document.getElementById('tayuNotifDestinationAddress');
+    if (address) address.value = '';
+    renderWhatsappGroups('');
+    syncDestinationAddressMode();
     const cancel = document.getElementById('tayuNotifDestinationCancel');
     if (cancel) cancel.hidden = true;
   }
@@ -952,13 +1054,31 @@
 
   async function saveDestination(event) {
     event.preventDefault();
+
+    const channel = document.getElementById('tayuNotifDestinationChannel').value;
+    const recipientType = document.getElementById('tayuNotifDestinationType').value;
+    const groupMode = channel === 'whatsapp' && recipientType === 'group';
+    const groupSelect = document.getElementById('tayuNotifWhatsappGroup');
+    const addressInput = document.getElementById('tayuNotifDestinationAddress');
+    const selectedGroupId = groupMode ? String(groupSelect?.value || '').trim() : '';
+    const address = groupMode ? selectedGroupId : String(addressInput?.value || '').trim();
+
+    if (groupMode && !address) {
+      throw new Error('Selecciona un grupo de WhatsApp.');
+    }
+
+    let name = document.getElementById('tayuNotifDestinationName').value.trim();
+    if (!name && groupMode) {
+      name = groupSelect?.selectedOptions?.[0]?.textContent?.trim() || '';
+    }
+
     const body = {
-      name: document.getElementById('tayuNotifDestinationName').value.trim(),
-      channel: document.getElementById('tayuNotifDestinationChannel').value,
-      recipient_type: document.getElementById('tayuNotifDestinationType').value,
-      address: document.getElementById('tayuNotifDestinationAddress').value.trim(),
+      name,
+      channel,
+      recipient_type: recipientType,
+      address,
       enabled: document.getElementById('tayuNotifDestinationEnabled').checked,
-      metadata: {},
+      metadata: groupMode ? { source: 'whatsapp-service' } : {},
     };
     if (state.editingDestination) body.id = state.editingDestination;
 
@@ -1015,6 +1135,11 @@
     document.getElementById('tayuNotifDestinationAddress').value = d.address || d.target || '';
     document.getElementById('tayuNotifDestinationEnabled').checked = Boolean(d.enabled);
     document.getElementById('tayuNotifDestinationCancel').hidden = false;
+    renderWhatsappGroups(d.address || d.target || '');
+    syncDestinationAddressMode();
+    if ((d.channel || '') === 'whatsapp' && (d.recipient_type || d.type || '') === 'group') {
+      loadWhatsappGroups(d.address || d.target || '').catch(() => {});
+    }
     switchTab('destinations');
   }
 
@@ -1093,6 +1218,23 @@
     document.getElementById('tayuNotificationsRefresh')?.addEventListener('click', () => loadAll().catch(showError));
     document.getElementById('tayuNotifDestinationCancel')?.addEventListener('click', resetDestinationForm);
     document.getElementById('tayuNotifPolicyCancel')?.addEventListener('click', resetPolicyForm);
+    document.getElementById('tayuNotifDestinationChannel')?.addEventListener('change', () => {
+      syncDestinationAddressMode();
+      if (destinationUsesWhatsappGroup()) loadWhatsappGroups().catch(() => {});
+    });
+    document.getElementById('tayuNotifDestinationType')?.addEventListener('change', () => {
+      syncDestinationAddressMode();
+      if (destinationUsesWhatsappGroup()) loadWhatsappGroups().catch(() => {});
+    });
+    document.getElementById('tayuNotifWhatsappGroup')?.addEventListener('change', (event) => {
+      const address = document.getElementById('tayuNotifDestinationAddress');
+      if (address) address.value = event.target.value || '';
+
+      const name = document.getElementById('tayuNotifDestinationName');
+      if (name && !name.value.trim()) {
+        name.value = event.target.selectedOptions?.[0]?.textContent?.trim() || '';
+      }
+    });
     document.getElementById('tayuNotifAddScope')?.addEventListener('click', () => addScopeRow({ scope_type: 'organization' }));
     document.getElementById('tayuNotifDestinationForm')?.addEventListener('submit', (e) => saveDestination(e).catch(showError));
     document.getElementById('tayuNotifPolicyForm')?.addEventListener('submit', (e) => savePolicy(e).catch(showError));
