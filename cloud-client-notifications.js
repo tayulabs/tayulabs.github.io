@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.__tayuNotificationsVersion = '20260918-notifications5';
+  window.__tayuNotificationsVersion = '20260918-notifications6';
 
   const API_URL = 'https://api.tayulabs.com';
   const ALLOWED_ROLES = new Set(['owner', 'admin']);
@@ -697,37 +697,53 @@
     if (!allowed()) return;
     setStatus('Actualizando…');
 
-    const results = await Promise.all([
-      request('/notifications/summary'),
-      request('/notifications/channels'),
-      request('/notifications/destinations'),
-      request('/notifications/policies'),
-      request('/notifications/scope-options'),
-    ]);
-
-    state.summary = summaryObject(results[0]);
-    state.channels = list(results[1], 'channels');
-    state.destinations = list(results[2], 'destinations');
-    state.policies = list(results[3], 'policies');
-
-    const rawScopeOptions = unwrapObject(results[4]) || {};
-    state.scopeOptions = rawScopeOptions.scope_options || rawScopeOptions.options || rawScopeOptions || {
-      sectors: [],
-      sites: [],
-      resources: [],
-      device_types: [],
-      devices: [],
-      alarm_rules: [],
+    const endpoints = {
+      summary: '/notifications/summary',
+      channels: '/notifications/channels',
+      destinations: '/notifications/destinations',
+      policies: '/notifications/policies',
+      scopeOptions: '/notifications/scope-options',
     };
 
-    window.__tayuNotificationsRaw = {
-      summary: results[0],
-      channels: results[1],
-      destinations: results[2],
-      policies: results[3],
-      scopeOptions: results[4],
-    };
+    const entries = Object.entries(endpoints);
+    const settled = await Promise.allSettled(
+      entries.map(([, path]) => request(path))
+    );
 
+    const raw = {};
+    const errors = {};
+
+    settled.forEach((result, index) => {
+      const key = entries[index][0];
+
+      if (result.status === 'fulfilled') {
+        raw[key] = result.value;
+      } else {
+        raw[key] = null;
+        errors[key] = result.reason?.message || String(result.reason || 'Error');
+      }
+    });
+
+    state.summary = summaryObject(raw.summary);
+    state.channels = list(raw.channels, 'channels');
+    state.destinations = list(raw.destinations, 'destinations');
+    state.policies = list(raw.policies, 'policies');
+
+    const rawScopeOptions = unwrapObject(raw.scopeOptions) || {};
+    state.scopeOptions =
+      rawScopeOptions.scope_options ||
+      rawScopeOptions.options ||
+      rawScopeOptions || {
+        sectors: [],
+        sites: [],
+        resources: [],
+        device_types: [],
+        devices: [],
+        alarm_rules: [],
+      };
+
+    window.__tayuNotificationsRaw = raw;
+    window.__tayuNotificationsErrors = errors;
     window.__tayuNotificationsState = {
       channels: state.channels,
       destinations: state.destinations,
@@ -742,14 +758,33 @@
     renderChannels();
     renderDestinations();
     renderPolicies();
-    if (state.tab === 'history') await loadHistory();
 
-    setStatus(
-      'Actualizado · ' +
-      state.destinations.length + ' destinatario(s) · ' +
-      state.policies.length + ' regla(s).',
-      'ok'
-    );
+    if (state.tab === 'history') {
+      try {
+        await loadHistory();
+      } catch (error) {
+        errors.history = error?.message || String(error);
+        window.__tayuNotificationsErrors = errors;
+      }
+    }
+
+    const failedKeys = Object.keys(errors);
+
+    if (failedKeys.length) {
+      setStatus(
+        'Carga parcial. Error en: ' +
+        failedKeys.join(', ') +
+        '. Revisa __tayuNotificationsErrors.',
+        'error'
+      );
+    } else {
+      setStatus(
+        'Actualizado · ' +
+        state.destinations.length + ' destinatario(s) · ' +
+        state.policies.length + ' regla(s).',
+        'ok'
+      );
+    }
   }
 
   function resetDestinationForm() {
@@ -954,6 +989,9 @@
     resetDestinationForm();
     resetPolicyForm();
   }
+
+  window.__tayuNotificationsReload = () => loadAll();
+  window.__tayuNotificationsOpen = () => openView();
 
   function boot() {
     if (window.__tayuClientAccess) {
