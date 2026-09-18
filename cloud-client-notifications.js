@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.__tayuNotificationsVersion = '20260918-notifications10';
+  window.__tayuNotificationsVersion = '20260918-notifications11';
 
   const API_URL = 'https://api.tayulabs.com';
   const ALLOWED_ROLES = new Set(['owner', 'admin']);
@@ -198,6 +198,32 @@
         font-weight:800;text-align:left;cursor:pointer;text-decoration:none;font-family:inherit;font-size:inherit
       }
       .nav .tayu-notifications-nav:hover,.nav .tayu-notifications-nav.active{background:rgba(85,198,43,.12);color:var(--text)}
+
+      /* Icono Notificaciones: contraste correcto en modo claro/oscuro */
+      .tayu-notifications-nav .nav-icon .icon-color{
+        opacity:1!important;
+        visibility:visible!important;
+      }
+      .tayu-notifications-nav .nav-icon .icon-white{
+        opacity:0!important;
+        visibility:hidden!important;
+      }
+      body.dark .tayu-notifications-nav .nav-icon .icon-color{
+        opacity:0!important;
+        visibility:hidden!important;
+      }
+      body.dark .tayu-notifications-nav .nav-icon .icon-white{
+        opacity:1!important;
+        visibility:visible!important;
+        filter:brightness(0) invert(1);
+      }
+      body.dark .tayu-notifications-nav.active .nav-icon .icon-white,
+      body.dark .tayu-notifications-nav:hover .nav-icon .icon-white{
+        opacity:1!important;
+        visibility:visible!important;
+        filter:brightness(0) invert(1);
+      }
+
       body.sidebar-collapsed .tayu-notifications-nav{justify-content:center;padding:13px 8px}
       body.sidebar-collapsed .tayu-notifications-nav .nav-label{display:none}
       @media(max-width:960px){body.sidebar-collapsed .tayu-notifications-nav{justify-content:flex-start;padding:13px 14px}body.sidebar-collapsed .tayu-notifications-nav .nav-label{display:inline}}
