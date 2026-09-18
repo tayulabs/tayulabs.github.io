@@ -3316,7 +3316,13 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     });
 
     const activeView = document.querySelector('.view.active');
-    if (activeView && activeView.id !== 'dashboard' && !allowed.has(activeView.id)) {
+    const systemViews = new Set(['notifications']);
+    if (
+      activeView &&
+      activeView.id !== 'dashboard' &&
+      !systemViews.has(activeView.id) &&
+      !allowed.has(activeView.id)
+    ) {
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
       document.getElementById('dashboard')?.classList.add('active');
