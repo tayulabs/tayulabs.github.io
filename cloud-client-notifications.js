@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.__tayuNotificationsVersion = '20260918-notifications7';
+  window.__tayuNotificationsVersion = '20260918-notifications8';
 
   const API_URL = 'https://api.tayulabs.com';
   const ALLOWED_ROLES = new Set(['owner', 'admin']);
@@ -223,6 +223,13 @@
       .tayu-notifications-channel{border:1px solid var(--border);border-radius:18px;background:var(--panel2);padding:16px}
       .tayu-notifications-channel-head{display:flex;justify-content:space-between;gap:10px;align-items:center}
       .tayu-notifications-table .btn{padding:8px 10px;border-radius:10px;font-size:12px}
+      #notifications .tayu-notifications-table{table-layout:fixed;min-width:0}
+      #notifications .tayu-notifications-table th,
+      #notifications .tayu-notifications-table td{white-space:normal;vertical-align:top;word-break:break-word}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(1){width:32%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(2){width:18%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(3){width:34%}
+      #notifications [data-notif-panel="policies"] .tayu-notifications-table th:nth-child(4){width:16%}
       .tayu-notifications-checks{display:flex;gap:14px;flex-wrap:wrap}
       .tayu-notifications-checks label{margin:0;display:flex;align-items:center;gap:6px}
       .tayu-notifications-checks input{width:auto}
@@ -413,6 +420,13 @@
       el.classList.toggle('active', el.dataset.notifPanel === tab);
     });
     if (tab === 'history') loadHistory().catch(showError);
+    if (tab === 'channels') {
+      setStatus('Cargando canales…');
+      loadChannels().then((ok) => {
+        if (ok) setStatus('Canales actualizados.', 'ok');
+        else setStatus('No se pudieron cargar los canales. Reintenta con Actualizar.', 'error');
+      }).catch(showError);
+    }
     if (tab === 'policies') {
       loadScopeOptions().then((ok) => {
         if (!ok) {
@@ -724,6 +738,36 @@
     renderHistory();
   }
 
+  async function loadChannels() {
+    try {
+      const data = await requestWithRetry('/notifications/channels');
+      state.channels = list(data, 'channels');
+
+      window.__tayuNotificationsRaw = {
+        ...(window.__tayuNotificationsRaw || {}),
+        channels: data,
+      };
+
+      window.__tayuNotificationsState = {
+        ...(window.__tayuNotificationsState || {}),
+        channels: state.channels,
+      };
+
+      if (window.__tayuNotificationsErrors) {
+        delete window.__tayuNotificationsErrors.channels;
+      }
+
+      renderChannels();
+      return true;
+    } catch (error) {
+      window.__tayuNotificationsErrors = {
+        ...(window.__tayuNotificationsErrors || {}),
+        channels: error?.message || String(error),
+      };
+      return false;
+    }
+  }
+
   async function loadScopeOptions() {
     try {
       const data = await requestWithRetry('/notifications/scope-options');
@@ -754,6 +798,27 @@
         delete window.__tayuNotificationsErrors.scopeOptions;
       }
 
+      renderPolicies();
+
+      // Las filas de alcance pueden haberse creado antes de que llegaran
+      // las opciones. Las reconstruimos conservando la selección actual.
+      const host = document.getElementById('tayuNotifPolicyScopes');
+      if (host) {
+        let currentScopes = [];
+        try {
+          currentScopes = collectScopes();
+        } catch (_) {
+          currentScopes = [];
+        }
+
+        if (!currentScopes.length) {
+          currentScopes = [{ scope_type: 'organization', scope_ref: null, scope_value: null }];
+        }
+
+        host.innerHTML = '';
+        currentScopes.forEach((scope) => addScopeRow(scope));
+      }
+
       return true;
     } catch (error) {
       window.__tayuNotificationsErrors = {
@@ -770,7 +835,6 @@
 
     const endpoints = [
       ['summary', '/notifications/summary'],
-      ['channels', '/notifications/channels'],
       ['destinations', '/notifications/destinations'],
       ['policies', '/notifications/policies'],
     ];
@@ -791,11 +855,9 @@
 
     state.summary = summaryObject(raw.summary);
 
-    const loadedChannels = list(raw.channels, 'channels');
     const loadedDestinations = list(raw.destinations, 'destinations');
     const loadedPolicies = list(raw.policies, 'policies');
 
-    if (raw.channels !== null) state.channels = loadedChannels;
     if (raw.destinations !== null) state.destinations = loadedDestinations;
     if (raw.policies !== null) state.policies = loadedPolicies;
 
