@@ -62,10 +62,67 @@
     return ALLOWED_ROLES.has(role());
   }
 
+  function unwrapObject(data) {
+    let current = data;
+    const seen = new Set();
+
+    for (let i = 0; i < 4; i += 1) {
+      if (!current || typeof current !== 'object' || Array.isArray(current) || seen.has(current)) break;
+      seen.add(current);
+
+      if (current.data && typeof current.data === 'object' && !Array.isArray(current.data)) {
+        current = current.data;
+        continue;
+      }
+
+      break;
+    }
+
+    return current;
+  }
+
   function list(data, key) {
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.[key])) return data[key];
+    const candidates = [
+      data,
+      data?.[key],
+      data?.data,
+      data?.data?.[key],
+      data?.rows,
+      data?.items,
+      data?.results,
+      data?.data?.rows,
+      data?.data?.items,
+      data?.data?.results,
+    ];
+
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) return candidate;
+    }
+
+    const unwrapped = unwrapObject(data);
+    if (Array.isArray(unwrapped?.[key])) return unwrapped[key];
+    if (Array.isArray(unwrapped?.rows)) return unwrapped.rows;
+    if (Array.isArray(unwrapped?.items)) return unwrapped.items;
+    if (Array.isArray(unwrapped?.results)) return unwrapped.results;
+
     return [];
+  }
+
+  function summaryObject(data) {
+    const candidates = [
+      data?.summary,
+      data?.data?.summary,
+      data?.data,
+      data,
+    ];
+
+    for (const candidate of candidates) {
+      if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+        return candidate;
+      }
+    }
+
+    return {};
   }
 
   async function request(path, options = {}) {
@@ -646,11 +703,13 @@
       request('/notifications/scope-options'),
     ]);
 
-    state.summary = results[0] || {};
+    state.summary = summaryObject(results[0]);
     state.channels = list(results[1], 'channels');
     state.destinations = list(results[2], 'destinations');
     state.policies = list(results[3], 'policies');
-    state.scopeOptions = results[4] || {
+
+    const rawScopeOptions = unwrapObject(results[4]) || {};
+    state.scopeOptions = rawScopeOptions.scope_options || rawScopeOptions.options || rawScopeOptions || {
       sectors: [],
       sites: [],
       resources: [],
@@ -658,6 +717,23 @@
       devices: [],
       alarm_rules: [],
     };
+
+    window.__tayuNotificationsRaw = {
+      summary: results[0],
+      channels: results[1],
+      destinations: results[2],
+      policies: results[3],
+      scopeOptions: results[4],
+    };
+
+    window.__tayuNotificationsState = {
+      channels: state.channels,
+      destinations: state.destinations,
+      policies: state.policies,
+      scopeOptions: state.scopeOptions,
+      summary: state.summary,
+    };
+
     state.loaded = true;
 
     renderSummary();
@@ -666,7 +742,12 @@
     renderPolicies();
     if (state.tab === 'history') await loadHistory();
 
-    setStatus('Actualizado.', 'ok');
+    setStatus(
+      'Actualizado · ' +
+      state.destinations.length + ' destinatario(s) · ' +
+      state.policies.length + ' regla(s).',
+      'ok'
+    );
   }
 
   function resetDestinationForm() {
