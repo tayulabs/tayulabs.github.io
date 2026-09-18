@@ -61,9 +61,6 @@
       ...options,
       headers: {
         Authorization: `Bearer ${kc.token}`,
-        ...(typeof window.__tayuOrganizationHeaders === 'function'
-          ? window.__tayuOrganizationHeaders()
-          : {}),
         ...(options.headers || {}),
       },
       cache: 'no-store',
