@@ -19,7 +19,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260918-notifications1';
+const VERSION='20260916-lora-widget1';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -175,7 +175,7 @@ if(typeof refreshLiveTelemetry==='function')window.refreshLiveTelemetry=refreshL
   const addons=
     '<scr'+'ipt src="cloud-client-branding.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-access.js?v='+VERSION+'"></scr'+'ipt>\n'+
-    '<scr'+'ipt src="cloud-client-topbar-user.js?v='+VERSION+'"></scr'+'ipt>\n'+    '<scr'+'ipt src="cloud-client-notifications.js?v='+VERSION+'"></scr'+'ipt>\n'+
+    '<scr'+'ipt src="cloud-client-topbar-user.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-gps-generic.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-flotas-branding.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-sensor-export.js?v='+VERSION+'"></scr'+'ipt>\n'+
