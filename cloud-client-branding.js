@@ -3,8 +3,8 @@
 
   const API_URL = 'https://api.tayulabs.com';
   const DEFAULT_COLOR = '#55C62B';
-  const DEFAULT_LOGO_LIGHT = 'imagenes/LOGO-COLOR.jpg';
-  const DEFAULT_LOGO_DARK = 'imagenes/LOGO-WHITE.jpg';
+  const DEFAULT_LOGO_LIGHT = 'imagenes/AmeliaCloud-color.png';
+  const DEFAULT_LOGO_DARK = 'imagenes/AmeliaCloud-white.png';
 
   let logoObjectUrl = null;
   let logoDarkObjectUrl = null;
