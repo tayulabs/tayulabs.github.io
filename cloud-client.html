@@ -15,11 +15,11 @@
 </style>
 </head>
 <body>
-<div class="boot"><div class="inner"><img class="logo" src="imagenes/LOGO-COLOR.jpg" alt="TAYULABS"><div id="spinner" class="spinner"></div><div id="status" class="text">Verificando acceso seguro…</div></div></div>
+<div class="boot"><div class="inner"><img class="logo" src="imagenes/AmeliaCloud-color.png" alt="Amelia Cloud"><div id="spinner" class="spinner"></div><div id="status" class="text">Verificando acceso seguro…</div></div></div>
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20260916-lora-widget1';
+const VERSION='20260918-amelia-brand1';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
