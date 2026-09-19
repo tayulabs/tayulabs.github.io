@@ -3,8 +3,8 @@
 
   const API_URL = 'https://api.tayulabs.com';
   const DEFAULT_COLOR = '#55C62B';
-  const DEFAULT_LOGO_LIGHT = 'imagenes/LOGO-COLOR.jpg';
-  const DEFAULT_LOGO_DARK = 'imagenes/LOGO-WHITE.jpg';
+  const DEFAULT_LOGO_LIGHT = 'imagenes/AmeliaCloud-color.png';
+  const DEFAULT_LOGO_DARK = 'imagenes/AmeliaCloud-white.png';
 
   const state = {
     organizationId: null,
@@ -354,7 +354,7 @@
 
     const meta = document.getElementById('saBrandFileMeta');
     if (meta) {
-      meta.textContent = 'Se restaurará el logo de TAYULABS para modo claro al guardar.';
+      meta.textContent = 'Se restaurará el logo de Amelia Cloud para modo claro al guardar.';
     }
 
     updatePreview();
@@ -417,7 +417,7 @@
     if (!state.organizationId) return;
 
     if (!window.confirm(
-      '¿Restablecer nombre, color y ambos logos a la identidad predeterminada de TAYULABS?'
+      '¿Restablecer nombre, color y ambos logos a la identidad predeterminada de Amelia Cloud?'
     )) return;
 
     setStatus('Restableciendo…');
@@ -436,7 +436,7 @@
       clearPreviewObjectUrls();
 
       renderBranding(result);
-      setStatus('White Label restablecido a TAYULABS.', 'ok');
+      setStatus('White Label restablecido a Amelia Cloud.', 'ok');
     } catch (error) {
       setStatus(error.message, 'error');
     }
@@ -494,7 +494,7 @@
                   <div id="saBrandFileMeta" class="sa-brand-file-meta">
                     ${hasLogo
                       ? 'Logo principal personalizado configurado.'
-                      : 'Actualmente usa el logo predeterminado de TAYULABS.'}
+                      : 'Actualmente usa el logo predeterminado de Amelia Cloud.'}
                   </div>
                 </div>
 
@@ -527,7 +527,7 @@
                       ? 'Logo oscuro personalizado configurado.'
                       : hasLogo
                         ? 'Sin logo oscuro propio: se reutiliza el logo principal.'
-                        : 'Actualmente usa el logo blanco predeterminado de TAYULABS.'}
+                        : 'Actualmente usa el logo blanco predeterminado de Amelia Cloud.'}
                   </div>
                 </div>
 
@@ -552,7 +552,7 @@
 
             <div class="sa-brand-actions">
               <button class="btn ghost" id="saBrandReset" type="button">
-                Restablecer TAYULABS
+                Restablecer Amelia Cloud
               </button>
               <button class="btn" type="submit">Guardar marca</button>
             </div>
