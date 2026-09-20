@@ -9652,17 +9652,10 @@ a {
 
 
 /* TAYULABS NAV CUSTOMIZATION 2026-09-19 */
-.navbar-dropdown .dropdown-menu {
-  background-color: #5BC12F !important;
-}
-.navbar-dropdown .dropdown-menu .dropdown-item {
-  background-color: #5BC12F !important;
-  color: #000000 !important;
-}
 .navbar-dropdown .dropdown-menu .dropdown-item:hover,
 .navbar-dropdown .dropdown-menu .dropdown-item:focus {
-  background-color: #284A18 !important;
-  color: #FFFFFF !important;
+  background-color: #5BC12F !important;
+  color: #000000 !important;
 }
 .navbar-dropdown .navbar-buttons a.btn-black[href*="youtube.com"] {
   display: none !important;
