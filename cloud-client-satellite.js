@@ -12,6 +12,7 @@
   let chart = null;
   let searchMarker = null;
   let currentSites = [];
+  let ndviOverlay = null;
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -51,6 +52,10 @@
       '#satellite .sat-search-result:last-child{border-bottom:0}' +
       '#satellite .sat-search-result:hover{background:var(--panel2)}' +
       '#satellite .sat-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}' +
+      '#satellite .sat-legend{display:none;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:14px;background:var(--panel2);font-size:12px;font-weight:800}' +
+      '#satellite .sat-legend.open{display:flex}' +
+      '#satellite .sat-legend-item{display:inline-flex;align-items:center;gap:5px}' +
+      '#satellite .sat-legend-swatch{width:12px;height:12px;border-radius:3px;display:inline-block}' +
       '#satellite .sat-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}' +
       '#satellite .sat-form .full{grid-column:1/-1}' +
       '#satellite .sat-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}' +
@@ -126,7 +131,7 @@
         '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
-            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satelliteMap" class="sat-map"></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
+            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satelliteMap" class="sat-map"></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button><button class="btn ghost" id="satNdviMapButton" disabled>Mapa NDVI</button></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
             '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
@@ -284,11 +289,18 @@
     return true;
   }
 
+  function clearNdviOverlay() {
+    ndviOverlay?.remove();
+    ndviOverlay = null;
+    document.getElementById('satNdviLegend')?.classList.remove('open');
+  }
+
   function clearLayers() {
     markers.forEach(m => m.remove());
     markers = [];
     line?.remove(); line = null;
     polygon?.remove(); polygon = null;
+    clearNdviOverlay();
   }
 
   function redraw() {
@@ -398,6 +410,7 @@
     selectedFieldId = id;
     document.querySelectorAll('#satelliteFieldList .sat-field').forEach(el => el.classList.toggle('active', el.dataset.id === id));
     document.getElementById('satSync').disabled = false;
+    document.getElementById('satNdviMapButton').disabled = false;
     let field = fields.find(f => f.id === id);
     if (!field) field = await getApi('/satellite/fields/' + encodeURIComponent(id));
     if (field?.geometry_geojson && map) {
@@ -435,6 +448,49 @@
   async function loadObservations(id) {
     const rows = await getApi('/satellite/fields/' + encodeURIComponent(id) + '/observations?limit=36');
     renderObservations(Array.isArray(rows) ? rows : []);
+  }
+
+  async function loadNdviOverlay() {
+    if (!selectedFieldId) throw new Error('Selecciona un lote.');
+
+    setStatus('Generando mapa NDVI...');
+    const result = await getApi('/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/ndvi-map');
+
+    const bbox = Array.isArray(result?.bbox) ? result.bbox.map(Number) : [];
+    if (bbox.length !== 4 || bbox.some(v => !Number.isFinite(v))) {
+      throw new Error('El mapa NDVI no devolvió límites válidos.');
+    }
+
+    if (!result?.image_data_url) {
+      throw new Error('El mapa NDVI no devolvió una imagen.');
+    }
+
+    clearNdviOverlay();
+
+    const bounds = [
+      [bbox[1], bbox[0]],
+      [bbox[3], bbox[2]]
+    ];
+
+    ndviOverlay = L.imageOverlay(
+      result.image_data_url,
+      bounds,
+      {
+        opacity: .74,
+        interactive: false,
+        crossOrigin: false
+      }
+    ).addTo(map);
+
+    document.getElementById('satNdviLegend')?.classList.add('open');
+    try { map.fitBounds(bounds, {padding:[24,24]}); } catch (_) {}
+
+    const period =
+      result?.from && result?.to
+        ? new Date(result.from).toLocaleDateString('es-EC') + ' → ' + new Date(result.to).toLocaleDateString('es-EC')
+        : 'último periodo disponible';
+
+    setStatus('Mapa NDVI cargado: ' + period + '.', 'ok');
   }
 
   function ndviLabel(value) {
@@ -552,6 +608,7 @@
     document.getElementById('satDrawUndo')?.addEventListener('click',()=>{if(points.length){points.pop();markers.pop()?.remove();redraw();}});
     document.getElementById('satDrawFinish')?.addEventListener('click',finishDraw);
     document.getElementById('satDrawClear')?.addEventListener('click',clearDraw);
+    document.getElementById('satNdviMapButton')?.addEventListener('click',()=>loadNdviOverlay().catch(fail));
     document.getElementById('satSaveField')?.addEventListener('click',()=>saveField().catch(fail));
     document.getElementById('satSync')?.addEventListener('click',()=>syncField().catch(fail));
     document.getElementById('satSiteSelect')?.addEventListener('change',()=>{selectedFieldId=null;clearDraw();centerSelectedSite();loadFields().catch(fail);});
