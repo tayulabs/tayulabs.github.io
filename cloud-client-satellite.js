@@ -490,6 +490,8 @@
     document.getElementById('satSync').disabled = false;
     document.getElementById('satNdviMapButton').disabled = true;
     document.getElementById('satNdviPeriod').disabled = true;
+    document.getElementById('satCompareToggle').disabled = true;
+    document.getElementById('satCompareRun').disabled = true;
     let field = fields.find(f => f.id === id);
     if (!field) field = await getApi('/satellite/fields/' + encodeURIComponent(id));
 
@@ -761,6 +763,52 @@
       ndviMapButton.disabled = mapPeriods.length === 0;
     }
 
+    const compareBefore = document.getElementById('satCompareBefore');
+    const compareAfter = document.getElementById('satCompareAfter');
+    const compareToggle = document.getElementById('satCompareToggle');
+    const compareRun = document.getElementById('satCompareRun');
+    const previousBefore = compareBefore?.value || '';
+    const previousAfter = compareAfter?.value || '';
+
+    const compareOptions = mapPeriods.map(r => {
+      const from = new Date(r.interval_from).toLocaleDateString('es-EC');
+      const to = new Date(r.interval_to).toLocaleDateString('es-EC');
+      const value = String(r.interval_from) + '|' + String(r.interval_to);
+      return {
+        value,
+        label: from + ' → ' + to + ' · ' + qualityLabel(r.quality)
+      };
+    });
+
+    const compareHtml = compareOptions.length
+      ? compareOptions.map(item => '<option value="' + esc(item.value) + '">' + esc(item.label) + '</option>').join('')
+      : '<option value="">Sin periodos</option>';
+
+    if (compareBefore) {
+      compareBefore.innerHTML = compareHtml;
+      compareBefore.disabled = compareOptions.length < 2;
+
+      if (previousBefore && compareOptions.some(item => item.value === previousBefore)) {
+        compareBefore.value = previousBefore;
+      } else if (compareOptions.length >= 2) {
+        compareBefore.value = compareOptions[compareOptions.length - 1].value;
+      }
+    }
+
+    if (compareAfter) {
+      compareAfter.innerHTML = compareHtml;
+      compareAfter.disabled = compareOptions.length < 2;
+
+      if (previousAfter && compareOptions.some(item => item.value === previousAfter)) {
+        compareAfter.value = previousAfter;
+      } else if (compareOptions.length >= 2) {
+        compareAfter.value = compareOptions[0].value;
+      }
+    }
+
+    if (compareToggle) compareToggle.disabled = compareOptions.length < 2;
+    if (compareRun) compareRun.disabled = compareOptions.length < 2;
+
     document.getElementById('satKpiNdvi').textContent = fmt(latest?.ndvi_mean);
     document.getElementById('satKpiNdmi').textContent = fmt(latest?.ndmi_mean);
     document.getElementById('satKpiValid').textContent = latest?.valid_pixel_percent == null ? '—' : Number(latest.valid_pixel_percent).toFixed(1) + '%';
@@ -835,9 +883,50 @@
     document.getElementById('satDrawFinish')?.addEventListener('click',finishDraw);
     document.getElementById('satDrawClear')?.addEventListener('click',clearDraw);
     document.getElementById('satNdviMapButton')?.addEventListener('click',()=>loadNdviOverlay().catch(fail));
+
+    document.getElementById('satCompareToggle')?.addEventListener('click',()=>{
+      const panel = document.getElementById('satComparePanel');
+      const open = !panel?.classList.contains('open');
+      panel?.classList.toggle('open', open);
+      if (!open) clearComparison();
+    });
+
+    document.getElementById('satCompareRun')?.addEventListener('click',()=>runComparison().catch(fail));
+
+    const compareHandle = document.getElementById('satCompareHandle');
+    const compareWrap = document.querySelector('#satellite .sat-map-wrap');
+
+    const moveCompareHandle = event => {
+      if (!compareDragging || !compareWrap) return;
+      event.preventDefault();
+      const rect = compareWrap.getBoundingClientRect();
+      if (!rect.width) return;
+      const pct = ((event.clientX - rect.left) / rect.width) * 100;
+      setComparePosition(pct);
+    };
+
+    compareHandle?.addEventListener('pointerdown', event => {
+      compareDragging = true;
+      try { compareHandle.setPointerCapture(event.pointerId); } catch (_) {}
+      try { map?.dragging?.disable(); } catch (_) {}
+      moveCompareHandle(event);
+    });
+
+    compareHandle?.addEventListener('pointermove', moveCompareHandle);
+
+    const stopCompareDrag = event => {
+      if (!compareDragging) return;
+      compareDragging = false;
+      try { compareHandle?.releasePointerCapture(event.pointerId); } catch (_) {}
+      try { map?.dragging?.enable(); } catch (_) {}
+    };
+
+    compareHandle?.addEventListener('pointerup', stopCompareDrag);
+    compareHandle?.addEventListener('pointercancel', stopCompareDrag);
+
     document.getElementById('satSaveField')?.addEventListener('click',()=>saveField().catch(fail));
     document.getElementById('satSync')?.addEventListener('click',()=>syncField().catch(fail));
-    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satNdviPeriod').disabled=true;document.getElementById('satNdviPeriod').innerHTML='<option value="">Sin periodos NDVI</option>';document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
+    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satNdviPeriod').disabled=true;document.getElementById('satCompareToggle').disabled=true;document.getElementById('satCompareRun').disabled=true;document.getElementById('satComparePanel').classList.remove('open');document.getElementById('satNdviPeriod').innerHTML='<option value="">Sin periodos NDVI</option>';document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
   }
 
   function boot() { ensureUi(); }
