@@ -51,7 +51,8 @@
       '#satellite .sat-search-result{padding:11px 13px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;line-height:1.35}' +
       '#satellite .sat-search-result:last-child{border-bottom:0}' +
       '#satellite .sat-search-result:hover{background:var(--panel2)}' +
-      '#satellite .sat-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}' +
+      '#satellite .sat-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}' +
+      '#satellite .sat-toolbar select{min-width:220px;max-width:320px}' +
       '#satellite .sat-legend{display:none;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:14px;background:var(--panel2);font-size:12px;font-weight:800}' +
       '#satellite .sat-legend.open{display:flex}' +
       '#satellite .sat-legend-item{display:inline-flex;align-items:center;gap:5px}' +
@@ -131,7 +132,7 @@
         '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
-            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satelliteMap" class="sat-map"></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button><button class="btn ghost" id="satNdviMapButton" disabled>Mapa NDVI</button></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
+            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satelliteMap" class="sat-map"></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button><select id="satNdviPeriod" disabled><option value="">Sin periodos NDVI</option></select><button class="btn ghost" id="satNdviMapButton" disabled>Mapa NDVI</button></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
             '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
@@ -415,7 +416,8 @@
     selectedFieldId = id;
     document.querySelectorAll('#satelliteFieldList .sat-field').forEach(el => el.classList.toggle('active', el.dataset.id === id));
     document.getElementById('satSync').disabled = false;
-    document.getElementById('satNdviMapButton').disabled = false;
+    document.getElementById('satNdviMapButton').disabled = true;
+    document.getElementById('satNdviPeriod').disabled = true;
     let field = fields.find(f => f.id === id);
     if (!field) field = await getApi('/satellite/fields/' + encodeURIComponent(id));
 
@@ -517,8 +519,18 @@
   async function loadNdviOverlay() {
     if (!selectedFieldId) throw new Error('Selecciona un lote.');
 
+    const periodValue = document.getElementById('satNdviPeriod')?.value || '';
+    let mapPath = '/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/ndvi-map';
+
+    if (periodValue) {
+      const parts = periodValue.split('|');
+      if (parts.length === 2) {
+        mapPath += '?from=' + encodeURIComponent(parts[0]) + '&to=' + encodeURIComponent(parts[1]);
+      }
+    }
+
     setStatus('Generando mapa NDVI...');
-    const result = await getApi('/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/ndvi-map');
+    const result = await getApi(mapPath);
 
     const bbox = Array.isArray(result?.bbox) ? result.bbox.map(Number) : [];
     if (bbox.length !== 4 || bbox.some(v => !Number.isFinite(v))) {
@@ -599,6 +611,37 @@
     const ndviInfo = ndviLabel(latest?.ndvi_mean);
     const ndmiInfo = ndmiLabel(latest?.ndmi_mean);
 
+    const ndviPeriodSelect = document.getElementById('satNdviPeriod');
+    const ndviMapButton = document.getElementById('satNdviMapButton');
+    const previousPeriod = ndviPeriodSelect?.value || '';
+    const mapPeriods = [...usable]
+      .filter(r => r.interval_from && r.interval_to)
+      .sort((a,b)=>new Date(b.interval_to||0)-new Date(a.interval_to||0));
+
+    if (ndviPeriodSelect) {
+      ndviPeriodSelect.innerHTML = mapPeriods.length
+        ? mapPeriods.map(r => {
+            const from = new Date(r.interval_from).toLocaleDateString('es-EC');
+            const to = new Date(r.interval_to).toLocaleDateString('es-EC');
+            const value = String(r.interval_from) + '|' + String(r.interval_to);
+            return '<option value="' + esc(value) + '">' + esc(from + ' → ' + to + ' · ' + qualityLabel(r.quality)) + '</option>';
+          }).join('')
+        : '<option value="">Sin periodos NDVI</option>';
+
+      if (
+        previousPeriod &&
+        mapPeriods.some(r => (String(r.interval_from) + '|' + String(r.interval_to)) === previousPeriod)
+      ) {
+        ndviPeriodSelect.value = previousPeriod;
+      }
+
+      ndviPeriodSelect.disabled = mapPeriods.length === 0;
+    }
+
+    if (ndviMapButton) {
+      ndviMapButton.disabled = mapPeriods.length === 0;
+    }
+
     document.getElementById('satKpiNdvi').textContent = fmt(latest?.ndvi_mean);
     document.getElementById('satKpiNdmi').textContent = fmt(latest?.ndmi_mean);
     document.getElementById('satKpiValid').textContent = latest?.valid_pixel_percent == null ? '—' : Number(latest.valid_pixel_percent).toFixed(1) + '%';
@@ -675,7 +718,7 @@
     document.getElementById('satNdviMapButton')?.addEventListener('click',()=>loadNdviOverlay().catch(fail));
     document.getElementById('satSaveField')?.addEventListener('click',()=>saveField().catch(fail));
     document.getElementById('satSync')?.addEventListener('click',()=>syncField().catch(fail));
-    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
+    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satNdviPeriod').disabled=true;document.getElementById('satNdviPeriod').innerHTML='<option value="">Sin periodos NDVI</option>';document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
   }
 
   function boot() { ensureUi(); }
