@@ -13,6 +13,9 @@
   let searchMarker = null;
   let currentSites = [];
   let ndviOverlay = null;
+  let compareBeforeOverlay = null;
+  let compareAfterOverlay = null;
+  let compareDragging = false;
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -57,6 +60,18 @@
       '#satellite .sat-legend.open{display:flex}' +
       '#satellite .sat-legend-item{display:inline-flex;align-items:center;gap:5px}' +
       '#satellite .sat-legend-swatch{width:12px;height:12px;border-radius:3px;display:inline-block}' +
+      '#satellite .sat-compare-panel{display:none;margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--panel2)}' +
+      '#satellite .sat-compare-panel.open{display:block}' +
+      '#satellite .sat-compare-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}' +
+      '#satellite .sat-compare-grid label{display:block;font-size:12px;font-weight:800;color:var(--muted);margin-bottom:5px}' +
+      '#satellite .sat-compare-grid select{width:100%}' +
+      '#satellite .sat-compare-label{position:absolute;top:14px;z-index:900;background:rgba(255,255,255,.9);color:#17310f;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.14)}' +
+      '#satellite .sat-compare-label.before{left:14px}' +
+      '#satellite .sat-compare-label.after{right:14px}' +
+      '#satellite .sat-compare-handle{display:none;position:absolute;top:0;bottom:0;left:50%;width:4px;transform:translateX(-2px);background:#fff;z-index:920;box-shadow:0 0 0 1px rgba(0,0,0,.18),0 0 14px rgba(0,0,0,.22);cursor:ew-resize;touch-action:none}' +
+      '#satellite .sat-compare-handle.open{display:block}' +
+      '#satellite .sat-compare-handle span{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#284a18;font-weight:1000;border:1px solid rgba(0,0,0,.15);box-shadow:0 4px 16px rgba(0,0,0,.18)}' +
+      '#satellite .sat-map-wrap{position:relative}' +
       '#satellite .sat-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}' +
       '#satellite .sat-form .full{grid-column:1/-1}' +
       '#satellite .sat-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}' +
@@ -80,7 +95,7 @@
       '#satellite .sat-badge.poor,#satellite .sat-badge.no_data{background:rgba(239,68,68,.13);color:var(--danger)}' +
       '#satellite .sat-chart{height:270px}#satellite .sat-table-wrap{overflow:auto}' +
       '@media(max-width:1100px){#satellite .sat-grid{grid-template-columns:1fr}#satellite .sat-kpis{grid-template-columns:1fr 1fr}#satellite .sat-insights{grid-template-columns:1fr}}' +
-      '@media(max-width:700px){#satellite .sat-form,#satellite .sat-kpis{grid-template-columns:1fr}#satellite .sat-map{height:420px}}';
+      '@media(max-width:700px){#satellite .sat-form,#satellite .sat-kpis{grid-template-columns:1fr}#satellite .sat-map{height:420px}#satellite .sat-compare-grid{grid-template-columns:1fr}}';
     document.head.appendChild(el);
   }
 
@@ -132,7 +147,7 @@
         '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
-            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satelliteMap" class="sat-map"></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button><select id="satNdviPeriod" disabled><option value="">Sin periodos NDVI</option></select><button class="btn ghost" id="satNdviMapButton" disabled>Mapa NDVI</button></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
+            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareHandle" class="sat-compare-handle"><span>↔</span></div></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button><select id="satNdviPeriod" disabled><option value="">Sin periodos NDVI</option></select><button class="btn ghost" id="satNdviMapButton" disabled>Mapa NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Antes vs después</button></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-grid"><div><label>Antes</label><select id="satCompareBefore" disabled><option value="">Sin periodos</option></select></div><div><label>Después</label><select id="satCompareAfter" disabled><option value="">Sin periodos</option></select></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><p class="hint" style="margin:8px 0 0">Arrastra la línea vertical sobre el mapa para revelar el periodo Antes o Después.</p></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
             '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
