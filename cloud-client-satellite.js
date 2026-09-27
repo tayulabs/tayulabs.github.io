@@ -399,6 +399,7 @@
     const siteId = document.getElementById('satSiteSelect')?.value;
     if (!siteId) return;
     const rows = await getApi('/satellite/fields?site_id=' + encodeURIComponent(siteId));
+    if (document.getElementById('satSiteSelect')?.value !== siteId) return;
     const fields = Array.isArray(rows) ? rows : [];
     const host = document.getElementById('satelliteFieldList');
     host.innerHTML = fields.length
