@@ -16,6 +16,7 @@
   let compareBeforeOverlay = null;
   let compareAfterOverlay = null;
   let compareDragging = false;
+  let comparePositionPct = 50;
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -196,6 +197,10 @@
     imagery.addTo(map);
     L.control.layers({'Satélite':imagery,'Mapa':streets}).addTo(map);
     map.on('click', e => { if (drawing) addPoint(e.latlng); });
+    map.on('move zoom resize', () => {
+      if (!compareAfterOverlay) return;
+      requestAnimationFrame(() => setComparePosition(comparePositionPct));
+    });
     return map;
   }
 
@@ -311,6 +316,7 @@
     compareBeforeOverlay = null;
     compareAfterOverlay = null;
     compareDragging = false;
+    comparePositionPct = 50;
 
     document.getElementById('satCompareHandle')?.classList.remove('open');
 
@@ -329,14 +335,46 @@
 
   function setComparePosition(percent) {
     const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+    comparePositionPct = pct;
+
     const handle = document.getElementById('satCompareHandle');
     if (handle) handle.style.left = pct + '%';
 
+    const mapHost = document.getElementById('satelliteMap');
     const afterImage = compareAfterOverlay?.getElement?.();
-    if (afterImage) {
-      afterImage.style.clipPath = 'inset(0 0 0 ' + pct + '%)';
-      afterImage.style.webkitClipPath = 'inset(0 0 0 ' + pct + '%)';
-    }
+
+    if (!mapHost || !afterImage) return;
+
+    const mapRect = mapHost.getBoundingClientRect();
+    const imageRect = afterImage.getBoundingClientRect();
+
+    if (!mapRect.width || !imageRect.width) return;
+
+    const dividerX =
+      mapRect.left +
+      (
+        mapRect.width *
+        pct /
+        100
+      );
+
+    const clipLeft =
+      Math.max(
+        0,
+        Math.min(
+          imageRect.width,
+          dividerX -
+          imageRect.left
+        )
+      );
+
+    const clip =
+      'inset(0 0 0 ' +
+      clipLeft.toFixed(1) +
+      'px)';
+
+    afterImage.style.clipPath = clip;
+    afterImage.style.webkitClipPath = clip;
   }
 
   function periodPath(fieldId, periodValue) {
