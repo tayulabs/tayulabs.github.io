@@ -305,10 +305,67 @@
     return true;
   }
 
+  function clearComparison() {
+    compareBeforeOverlay?.remove();
+    compareAfterOverlay?.remove();
+    compareBeforeOverlay = null;
+    compareAfterOverlay = null;
+    compareDragging = false;
+
+    document.getElementById('satCompareHandle')?.classList.remove('open');
+
+    const beforeLabel = document.getElementById('satCompareBeforeLabel');
+    const afterLabel = document.getElementById('satCompareAfterLabel');
+    if (beforeLabel) beforeLabel.style.display = 'none';
+    if (afterLabel) afterLabel.style.display = 'none';
+  }
+
   function clearNdviOverlay() {
     ndviOverlay?.remove();
     ndviOverlay = null;
+    clearComparison();
     document.getElementById('satNdviLegend')?.classList.remove('open');
+  }
+
+  function setComparePosition(percent) {
+    const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+    const handle = document.getElementById('satCompareHandle');
+    if (handle) handle.style.left = pct + '%';
+
+    const afterImage = compareAfterOverlay?.getElement?.();
+    if (afterImage) {
+      afterImage.style.clipPath = 'inset(0 0 0 ' + pct + '%)';
+      afterImage.style.webkitClipPath = 'inset(0 0 0 ' + pct + '%)';
+    }
+  }
+
+  function periodPath(fieldId, periodValue) {
+    let path = '/satellite/fields/' + encodeURIComponent(fieldId) + '/ndvi-map';
+    const parts = String(periodValue || '').split('|');
+    if (parts.length === 2 && parts[0] && parts[1]) {
+      path += '?from=' + encodeURIComponent(parts[0]) + '&to=' + encodeURIComponent(parts[1]);
+    }
+    return path;
+  }
+
+  function mapBounds(result) {
+    const bbox = Array.isArray(result?.bbox) ? result.bbox.map(Number) : [];
+    if (bbox.length !== 4 || bbox.some(v => !Number.isFinite(v))) {
+      throw new Error('El mapa NDVI no devolvió límites válidos.');
+    }
+    if (!result?.image_data_url) {
+      throw new Error('El mapa NDVI no devolvió una imagen.');
+    }
+    return [
+      [bbox[1], bbox[0]],
+      [bbox[3], bbox[2]]
+    ];
+  }
+
+  function formatMapPeriod(result) {
+    return result?.from && result?.to
+      ? new Date(result.from).toLocaleDateString('es-EC') + ' → ' + new Date(result.to).toLocaleDateString('es-EC')
+      : 'periodo seleccionado';
   }
 
   function clearLayers() {
@@ -535,33 +592,12 @@
     if (!selectedFieldId) throw new Error('Selecciona un lote.');
 
     const periodValue = document.getElementById('satNdviPeriod')?.value || '';
-    let mapPath = '/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/ndvi-map';
-
-    if (periodValue) {
-      const parts = periodValue.split('|');
-      if (parts.length === 2) {
-        mapPath += '?from=' + encodeURIComponent(parts[0]) + '&to=' + encodeURIComponent(parts[1]);
-      }
-    }
-
     setStatus('Generando mapa NDVI...');
-    const result = await getApi(mapPath);
 
-    const bbox = Array.isArray(result?.bbox) ? result.bbox.map(Number) : [];
-    if (bbox.length !== 4 || bbox.some(v => !Number.isFinite(v))) {
-      throw new Error('El mapa NDVI no devolvió límites válidos.');
-    }
-
-    if (!result?.image_data_url) {
-      throw new Error('El mapa NDVI no devolvió una imagen.');
-    }
+    const result = await getApi(periodPath(selectedFieldId, periodValue));
+    const bounds = mapBounds(result);
 
     clearNdviOverlay();
-
-    const bounds = [
-      [bbox[1], bbox[0]],
-      [bbox[3], bbox[2]]
-    ];
 
     ndviOverlay = L.imageOverlay(
       result.image_data_url,
@@ -574,14 +610,82 @@
     ).addTo(map);
 
     document.getElementById('satNdviLegend')?.classList.add('open');
+    try { polygon?.bringToFront?.(); } catch (_) {}
     try { map.fitBounds(bounds, {padding:[24,24]}); } catch (_) {}
 
-    const period =
-      result?.from && result?.to
-        ? new Date(result.from).toLocaleDateString('es-EC') + ' → ' + new Date(result.to).toLocaleDateString('es-EC')
-        : 'último periodo disponible';
+    setStatus('Mapa NDVI cargado: ' + formatMapPeriod(result) + '.', 'ok');
+  }
 
-    setStatus('Mapa NDVI cargado: ' + period + '.', 'ok');
+  async function runComparison() {
+    if (!selectedFieldId) throw new Error('Selecciona un lote.');
+
+    const beforeValue = document.getElementById('satCompareBefore')?.value || '';
+    const afterValue = document.getElementById('satCompareAfter')?.value || '';
+
+    if (!beforeValue || !afterValue) {
+      throw new Error('Selecciona los periodos Antes y Después.');
+    }
+
+    if (beforeValue === afterValue) {
+      throw new Error('Selecciona dos periodos diferentes para comparar.');
+    }
+
+    setStatus('Generando comparación Antes vs Después...');
+
+    const [beforeResult, afterResult] = await Promise.all([
+      getApi(periodPath(selectedFieldId, beforeValue)),
+      getApi(periodPath(selectedFieldId, afterValue))
+    ]);
+
+    const beforeBounds = mapBounds(beforeResult);
+    const afterBounds = mapBounds(afterResult);
+
+    clearNdviOverlay();
+
+    compareBeforeOverlay = L.imageOverlay(
+      beforeResult.image_data_url,
+      beforeBounds,
+      {
+        opacity: .78,
+        interactive: false,
+        crossOrigin: false
+      }
+    ).addTo(map);
+
+    compareAfterOverlay = L.imageOverlay(
+      afterResult.image_data_url,
+      afterBounds,
+      {
+        opacity: .78,
+        interactive: false,
+        crossOrigin: false
+      }
+    ).addTo(map);
+
+    const handle = document.getElementById('satCompareHandle');
+    handle?.classList.add('open');
+
+    const beforeLabel = document.getElementById('satCompareBeforeLabel');
+    const afterLabel = document.getElementById('satCompareAfterLabel');
+
+    if (beforeLabel) {
+      beforeLabel.textContent = 'ANTES · ' + formatMapPeriod(beforeResult);
+      beforeLabel.style.display = 'block';
+    }
+
+    if (afterLabel) {
+      afterLabel.textContent = 'DESPUÉS · ' + formatMapPeriod(afterResult);
+      afterLabel.style.display = 'block';
+    }
+
+    document.getElementById('satNdviLegend')?.classList.add('open');
+
+    setComparePosition(50);
+
+    try { polygon?.bringToFront?.(); } catch (_) {}
+    try { map.fitBounds(beforeBounds, {padding:[24,24]}); } catch (_) {}
+
+    setStatus('Comparación cargada. Arrastra la línea vertical para ver Antes y Después.', 'ok');
   }
 
   function ndviLabel(value) {
