@@ -413,6 +413,17 @@
     document.getElementById('satNdviMapButton').disabled = false;
     let field = fields.find(f => f.id === id);
     if (!field) field = await getApi('/satellite/fields/' + encodeURIComponent(id));
+
+    const codeInput = document.getElementById('satFieldCode');
+    const cropInput = document.getElementById('satCropType');
+    const nameInput = document.getElementById('satFieldName');
+    const areaInput = document.getElementById('satArea');
+
+    if (codeInput) codeInput.value = field?.code || '';
+    if (cropInput) cropInput.value = field?.crop_type || '';
+    if (nameInput) nameInput.value = field?.name || '';
+    if (areaInput) areaInput.value = Number(field?.area_hectares || 0).toFixed(2);
+
     if (field?.geometry_geojson && map) {
       clearLayers();
       polygon = L.geoJSON(field.geometry_geojson,{style:{weight:3,fillOpacity:.18}}).addTo(map);
