@@ -454,10 +454,58 @@
 
   async function syncField() {
     if (!selectedFieldId) throw new Error('Selecciona un lote.');
+
     const interval = document.getElementById('satInterval')?.value || 'P5D';
     setStatus('Consultando Sentinel-2...');
-    const result = await postApi('/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/sync',{aggregationInterval:interval,maxCloudCoverage:100});
-    setStatus('Análisis completado: ' + Number(result?.saved||0) + ' periodos guardados.', 'ok');
+
+    let result = await postApi(
+      '/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/sync',
+      {
+        aggregationInterval: interval,
+        maxCloudCoverage: 100
+      }
+    );
+
+    let usedFallback = false;
+
+    if (
+      Number(result?.saved || 0) === 0 &&
+      Number(result?.skipped_no_data || 0) > 0
+    ) {
+      usedFallback = true;
+      setStatus('Sin periodos utilizables en los últimos 30 días. Buscando hasta 120 días atrás...');
+
+      const to = new Date();
+      const from = new Date(to.getTime() - (120 * 24 * 60 * 60 * 1000));
+
+      result = await postApi(
+        '/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/sync',
+        {
+          from: from.toISOString(),
+          to: to.toISOString(),
+          aggregationInterval: interval,
+          maxCloudCoverage: 100
+        }
+      );
+    }
+
+    const saved = Number(result?.saved || 0);
+    const skippedNoData = Number(result?.skipped_no_data || 0);
+
+    if (saved > 0) {
+      setStatus(
+        (usedFallback ? 'Se amplió la búsqueda histórica. ' : '') +
+        'Análisis completado: ' + saved + ' periodos guardados' +
+        (skippedNoData > 0 ? ' y ' + skippedNoData + ' sin datos útiles.' : '.'),
+        'ok'
+      );
+    } else {
+      setStatus(
+        'No se encontraron periodos satelitales utilizables para este lote en la ventana consultada.',
+        'error'
+      );
+    }
+
     await loadObservations(selectedFieldId);
   }
 
