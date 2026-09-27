@@ -8,6 +8,7 @@
     dashboard: { button: '.nav button[data-view="dashboard"]', view: '#dashboard' },
     alarmas: { button: '.nav button[data-view="alarmas"]', view: '#alarmas' },
     fincas: { button: '.nav button[data-view="fincas"]', view: '#fincas' },
+    satellite: { button: '.nav button[data-view="satellite"]', view: '#satellite' },
     camaroneras: { button: '.nav button[data-view="camaroneras"]', view: '#camaroneras' },
     bananeras: { button: '.nav button[data-view="bananeras"]', view: '#bananeras' },
     ganaderia: { button: '.nav button[data-view="ganaderia"]', view: '#ganaderia' },
