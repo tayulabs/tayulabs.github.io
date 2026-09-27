@@ -123,6 +123,7 @@
           '<div class="sat-insight"><span>Humedad relativa</span><b id="satInsightMoisture">—</b><small id="satInsightMoistureNote">Esperando observaciones.</small></div>' +
           '<div class="sat-insight"><span>Tendencia NDVI</span><b id="satInsightTrend">—</b><small id="satInsightTrendNote">Se calcula con los dos últimos periodos utilizables.</small></div>' +
         '</div>' +
+        '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
             '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satelliteMap" class="sat-map"></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
