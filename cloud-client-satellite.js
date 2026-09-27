@@ -611,7 +611,7 @@
     document.getElementById('satNdviMapButton')?.addEventListener('click',()=>loadNdviOverlay().catch(fail));
     document.getElementById('satSaveField')?.addEventListener('click',()=>saveField().catch(fail));
     document.getElementById('satSync')?.addEventListener('click',()=>syncField().catch(fail));
-    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{selectedFieldId=null;clearDraw();centerSelectedSite();loadFields().catch(fail);});
+    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
   }
 
   function boot() { ensureUi(); }
