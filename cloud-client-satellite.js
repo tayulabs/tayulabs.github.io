@@ -10,6 +10,8 @@
   let polygon = null;
   let selectedFieldId = null;
   let chart = null;
+  let searchMarker = null;
+  let currentSites = [];
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -40,6 +42,14 @@
     el.textContent =
       '#satellite .sat-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(320px,.8fr);gap:18px;margin-top:18px}' +
       '#satellite .sat-map{height:520px;border-radius:20px;overflow:hidden;background:var(--panel2)}' +
+      '#satellite .sat-search{margin-bottom:12px;position:relative}' +
+      '#satellite .sat-search-box{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}' +
+      '#satellite .sat-search-box input{min-width:0}' +
+      '#satellite .sat-search-results{display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:1200;background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}' +
+      '#satellite .sat-search-results.open{display:block}' +
+      '#satellite .sat-search-result{padding:11px 13px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;line-height:1.35}' +
+      '#satellite .sat-search-result:last-child{border-bottom:0}' +
+      '#satellite .sat-search-result:hover{background:var(--panel2)}' +
       '#satellite .sat-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}' +
       '#satellite .sat-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}' +
       '#satellite .sat-form .full{grid-column:1/-1}' +
@@ -104,7 +114,7 @@
         '</div>' +
         '<div class="sat-grid">' +
           '<div>' +
-            '<div class="card map-card"><div id="satelliteMap" class="sat-map"></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><p class="hint" id="satDrawNote">Marca al menos 3 puntos para crear el perímetro.</p></div>' +
+            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satelliteMap" class="sat-map"></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
             '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
@@ -154,6 +164,112 @@
     L.control.layers({'Satélite':imagery,'Mapa':streets}).addTo(map);
     map.on('click', e => { if (drawing) addPoint(e.latlng); });
     return map;
+  }
+
+
+  function setSearchMarker(lat, lon, label) {
+    initMap();
+    searchMarker?.remove();
+    searchMarker = L.marker([lat, lon]).addTo(map);
+    if (label) searchMarker.bindPopup(esc(label)).openPopup();
+    map.flyTo([lat, lon], Math.max(map.getZoom(), 16), {duration:.8});
+  }
+
+  function parseCoordinates(value) {
+    const text = String(value || '').trim();
+    const match = text.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+    if (!match) return null;
+    const lat = Number(match[1]);
+    const lon = Number(match[2]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+    return {lat, lon};
+  }
+
+  function closeSearchResults() {
+    const host = document.getElementById('satSearchResults');
+    if (!host) return;
+    host.classList.remove('open');
+    host.innerHTML = '';
+  }
+
+  function showSearchResults(rows) {
+    const host = document.getElementById('satSearchResults');
+    if (!host) return;
+    if (!rows.length) {
+      host.innerHTML = '<div class="sat-search-result">No se encontraron ubicaciones.</div>';
+      host.classList.add('open');
+      return;
+    }
+
+    host.innerHTML = rows.map((row, index) =>
+      '<div class="sat-search-result" data-index="' + index + '">' +
+      esc(row.display_name || 'Ubicación') +
+      '</div>'
+    ).join('');
+    host.classList.add('open');
+
+    host.querySelectorAll('.sat-search-result[data-index]').forEach(el => {
+      el.addEventListener('click', () => {
+        const row = rows[Number(el.dataset.index)];
+        const lat = Number(row?.lat);
+        const lon = Number(row?.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        document.getElementById('satLocationSearch').value = row.display_name || (lat + ', ' + lon);
+        closeSearchResults();
+        setSearchMarker(lat, lon, row.display_name || 'Ubicación');
+        setStatus('Ubicación encontrada. Acerca el mapa y dibuja el lote.', 'ok');
+      });
+    });
+  }
+
+  async function searchLocation() {
+    const input = document.getElementById('satLocationSearch');
+    const query = String(input?.value || '').trim();
+    if (!query) {
+      setStatus('Escribe una ubicación o coordenadas.', 'error');
+      return;
+    }
+
+    const coordinates = parseCoordinates(query);
+    if (coordinates) {
+      closeSearchResults();
+      setSearchMarker(coordinates.lat, coordinates.lon, coordinates.lat.toFixed(6) + ', ' + coordinates.lon.toFixed(6));
+      setStatus('Mapa centrado en las coordenadas ingresadas.', 'ok');
+      return;
+    }
+
+    setStatus('Buscando ubicación...');
+    const response = await fetch(
+      'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&accept-language=es&q=' +
+      encodeURIComponent(query),
+      {
+        headers: {
+          'Accept': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) throw new Error('No se pudo consultar el buscador de ubicaciones.');
+
+    const rows = await response.json();
+    showSearchResults(Array.isArray(rows) ? rows : []);
+    setStatus(
+      Array.isArray(rows) && rows.length
+        ? 'Selecciona una coincidencia del buscador.'
+        : 'No se encontraron coincidencias.',
+      Array.isArray(rows) && rows.length ? 'ok' : 'error'
+    );
+  }
+
+  function centerSelectedSite() {
+    const siteId = document.getElementById('satSiteSelect')?.value;
+    const site = currentSites.find(row => row.id === siteId);
+    const lat = Number(site?.latitude);
+    const lon = Number(site?.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+    setSearchMarker(lat, lon, site.name || 'Sitio');
+    setStatus('Mapa centrado en la ubicación registrada de ' + (site.name || 'la finca') + '.', 'ok');
+    return true;
   }
 
   function clearLayers() {
@@ -235,11 +351,15 @@
     setStatus('Cargando sitios...');
     const rows = await getApi('/satellite/sites');
     const sites = Array.isArray(rows) ? rows : [];
+    currentSites = sites;
     const select = document.getElementById('satSiteSelect');
     select.innerHTML = sites.length
       ? sites.map(s => '<option value="' + esc(s.id) + '">' + esc(s.name) + ' · ' + esc(s.site_type || 'sitio') + '</option>').join('')
       : '<option value="">Sin sitios disponibles</option>';
-    if (sites.length) await loadFields();
+    if (sites.length) {
+      centerSelectedSite();
+      await loadFields();
+    }
     setStatus('Amelia Satellite listo.', 'ok');
   }
 
@@ -336,13 +456,23 @@
 
   function bind() {
     document.getElementById('satRefresh')?.addEventListener('click',()=>loadSites().catch(fail));
+    document.getElementById('satLocationSearchButton')?.addEventListener('click',()=>searchLocation().catch(fail));
+    document.getElementById('satLocationSearch')?.addEventListener('keydown',event=>{
+      if(event.key==='Enter'){
+        event.preventDefault();
+        searchLocation().catch(fail);
+      }
+    });
+    document.addEventListener('click', event => {
+      if (!event.target?.closest?.('.sat-search')) closeSearchResults();
+    });
     document.getElementById('satDrawStart')?.addEventListener('click',startDraw);
     document.getElementById('satDrawUndo')?.addEventListener('click',()=>{if(points.length){points.pop();markers.pop()?.remove();redraw();}});
     document.getElementById('satDrawFinish')?.addEventListener('click',finishDraw);
     document.getElementById('satDrawClear')?.addEventListener('click',clearDraw);
     document.getElementById('satSaveField')?.addEventListener('click',()=>saveField().catch(fail));
     document.getElementById('satSync')?.addEventListener('click',()=>syncField().catch(fail));
-    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{selectedFieldId=null;clearDraw();loadFields().catch(fail);});
+    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{selectedFieldId=null;clearDraw();centerSelectedSite();loadFields().catch(fail);});
   }
 
   function boot() { ensureUi(); }
