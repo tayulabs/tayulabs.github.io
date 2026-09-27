@@ -57,6 +57,12 @@
       '#satellite .sat-kpi{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:var(--shadow)}' +
       '#satellite .sat-kpi span{display:block;color:var(--muted);font-size:12px;font-weight:800}' +
       '#satellite .sat-kpi b{display:block;font-size:26px;margin-top:8px}' +
+      '#satellite .sat-kpi small{display:block;margin-top:4px;line-height:1.35}' +
+      '#satellite .sat-insights{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}' +
+      '#satellite .sat-insight{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:var(--shadow)}' +
+      '#satellite .sat-insight span{display:block;color:var(--muted);font-size:12px;font-weight:800}' +
+      '#satellite .sat-insight b{display:block;margin-top:6px;font-size:18px}' +
+      '#satellite .sat-insight small{display:block;margin-top:6px;color:var(--muted);line-height:1.4}' +
       '#satellite .sat-list{display:flex;flex-direction:column;gap:10px;max-height:310px;overflow:auto}' +
       '#satellite .sat-field{padding:13px;border:1px solid var(--border);border-radius:16px;background:var(--panel2);cursor:pointer}' +
       '#satellite .sat-field.active{outline:2px solid var(--brand)}' +
@@ -67,7 +73,7 @@
       '#satellite .sat-badge.limited{background:rgba(245,158,11,.16);color:#d97706}' +
       '#satellite .sat-badge.poor,#satellite .sat-badge.no_data{background:rgba(239,68,68,.13);color:var(--danger)}' +
       '#satellite .sat-chart{height:270px}#satellite .sat-table-wrap{overflow:auto}' +
-      '@media(max-width:1100px){#satellite .sat-grid{grid-template-columns:1fr}#satellite .sat-kpis{grid-template-columns:1fr 1fr}}' +
+      '@media(max-width:1100px){#satellite .sat-grid{grid-template-columns:1fr}#satellite .sat-kpis{grid-template-columns:1fr 1fr}#satellite .sat-insights{grid-template-columns:1fr}}' +
       '@media(max-width:700px){#satellite .sat-form,#satellite .sat-kpis{grid-template-columns:1fr}#satellite .sat-map{height:420px}}';
     document.head.appendChild(el);
   }
@@ -107,11 +113,17 @@
       section.innerHTML =
         '<div class="card"><div class="module-header"><div><h3 style="margin:0">🛰️ Amelia Satellite</h3><p class="hint" style="margin:6px 0 0">Sentinel-2 · NDVI y NDMI por lote.</p></div><div class="actions"><button class="btn ghost" id="satRefresh">Actualizar</button><button class="btn" id="satSync" disabled>Analizar con satélite</button></div></div></div>' +
         '<div class="sat-kpis">' +
-          '<div class="sat-kpi"><span>NDVI actual</span><b id="satKpiNdvi">—</b><small>Último periodo utilizable</small></div>' +
-          '<div class="sat-kpi"><span>NDMI actual</span><b id="satKpiNdmi">—</b><small>Último periodo utilizable</small></div>' +
+          '<div class="sat-kpi"><span>NDVI actual</span><b id="satKpiNdvi">—</b><small id="satKpiNdviHint">Sin datos</small></div>' +
+          '<div class="sat-kpi"><span>NDMI actual</span><b id="satKpiNdmi">—</b><small id="satKpiNdmiHint">Sin datos</small></div>' +
           '<div class="sat-kpi"><span>Píxeles válidos</span><b id="satKpiValid">—</b><small id="satKpiQuality">Sin análisis</small></div>' +
           '<div class="sat-kpi"><span>Área</span><b id="satKpiArea">—</b><small>hectáreas</small></div>' +
         '</div>' +
+        '<div class="sat-insights">' +
+          '<div class="sat-insight"><span>Vigor relativo</span><b id="satInsightVigor">—</b><small id="satInsightVigorNote">Esperando observaciones.</small></div>' +
+          '<div class="sat-insight"><span>Humedad relativa</span><b id="satInsightMoisture">—</b><small id="satInsightMoistureNote">Esperando observaciones.</small></div>' +
+          '<div class="sat-insight"><span>Tendencia NDVI</span><b id="satInsightTrend">—</b><small id="satInsightTrendNote">Se calcula con los dos últimos periodos utilizables.</small></div>' +
+        '</div>' +
+        '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
             '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satelliteMap" class="sat-map"></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
@@ -353,9 +365,13 @@
     const sites = Array.isArray(rows) ? rows : [];
     currentSites = sites;
     const select = document.getElementById('satSiteSelect');
+    const previousSiteId = select?.value || '';
     select.innerHTML = sites.length
       ? sites.map(s => '<option value="' + esc(s.id) + '">' + esc(s.name) + ' · ' + esc(s.site_type || 'sitio') + '</option>').join('')
       : '<option value="">Sin sitios disponibles</option>';
+    if (previousSiteId && sites.some(s => s.id === previousSiteId)) {
+      select.value = previousSiteId;
+    }
     if (sites.length) {
       centerSelectedSite();
       await loadFields();
@@ -373,6 +389,9 @@
       ? fields.map(f => '<div class="sat-field" data-id="' + esc(f.id) + '"><b>' + esc(f.name) + '</b><div><small>' + esc(f.code) + ' · ' + esc(f.crop_type || 'Sin cultivo') + ' · ' + Number(f.area_hectares||0).toFixed(2) + ' ha</small></div></div>').join('')
       : '<div class="hint">Aún no hay lotes satelitales.</div>';
     host.querySelectorAll('.sat-field').forEach(el => el.addEventListener('click', () => selectField(el.dataset.id, fields)));
+    if (selectedFieldId && fields.some(f => f.id === selectedFieldId)) {
+      await selectField(selectedFieldId, fields);
+    }
   }
 
   async function selectField(id, fields) {
@@ -418,35 +437,98 @@
     renderObservations(Array.isArray(rows) ? rows : []);
   }
 
+  function ndviLabel(value) {
+    const v = Number(value);
+    if (!Number.isFinite(v)) return {label:'—', note:'Sin datos suficientes.'};
+    if (v >= 0.65) return {label:'Alto', note:'Cobertura vegetal relativamente vigorosa en este periodo.'};
+    if (v >= 0.45) return {label:'Moderado', note:'Vigor vegetal intermedio; conviene seguir la tendencia.'};
+    if (v >= 0.25) return {label:'Bajo', note:'Índice relativamente bajo; revisar junto con clima, manejo y cultivo.'};
+    return {label:'Muy bajo', note:'Señal vegetal baja o suelo/agua expuestos. Requiere contexto de campo.'};
+  }
+
+  function ndmiLabel(value) {
+    const v = Number(value);
+    if (!Number.isFinite(v)) return {label:'—', note:'Sin datos suficientes.'};
+    if (v >= 0.30) return {label:'Alta', note:'Índice de humedad relativamente alto para este periodo.'};
+    if (v >= 0.10) return {label:'Moderada', note:'Nivel de humedad relativo intermedio.'};
+    if (v >= 0.00) return {label:'Baja positiva', note:'Humedad relativa baja, pero aún en valores positivos.'};
+    return {label:'Muy baja', note:'Índice de humedad negativo; revisar junto con lluvia, riego y tipo de cultivo.'};
+  }
+
+  function qualityLabel(value) {
+    const labels = {
+      good:'Buena calidad',
+      limited:'Calidad limitada',
+      poor:'Baja calidad',
+      no_data:'Sin datos'
+    };
+    return labels[value] || value || 'Sin análisis';
+  }
+
   function renderObservations(rows) {
     const sorted = [...rows].sort((a,b)=>new Date(a.interval_from||0)-new Date(b.interval_from||0));
-    const latest = [...sorted].reverse().find(r => r.quality === 'good' || r.quality === 'limited');
+    const usable = sorted.filter(r =>
+      (r.quality === 'good' || r.quality === 'limited') &&
+      Number.isFinite(Number(r.ndvi_mean)) &&
+      Number.isFinite(Number(r.ndmi_mean))
+    );
+    const latest = usable[usable.length - 1] || null;
+    const previous = usable.length > 1 ? usable[usable.length - 2] : null;
     const fmt = v => Number.isFinite(Number(v)) ? Number(v).toFixed(3) : '—';
+
+    const ndviInfo = ndviLabel(latest?.ndvi_mean);
+    const ndmiInfo = ndmiLabel(latest?.ndmi_mean);
+
     document.getElementById('satKpiNdvi').textContent = fmt(latest?.ndvi_mean);
     document.getElementById('satKpiNdmi').textContent = fmt(latest?.ndmi_mean);
     document.getElementById('satKpiValid').textContent = latest?.valid_pixel_percent == null ? '—' : Number(latest.valid_pixel_percent).toFixed(1) + '%';
-    document.getElementById('satKpiQuality').textContent = latest?.quality || 'Sin análisis';
+    document.getElementById('satKpiQuality').textContent = qualityLabel(latest?.quality);
+    document.getElementById('satKpiNdviHint').textContent = latest ? 'Último periodo utilizable' : 'Sin datos';
+    document.getElementById('satKpiNdmiHint').textContent = latest ? 'Último periodo utilizable' : 'Sin datos';
+
+    document.getElementById('satInsightVigor').textContent = ndviInfo.label;
+    document.getElementById('satInsightVigorNote').textContent = ndviInfo.note;
+    document.getElementById('satInsightMoisture').textContent = ndmiInfo.label;
+    document.getElementById('satInsightMoistureNote').textContent = ndmiInfo.note;
+
+    const trendEl = document.getElementById('satInsightTrend');
+    const trendNoteEl = document.getElementById('satInsightTrendNote');
+    if (latest && previous) {
+      const current = Number(latest.ndvi_mean);
+      const prior = Number(previous.ndvi_mean);
+      const delta = current - prior;
+      const pct = Math.abs(prior) > 0.0001 ? (delta / Math.abs(prior)) * 100 : null;
+      const arrow = delta > 0.005 ? '▲' : delta < -0.005 ? '▼' : '→';
+      trendEl.textContent = arrow + ' ' + (pct == null ? delta.toFixed(3) : Math.abs(pct).toFixed(1) + '%');
+      trendNoteEl.textContent =
+        'NDVI ' + (delta > 0.005 ? 'subió' : delta < -0.005 ? 'bajó' : 'se mantuvo estable') +
+        ' ' + Math.abs(delta).toFixed(3) +
+        ' puntos respecto al periodo anterior.';
+    } else {
+      trendEl.textContent = '—';
+      trendNoteEl.textContent = 'Se necesitan al menos dos periodos utilizables.';
+    }
 
     const body = document.getElementById('satelliteObservationsBody');
     body.innerHTML = sorted.length ? sorted.map(r => {
       const from = r.interval_from ? new Date(r.interval_from).toLocaleDateString('es-EC') : '—';
       const to = r.interval_to ? new Date(r.interval_to).toLocaleDateString('es-EC') : '—';
       const q = esc(r.quality || 'no_data');
-      return '<tr><td>' + from + ' → ' + to + '</td><td><span class="sat-badge ' + q + '">' + q + '</span></td><td>' + (r.valid_pixel_percent==null?'—':Number(r.valid_pixel_percent).toFixed(1)+'%') + '</td><td>' + fmt(r.ndvi_mean) + '</td><td>' + fmt(r.ndmi_mean) + '</td></tr>';
+      return '<tr><td>' + from + ' → ' + to + '</td><td><span class="sat-badge ' + q + '">' + esc(qualityLabel(r.quality)) + '</span></td><td>' + (r.valid_pixel_percent==null?'—':Number(r.valid_pixel_percent).toFixed(1)+'%') + '</td><td>' + fmt(r.ndvi_mean) + '</td><td>' + fmt(r.ndmi_mean) + '</td></tr>';
     }).join('') : '<tr><td colspan="5">Sin datos.</td></tr>';
 
     if (!window.Chart) return;
     const canvas = document.getElementById('satelliteTrendChart');
     if (!canvas) return;
     if (chart) { try { chart.destroy(); } catch (_) {} }
-    const usable = sorted.filter(r => Number.isFinite(Number(r.ndvi_mean)) && Number.isFinite(Number(r.ndmi_mean)));
+    const chartRows = sorted.filter(r => Number.isFinite(Number(r.ndvi_mean)) && Number.isFinite(Number(r.ndmi_mean)));
     chart = new Chart(canvas,{
       type:'line',
       data:{
-        labels:usable.map(r=>new Date(r.interval_to).toLocaleDateString('es-EC',{day:'2-digit',month:'short'})),
+        labels:chartRows.map(r=>new Date(r.interval_to).toLocaleDateString('es-EC',{day:'2-digit',month:'short'})),
         datasets:[
-          {label:'NDVI',data:usable.map(r=>Number(r.ndvi_mean)),tension:.28},
-          {label:'NDMI',data:usable.map(r=>Number(r.ndmi_mean)),tension:.28}
+          {label:'NDVI',data:chartRows.map(r=>Number(r.ndvi_mean)),tension:.28},
+          {label:'NDMI',data:chartRows.map(r=>Number(r.ndmi_mean)),tension:.28}
         ]
       },
       options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{y:{min:-1,max:1}}}
