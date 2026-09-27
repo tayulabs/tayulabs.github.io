@@ -378,12 +378,16 @@
     currentSites = sites;
     const select = document.getElementById('satSiteSelect');
     const previousSiteId = select?.value || '';
+    const rememberedSiteId = sessionStorage.getItem('tayuSatelliteSiteId') || '';
     select.innerHTML = sites.length
       ? sites.map(s => '<option value="' + esc(s.id) + '">' + esc(s.name) + ' · ' + esc(s.site_type || 'sitio') + '</option>').join('')
       : '<option value="">Sin sitios disponibles</option>';
     if (previousSiteId && sites.some(s => s.id === previousSiteId)) {
       select.value = previousSiteId;
+    } else if (rememberedSiteId && sites.some(s => s.id === rememberedSiteId)) {
+      select.value = rememberedSiteId;
     }
+    if (select?.value) sessionStorage.setItem('tayuSatelliteSiteId', select.value);
     if (sites.length) {
       centerSelectedSite();
       await loadFields();
@@ -395,6 +399,7 @@
     const siteId = document.getElementById('satSiteSelect')?.value;
     if (!siteId) return;
     const rows = await getApi('/satellite/fields?site_id=' + encodeURIComponent(siteId));
+    if (document.getElementById('satSiteSelect')?.value !== siteId) return;
     const fields = Array.isArray(rows) ? rows : [];
     const host = document.getElementById('satelliteFieldList');
     host.innerHTML = fields.length
@@ -413,6 +418,17 @@
     document.getElementById('satNdviMapButton').disabled = false;
     let field = fields.find(f => f.id === id);
     if (!field) field = await getApi('/satellite/fields/' + encodeURIComponent(id));
+
+    const codeInput = document.getElementById('satFieldCode');
+    const cropInput = document.getElementById('satCropType');
+    const nameInput = document.getElementById('satFieldName');
+    const areaInput = document.getElementById('satArea');
+
+    if (codeInput) codeInput.value = field?.code || '';
+    if (cropInput) cropInput.value = field?.crop_type || '';
+    if (nameInput) nameInput.value = field?.name || '';
+    if (areaInput) areaInput.value = Number(field?.area_hectares || 0).toFixed(2);
+
     if (field?.geometry_geojson && map) {
       clearLayers();
       polygon = L.geoJSON(field.geometry_geojson,{style:{weight:3,fillOpacity:.18}}).addTo(map);
@@ -611,7 +627,7 @@
     document.getElementById('satNdviMapButton')?.addEventListener('click',()=>loadNdviOverlay().catch(fail));
     document.getElementById('satSaveField')?.addEventListener('click',()=>saveField().catch(fail));
     document.getElementById('satSync')?.addEventListener('click',()=>syncField().catch(fail));
-    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{selectedFieldId=null;clearDraw();centerSelectedSite();loadFields().catch(fail);});
+    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
   }
 
   function boot() { ensureUi(); }
