@@ -653,7 +653,11 @@
     const rows = await getApi(endpoint);
     if (document.getElementById('satSiteSelect')?.value !== siteId) return;
 
-    const fields = Array.isArray(rows) ? rows : [];
+    const allFields = Array.isArray(rows) ? rows : [];
+    const fields = showArchivedFields
+      ? allFields.filter(field => field?.status === 'archived')
+      : allFields.filter(field => !field?.status || field.status === 'active');
+
     currentFields = fields;
     renderFieldOverview(fields);
 
