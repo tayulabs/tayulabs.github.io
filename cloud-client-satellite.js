@@ -12,6 +12,8 @@
   let chart = null;
   let searchMarker = null;
   let currentSites = [];
+  let currentFields = [];
+  let fieldOverviewLayers = new Map();
   let ndviOverlay = null;
   let compareBeforeOverlay = null;
   let compareAfterOverlay = null;
@@ -88,6 +90,10 @@
       '#satellite .sat-list{display:flex;flex-direction:column;gap:10px;max-height:310px;overflow:auto}' +
       '#satellite .sat-field{padding:13px;border:1px solid var(--border);border-radius:16px;background:var(--panel2);cursor:pointer}' +
       '#satellite .sat-field.active{outline:2px solid var(--brand)}' +
+      '#satellite .sat-field-row{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start}' +
+      '#satellite .sat-field-check{margin-top:3px;width:17px;height:17px;accent-color:var(--brand)}' +
+      '#satellite .sat-batch-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}' +
+      '#satellite .sat-map-lot-label{background:rgba(255,255,255,.92);border:0;box-shadow:0 3px 10px rgba(0,0,0,.16);color:#284a18;font-weight:900;border-radius:999px;padding:3px 7px}' +
       '#satellite .sat-status{margin-top:10px;font-size:13px;color:var(--muted);font-weight:750}' +
       '#satellite .sat-status.ok{color:var(--brand)}#satellite .sat-status.error{color:var(--danger)}' +
       '#satellite .sat-badge{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:850}' +
@@ -133,7 +139,7 @@
       section.id = 'satellite';
       section.className = 'view';
       section.innerHTML =
-        '<div class="card"><div class="module-header"><div><h3 style="margin:0">🛰️ Amelia Satellite</h3><p class="hint" style="margin:6px 0 0">Sentinel-2 · NDVI y NDMI por lote.</p></div><div class="actions"><button class="btn ghost" id="satRefresh">Actualizar</button><button class="btn" id="satSync" disabled>Analizar con satélite</button></div></div></div>' +
+        '<div class="card"><div class="module-header"><div><h3 style="margin:0">🛰️ Amelia Satellite</h3><p class="hint" style="margin:6px 0 0">Análisis de vigor, humedad y evolución de cultivos.</p></div><div class="actions"><button class="btn ghost" id="satRefresh">Actualizar</button><button class="btn" id="satSync" disabled>Analizar con satélite</button></div></div></div>' +
         '<div class="sat-kpis">' +
           '<div class="sat-kpi"><span>NDVI actual</span><b id="satKpiNdvi">—</b><small id="satKpiNdviHint">Sin datos</small></div>' +
           '<div class="sat-kpi"><span>NDMI actual</span><b id="satKpiNdmi">—</b><small id="satKpiNdmiHint">Sin datos</small></div>' +
@@ -152,7 +158,7 @@
             '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
-            '<div class="card"><h3 style="margin-top:0">Lote satelital</h3><div class="sat-form">' +
+            '<div class="card"><h3 style="margin-top:0">Gestión de lotes</h3><div class="sat-form">' +
               '<div class="full"><label>Finca / sitio</label><select id="satSiteSelect"><option value="">Cargando...</option></select></div>' +
               '<div><label>Código</label><input id="satFieldCode" placeholder="SAT-001"></div>' +
               '<div><label>Cultivo</label><input id="satCropType" placeholder="banano, cacao..."></div>' +
@@ -161,7 +167,7 @@
               '<div><label>Intervalo</label><select id="satInterval"><option value="P5D">5 días</option><option value="P10D">10 días</option></select></div>' +
               '<div class="full"><button class="btn" id="satSaveField" disabled>Guardar lote</button></div>' +
             '</div><div id="satelliteStatus" class="sat-status">Esperando datos.</div></div>' +
-            '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Lotes registrados</h3><div id="satelliteFieldList" class="sat-list"><div class="hint">Sin lotes.</div></div></div>' +
+            '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Lotes de la finca</h3><div class="sat-batch-actions"><button class="btn ghost" id="satSelectAllFields" disabled>Seleccionar todos</button><button class="btn" id="satBatchSync" disabled>Analizar seleccionados</button></div><div id="satelliteFieldList" class="sat-list"><div class="hint">Sin lotes.</div></div></div>' +
           '</div>' +
         '</div>';
 
@@ -502,6 +508,105 @@
     return {type:'Polygon',coordinates:[coords]};
   }
 
+  function clearFieldOverview() {
+    fieldOverviewLayers.forEach(layer => {
+      try { layer.remove(); } catch (_) {}
+    });
+    fieldOverviewLayers.clear();
+  }
+
+  function refreshOverviewStyles() {
+    fieldOverviewLayers.forEach((layer, id) => {
+      try {
+        layer.setStyle({
+          weight: id === selectedFieldId ? 3 : 2,
+          fillOpacity: id === selectedFieldId ? .10 : .04,
+          color: id === selectedFieldId ? '#5BC12F' : '#284A18'
+        });
+      } catch (_) {}
+    });
+  }
+
+  function renderFieldOverview(fields) {
+    if (!map) return;
+
+    clearFieldOverview();
+
+    const bounds = [];
+
+    fields.forEach(field => {
+      if (!field?.geometry_geojson) return;
+
+      const layer = L.geoJSON(
+        field.geometry_geojson,
+        {
+          style: {
+            weight: field.id === selectedFieldId ? 3 : 2,
+            fillOpacity: field.id === selectedFieldId ? .10 : .04,
+            color: field.id === selectedFieldId ? '#5BC12F' : '#284A18'
+          }
+        }
+      ).addTo(map);
+
+      fieldOverviewLayers.set(field.id, layer);
+
+      try {
+        layer.bindTooltip(
+          esc(field.name || field.code || 'Lote'),
+          {
+            permanent: false,
+            direction: 'center',
+            className: 'sat-map-lot-label'
+          }
+        );
+      } catch (_) {}
+
+      layer.on('click', event => {
+        try { L.DomEvent.stopPropagation(event); } catch (_) {}
+        selectField(field.id, fields).catch(fail);
+      });
+
+      try {
+        const fieldBounds = layer.getBounds();
+        if (fieldBounds?.isValid?.()) bounds.push(fieldBounds);
+      } catch (_) {}
+    });
+
+    if (!selectedFieldId && bounds.length) {
+      try {
+        const combined = bounds.slice(1).reduce(
+          (acc, item) => acc.extend(item),
+          bounds[0]
+        );
+        map.fitBounds(combined, {padding:[28,28]});
+      } catch (_) {}
+    }
+  }
+
+  function updateBatchButtons() {
+    const checks = [...document.querySelectorAll('#satelliteFieldList .sat-field-check')];
+    const checked = checks.filter(input => input.checked);
+
+    const selectAll = document.getElementById('satSelectAllFields');
+    const batch = document.getElementById('satBatchSync');
+
+    if (selectAll) {
+      selectAll.disabled = checks.length === 0;
+      selectAll.textContent =
+        checks.length > 0 && checked.length === checks.length
+          ? 'Quitar selección'
+          : 'Seleccionar todos';
+    }
+
+    if (batch) {
+      batch.disabled = checked.length === 0;
+      batch.textContent =
+        checked.length > 0
+          ? 'Analizar seleccionados (' + checked.length + ')'
+          : 'Analizar seleccionados';
+    }
+  }
+
   async function loadSites() {
     setStatus('Cargando sitios...');
     const rows = await getApi('/satellite/sites');
@@ -532,19 +637,46 @@
     const rows = await getApi('/satellite/fields?site_id=' + encodeURIComponent(siteId));
     if (document.getElementById('satSiteSelect')?.value !== siteId) return;
     const fields = Array.isArray(rows) ? rows : [];
+    currentFields = fields;
+    renderFieldOverview(fields);
+
     const host = document.getElementById('satelliteFieldList');
     host.innerHTML = fields.length
-      ? fields.map(f => '<div class="sat-field" data-id="' + esc(f.id) + '"><b>' + esc(f.name) + '</b><div><small>' + esc(f.code) + ' · ' + esc(f.crop_type || 'Sin cultivo') + ' · ' + Number(f.area_hectares||0).toFixed(2) + ' ha</small></div></div>').join('')
+      ? fields.map(f =>
+          '<div class="sat-field" data-id="' + esc(f.id) + '">' +
+            '<div class="sat-field-row">' +
+              '<input class="sat-field-check" type="checkbox" data-id="' + esc(f.id) + '" aria-label="Seleccionar ' + esc(f.name) + '">' +
+              '<div><b>' + esc(f.name) + '</b><div><small>' + esc(f.code) + ' · ' + esc(f.crop_type || 'Sin cultivo') + ' · ' + Number(f.area_hectares||0).toFixed(2) + ' ha</small></div></div>' +
+            '</div>' +
+          '</div>'
+        ).join('')
       : '<div class="hint">Aún no hay lotes satelitales.</div>';
-    host.querySelectorAll('.sat-field').forEach(el => el.addEventListener('click', () => selectField(el.dataset.id, fields)));
+
+    host.querySelectorAll('.sat-field').forEach(el =>
+      el.addEventListener('click', event => {
+        if (event.target?.closest?.('.sat-field-check')) return;
+        selectField(el.dataset.id, fields).catch(fail);
+      })
+    );
+
+    host.querySelectorAll('.sat-field-check').forEach(input =>
+      input.addEventListener('change', updateBatchButtons)
+    );
+
+    updateBatchButtons();
+
     if (selectedFieldId && fields.some(f => f.id === selectedFieldId)) {
       await selectField(selectedFieldId, fields);
+    } else if (selectedFieldId) {
+      selectedFieldId = null;
+      refreshOverviewStyles();
     }
   }
 
   async function selectField(id, fields) {
     selectedFieldId = id;
     document.querySelectorAll('#satelliteFieldList .sat-field').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+    refreshOverviewStyles();
     document.getElementById('satSync').disabled = false;
     document.getElementById('satNdviMapButton').disabled = true;
     document.getElementById('satNdviPeriod').disabled = true;
@@ -586,24 +718,16 @@
     await loadFields();
   }
 
-  async function syncField() {
-    if (!selectedFieldId) throw new Error('Selecciona un lote.');
-
-    const interval = document.getElementById('satInterval')?.value || 'P5D';
+  async function syncOneField(fieldId, interval) {
     const intervalDays = interval === 'P10D' ? 10 : 5;
     const dayMs = 24 * 60 * 60 * 1000;
-
-    // Ventanas determinísticas: evitan crear periodos casi iguales
-    // cada vez que el usuario vuelve a analizar el mismo día.
     const todayUtcDay = Math.floor(Date.now() / dayMs);
     const alignedToDay = Math.floor(todayUtcDay / intervalDays) * intervalDays;
     const to = new Date(alignedToDay * dayMs);
     const recentFrom = new Date(to.getTime() - (30 * dayMs));
 
-    setStatus('Consultando Sentinel-2...');
-
     let result = await postApi(
-      '/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/sync',
+      '/satellite/fields/' + encodeURIComponent(fieldId) + '/sync',
       {
         from: recentFrom.toISOString(),
         to: to.toISOString(),
@@ -612,8 +736,6 @@
       }
     );
 
-    let usedFallback = false;
-
     const hasUsableObservation = value =>
       Array.isArray(value?.observations) &&
       value.observations.some(row =>
@@ -621,9 +743,10 @@
         row?.quality === 'limited'
       );
 
+    let usedFallback = false;
+
     if (!hasUsableObservation(result)) {
       usedFallback = true;
-      setStatus('Los datos recientes tienen baja calidad. Buscando periodos utilizables hasta 120 días atrás...');
 
       const historicalFrom =
         new Date(
@@ -632,7 +755,7 @@
         );
 
       result = await postApi(
-        '/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/sync',
+        '/satellite/fields/' + encodeURIComponent(fieldId) + '/sync',
         {
           from: historicalFrom.toISOString(),
           to: to.toISOString(),
@@ -648,16 +771,38 @@
       ? result.observations.filter(row => row?.quality === 'good' || row?.quality === 'limited').length
       : 0;
 
-    if (usableCount > 0) {
+    return {
+      result,
+      usedFallback,
+      saved,
+      skippedNoData,
+      usableCount
+    };
+  }
+
+  async function syncField() {
+    if (!selectedFieldId) throw new Error('Selecciona un lote.');
+
+    const interval = document.getElementById('satInterval')?.value || 'P5D';
+
+    setStatus('Procesando imágenes satelitales...');
+
+    const summary =
+      await syncOneField(
+        selectedFieldId,
+        interval
+      );
+
+    if (summary.usableCount > 0) {
       setStatus(
-        (usedFallback ? 'Se amplió la búsqueda histórica. ' : '') +
-        'Análisis completado: ' + usableCount + ' periodos utilizables' +
-        (skippedNoData > 0 ? ' y ' + skippedNoData + ' sin datos útiles.' : '.'),
+        (summary.usedFallback ? 'Se amplió la búsqueda histórica. ' : '') +
+        'Análisis completado: ' + summary.usableCount + ' periodos utilizables' +
+        (summary.skippedNoData > 0 ? ' y ' + summary.skippedNoData + ' sin datos útiles.' : '.'),
         'ok'
       );
-    } else if (saved > 0) {
+    } else if (summary.saved > 0) {
       setStatus(
-        'El satélite respondió, pero los periodos encontrados tienen baja calidad. Se muestran en el historial, pero no se usarán para el mapa NDVI.',
+        'Se encontraron datos recientes, pero su calidad es baja. Se muestran en el historial y no se usarán para el mapa NDVI.',
         'error'
       );
     } else {
@@ -668,6 +813,80 @@
     }
 
     await loadObservations(selectedFieldId);
+  }
+
+  async function syncSelectedFields() {
+    const selectedIds =
+      [...document.querySelectorAll('#satelliteFieldList .sat-field-check:checked')]
+        .map(input => input.dataset.id)
+        .filter(Boolean);
+
+    if (!selectedIds.length) {
+      throw new Error('Selecciona al menos un lote.');
+    }
+
+    const interval =
+      document.getElementById('satInterval')?.value ||
+      'P5D';
+
+    const button =
+      document.getElementById('satBatchSync');
+
+    if (button) button.disabled = true;
+
+    let completed = 0;
+    let usable = 0;
+    let lowQuality = 0;
+    let failed = 0;
+
+    for (const fieldId of selectedIds) {
+      const field =
+        currentFields.find(row => row.id === fieldId);
+
+      setStatus(
+        'Analizando lote ' +
+        (field?.name || (completed + 1)) +
+        ' (' + (completed + 1) + '/' + selectedIds.length + ')...'
+      );
+
+      try {
+        const summary =
+          await syncOneField(
+            fieldId,
+            interval
+          );
+
+        if (summary.usableCount > 0) usable++;
+        else if (summary.saved > 0) lowQuality++;
+
+      } catch (error) {
+        console.error(
+          'Amelia Satellite batch:',
+          fieldId,
+          error
+        );
+        failed++;
+      }
+
+      completed++;
+    }
+
+    setStatus(
+      'Análisis múltiple completado: ' +
+      usable + ' lote(s) con datos utilizables' +
+      (lowQuality ? ', ' + lowQuality + ' con baja calidad' : '') +
+      (failed ? ', ' + failed + ' con error' : '') +
+      '.',
+      failed ? 'error' : 'ok'
+    );
+
+    if (button) button.disabled = false;
+
+    if (selectedFieldId) {
+      await loadObservations(selectedFieldId);
+    }
+
+    updateBatchButtons();
   }
 
   async function loadObservations(id) {
@@ -1090,6 +1309,15 @@
 
     document.getElementById('satSaveField')?.addEventListener('click',()=>saveField().catch(fail));
     document.getElementById('satSync')?.addEventListener('click',()=>syncField().catch(fail));
+
+    document.getElementById('satSelectAllFields')?.addEventListener('click',()=>{
+      const checks = [...document.querySelectorAll('#satelliteFieldList .sat-field-check')];
+      const shouldCheck = checks.some(input => !input.checked);
+      checks.forEach(input => { input.checked = shouldCheck; });
+      updateBatchButtons();
+    });
+
+    document.getElementById('satBatchSync')?.addEventListener('click',()=>syncSelectedFields().catch(fail));
     document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satNdviPeriod').disabled=true;document.getElementById('satCompareToggle').disabled=true;document.getElementById('satCompareRun').disabled=true;document.getElementById('satComparePanel').classList.remove('open');document.getElementById('satNdviPeriod').innerHTML='<option value="">Sin periodos NDVI</option>';document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
   }
 
