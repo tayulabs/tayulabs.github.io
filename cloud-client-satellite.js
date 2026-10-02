@@ -718,24 +718,16 @@
     await loadFields();
   }
 
-  async function syncField() {
-    if (!selectedFieldId) throw new Error('Selecciona un lote.');
-
-    const interval = document.getElementById('satInterval')?.value || 'P5D';
+  async function syncOneField(fieldId, interval) {
     const intervalDays = interval === 'P10D' ? 10 : 5;
     const dayMs = 24 * 60 * 60 * 1000;
-
-    // Ventanas determinísticas: evitan crear periodos casi iguales
-    // cada vez que el usuario vuelve a analizar el mismo día.
     const todayUtcDay = Math.floor(Date.now() / dayMs);
     const alignedToDay = Math.floor(todayUtcDay / intervalDays) * intervalDays;
     const to = new Date(alignedToDay * dayMs);
     const recentFrom = new Date(to.getTime() - (30 * dayMs));
 
-    setStatus('Consultando Sentinel-2...');
-
     let result = await postApi(
-      '/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/sync',
+      '/satellite/fields/' + encodeURIComponent(fieldId) + '/sync',
       {
         from: recentFrom.toISOString(),
         to: to.toISOString(),
@@ -744,8 +736,6 @@
       }
     );
 
-    let usedFallback = false;
-
     const hasUsableObservation = value =>
       Array.isArray(value?.observations) &&
       value.observations.some(row =>
@@ -753,9 +743,10 @@
         row?.quality === 'limited'
       );
 
+    let usedFallback = false;
+
     if (!hasUsableObservation(result)) {
       usedFallback = true;
-      setStatus('Los datos recientes tienen baja calidad. Buscando periodos utilizables hasta 120 días atrás...');
 
       const historicalFrom =
         new Date(
@@ -764,7 +755,7 @@
         );
 
       result = await postApi(
-        '/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/sync',
+        '/satellite/fields/' + encodeURIComponent(fieldId) + '/sync',
         {
           from: historicalFrom.toISOString(),
           to: to.toISOString(),
@@ -780,16 +771,38 @@
       ? result.observations.filter(row => row?.quality === 'good' || row?.quality === 'limited').length
       : 0;
 
-    if (usableCount > 0) {
+    return {
+      result,
+      usedFallback,
+      saved,
+      skippedNoData,
+      usableCount
+    };
+  }
+
+  async function syncField() {
+    if (!selectedFieldId) throw new Error('Selecciona un lote.');
+
+    const interval = document.getElementById('satInterval')?.value || 'P5D';
+
+    setStatus('Procesando imágenes satelitales...');
+
+    const summary =
+      await syncOneField(
+        selectedFieldId,
+        interval
+      );
+
+    if (summary.usableCount > 0) {
       setStatus(
-        (usedFallback ? 'Se amplió la búsqueda histórica. ' : '') +
-        'Análisis completado: ' + usableCount + ' periodos utilizables' +
-        (skippedNoData > 0 ? ' y ' + skippedNoData + ' sin datos útiles.' : '.'),
+        (summary.usedFallback ? 'Se amplió la búsqueda histórica. ' : '') +
+        'Análisis completado: ' + summary.usableCount + ' periodos utilizables' +
+        (summary.skippedNoData > 0 ? ' y ' + summary.skippedNoData + ' sin datos útiles.' : '.'),
         'ok'
       );
-    } else if (saved > 0) {
+    } else if (summary.saved > 0) {
       setStatus(
-        'El satélite respondió, pero los periodos encontrados tienen baja calidad. Se muestran en el historial, pero no se usarán para el mapa NDVI.',
+        'Se encontraron datos recientes, pero su calidad es baja. Se muestran en el historial y no se usarán para el mapa NDVI.',
         'error'
       );
     } else {
@@ -800,6 +813,80 @@
     }
 
     await loadObservations(selectedFieldId);
+  }
+
+  async function syncSelectedFields() {
+    const selectedIds =
+      [...document.querySelectorAll('#satelliteFieldList .sat-field-check:checked')]
+        .map(input => input.dataset.id)
+        .filter(Boolean);
+
+    if (!selectedIds.length) {
+      throw new Error('Selecciona al menos un lote.');
+    }
+
+    const interval =
+      document.getElementById('satInterval')?.value ||
+      'P5D';
+
+    const button =
+      document.getElementById('satBatchSync');
+
+    if (button) button.disabled = true;
+
+    let completed = 0;
+    let usable = 0;
+    let lowQuality = 0;
+    let failed = 0;
+
+    for (const fieldId of selectedIds) {
+      const field =
+        currentFields.find(row => row.id === fieldId);
+
+      setStatus(
+        'Analizando lote ' +
+        (field?.name || (completed + 1)) +
+        ' (' + (completed + 1) + '/' + selectedIds.length + ')...'
+      );
+
+      try {
+        const summary =
+          await syncOneField(
+            fieldId,
+            interval
+          );
+
+        if (summary.usableCount > 0) usable++;
+        else if (summary.saved > 0) lowQuality++;
+
+      } catch (error) {
+        console.error(
+          'Amelia Satellite batch:',
+          fieldId,
+          error
+        );
+        failed++;
+      }
+
+      completed++;
+    }
+
+    setStatus(
+      'Análisis múltiple completado: ' +
+      usable + ' lote(s) con datos utilizables' +
+      (lowQuality ? ', ' + lowQuality + ' con baja calidad' : '') +
+      (failed ? ', ' + failed + ' con error' : '') +
+      '.',
+      failed ? 'error' : 'ok'
+    );
+
+    if (button) button.disabled = false;
+
+    if (selectedFieldId) {
+      await loadObservations(selectedFieldId);
+    }
+
+    updateBatchButtons();
   }
 
   async function loadObservations(id) {
@@ -1222,6 +1309,15 @@
 
     document.getElementById('satSaveField')?.addEventListener('click',()=>saveField().catch(fail));
     document.getElementById('satSync')?.addEventListener('click',()=>syncField().catch(fail));
+
+    document.getElementById('satSelectAllFields')?.addEventListener('click',()=>{
+      const checks = [...document.querySelectorAll('#satelliteFieldList .sat-field-check')];
+      const shouldCheck = checks.some(input => !input.checked);
+      checks.forEach(input => { input.checked = shouldCheck; });
+      updateBatchButtons();
+    });
+
+    document.getElementById('satBatchSync')?.addEventListener('click',()=>syncSelectedFields().catch(fail));
     document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satNdviPeriod').disabled=true;document.getElementById('satCompareToggle').disabled=true;document.getElementById('satCompareRun').disabled=true;document.getElementById('satComparePanel').classList.remove('open');document.getElementById('satNdviPeriod').innerHTML='<option value="">Sin periodos NDVI</option>';document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
   }
 
