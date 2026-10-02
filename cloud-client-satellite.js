@@ -69,7 +69,7 @@
       '#satellite .sat-compare-label{position:absolute;top:14px;z-index:900;background:rgba(255,255,255,.9);color:#17310f;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.14)}' +
       '#satellite .sat-compare-label.before{left:14px}' +
       '#satellite .sat-compare-label.after{right:14px}' +
-      '#satellite .sat-compare-handle{display:none;position:absolute;top:0;bottom:0;left:50%;width:4px;transform:translateX(-2px);background:#fff;z-index:920;box-shadow:0 0 0 1px rgba(0,0,0,.18),0 0 14px rgba(0,0,0,.22);cursor:ew-resize;touch-action:none}' +
+      '#satellite .sat-compare-handle{display:none;position:absolute;top:0;left:50%;width:4px;height:0;transform:translateX(-2px);background:#fff;z-index:920;box-shadow:0 0 0 1px rgba(0,0,0,.18),0 0 14px rgba(0,0,0,.22);cursor:ew-resize;touch-action:none}' +
       '#satellite .sat-compare-handle.open{display:block}' +
       '#satellite .sat-compare-handle span{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#284a18;font-weight:1000;border:1px solid rgba(0,0,0,.15);box-shadow:0 4px 16px rgba(0,0,0,.18)}' +
       '#satellite .sat-map-wrap{position:relative}' +
@@ -338,35 +338,55 @@
     comparePositionPct = pct;
 
     const handle = document.getElementById('satCompareHandle');
-    if (handle) handle.style.left = pct + '%';
-
-    const mapHost = document.getElementById('satelliteMap');
+    const wrap = document.querySelector('#satellite .sat-map-wrap');
     const afterImage = compareAfterOverlay?.getElement?.();
 
-    if (!mapHost || !afterImage) return;
+    if (!handle || !wrap || !afterImage) return;
 
-    const mapRect = mapHost.getBoundingClientRect();
+    const wrapRect = wrap.getBoundingClientRect();
     const imageRect = afterImage.getBoundingClientRect();
 
-    if (!mapRect.width || !imageRect.width) return;
+    if (!wrapRect.width || !imageRect.width || !imageRect.height) return;
 
     const dividerX =
-      mapRect.left +
+      imageRect.left +
       (
-        mapRect.width *
+        imageRect.width *
         pct /
         100
       );
 
-    const clipLeft =
+    handle.style.left =
+      (dividerX - wrapRect.left) +
+      'px';
+
+    handle.style.top =
+      Math.max(
+        0,
+        imageRect.top - wrapRect.top
+      ) +
+      'px';
+
+    handle.style.bottom = 'auto';
+
+    handle.style.height =
       Math.max(
         0,
         Math.min(
-          imageRect.width,
-          dividerX -
-          imageRect.left
+          wrapRect.bottom,
+          imageRect.bottom
+        ) -
+        Math.max(
+          wrapRect.top,
+          imageRect.top
         )
-      );
+      ) +
+      'px';
+
+    const clipLeft =
+      imageRect.width *
+      pct /
+      100;
 
     const clip =
       'inset(0 0 0 ' +
@@ -937,9 +957,27 @@
     const moveCompareHandle = event => {
       if (!compareDragging || !compareWrap) return;
       event.preventDefault();
-      const rect = compareWrap.getBoundingClientRect();
+
+      const afterImage =
+        compareAfterOverlay?.getElement?.();
+
+      if (!afterImage) return;
+
+      const rect =
+        afterImage.getBoundingClientRect();
+
       if (!rect.width) return;
-      const pct = ((event.clientX - rect.left) / rect.width) * 100;
+
+      const pct =
+        (
+          (
+            event.clientX -
+            rect.left
+          ) /
+          rect.width
+        ) *
+        100;
+
       setComparePosition(pct);
     };
 
