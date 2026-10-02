@@ -17,6 +17,7 @@
   let fieldOverviewStates = new Map();
   let showArchivedFields = false;
   let ndviOverlay = null;
+  let farmNdviOverlays = new Map();
   let compareBeforeOverlay = null;
   let compareAfterOverlay = null;
   let compareDragging = false;
@@ -183,7 +184,7 @@
               '<div><label>Intervalo</label><select id="satInterval"><option value="P5D">5 días</option><option value="P10D">10 días</option></select></div>' +
               '<div class="full"><button class="btn" id="satSaveField" disabled>Guardar lote</button></div>' +
             '</div><div id="satelliteStatus" class="sat-status">Esperando datos.</div></div>' +
-            '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Lotes de la finca</h3><div class="sat-list-tabs"><button class="btn ghost active" id="satActiveFieldsTab">Activos</button><button class="btn ghost" id="satArchivedFieldsTab">Archivados</button></div><div class="sat-batch-actions" id="satBatchActions"><button class="btn ghost" id="satSelectAllFields" disabled>Seleccionar todos</button><button class="btn" id="satBatchSync" disabled>Analizar seleccionados</button></div><div id="satelliteFieldList" class="sat-list"><div class="hint">Sin lotes.</div></div></div>' +
+            '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Lotes de la finca</h3><div class="sat-list-tabs"><button class="btn ghost active" id="satActiveFieldsTab">Activos</button><button class="btn ghost" id="satArchivedFieldsTab">Archivados</button></div><div class="sat-batch-actions" id="satBatchActions"><button class="btn ghost" id="satSelectAllFields" disabled>Seleccionar todos</button><button class="btn" id="satBatchSync" disabled>Analizar seleccionados</button><button class="btn ghost" id="satFarmNdviShow" disabled>Ver NDVI seleccionados</button><button class="btn ghost" id="satFarmNdviHide" disabled>Ocultar NDVI finca</button></div><div id="satelliteFieldList" class="sat-list"><div class="hint">Sin lotes.</div></div></div>' +
           '</div>' +
         '</div>';
 
@@ -348,6 +349,20 @@
     if (afterLabel) afterLabel.style.display = 'none';
   }
 
+  function clearFarmNdviOverlays() {
+    farmNdviOverlays.forEach(overlay => {
+      try { overlay.remove(); } catch (_) {}
+    });
+    farmNdviOverlays.clear();
+
+    const hideButton =
+      document.getElementById('satFarmNdviHide');
+
+    if (hideButton) {
+      hideButton.disabled = true;
+    }
+  }
+
   function clearNdviOverlay() {
     ndviOverlay?.remove();
     ndviOverlay = null;
@@ -454,6 +469,7 @@
     line?.remove(); line = null;
     polygon?.remove(); polygon = null;
     clearNdviOverlay();
+    clearFarmNdviOverlays();
   }
 
   function redraw() {
@@ -844,6 +860,7 @@
 
     const selectAll = document.getElementById('satSelectAllFields');
     const batch = document.getElementById('satBatchSync');
+    const farmMap = document.getElementById('satFarmNdviShow');
 
     if (selectAll) {
       selectAll.disabled = checks.length === 0;
@@ -859,6 +876,17 @@
         checked.length > 0
           ? 'Analizar seleccionados (' + checked.length + ')'
           : 'Analizar seleccionados';
+    }
+
+    if (farmMap) {
+      farmMap.disabled =
+        checked.length === 0 ||
+        showArchivedFields;
+
+      farmMap.textContent =
+        checked.length > 0
+          ? 'Ver NDVI seleccionados (' + checked.length + ')'
+          : 'Ver NDVI seleccionados';
     }
   }
 
@@ -1296,6 +1324,195 @@
     renderObservations(Array.isArray(rows) ? rows : []);
   }
 
+  async function loadFarmNdviMaps() {
+    const selectedIds =
+      [...document.querySelectorAll('#satelliteFieldList .sat-field-check:checked')]
+        .map(input => input.dataset.id)
+        .filter(Boolean);
+
+    if (!selectedIds.length) {
+      throw new Error('Selecciona al menos un lote.');
+    }
+
+    clearNdviOverlay();
+    clearFarmNdviOverlays();
+
+    const showButton =
+      document.getElementById('satFarmNdviShow');
+
+    const hideButton =
+      document.getElementById('satFarmNdviHide');
+
+    if (showButton) showButton.disabled = true;
+
+    setStatus(
+      'Cargando mapas NDVI de ' +
+      selectedIds.length +
+      ' lote(s)...'
+    );
+
+    const queue = [...selectedIds];
+    const loadedBounds = [];
+    let loaded = 0;
+    let unavailable = 0;
+    let failed = 0;
+
+    async function worker() {
+      while (queue.length) {
+        const fieldId = queue.shift();
+        if (!fieldId) continue;
+
+        const field =
+          currentFields.find(
+            row =>
+              row.id === fieldId
+          );
+
+        try {
+          const result =
+            await getApi(
+              periodPath(
+                fieldId,
+                ''
+              )
+            );
+
+          const bounds =
+            mapBounds(
+              result
+            );
+
+          const overlay =
+            L.imageOverlay(
+              result.image_data_url,
+              bounds,
+              {
+                opacity: .76,
+                interactive: false,
+                crossOrigin: false
+              }
+            ).addTo(map);
+
+          farmNdviOverlays.set(
+            fieldId,
+            overlay
+          );
+
+          loadedBounds.push(
+            L.latLngBounds(
+              bounds
+            )
+          );
+
+          loaded++;
+
+        } catch (error) {
+          const message =
+            String(
+              error?.message ||
+              ''
+            ).toLowerCase();
+
+          if (
+            message.includes('not found') ||
+            message.includes('no usable') ||
+            message.includes('no se')
+          ) {
+            unavailable++;
+          } else {
+            failed++;
+            console.warn(
+              'Amelia Satellite farm NDVI:',
+              field?.name || fieldId,
+              error
+            );
+          }
+        }
+      }
+    }
+
+    await Promise.all(
+      Array.from(
+        {
+          length:
+            Math.min(
+              3,
+              selectedIds.length
+            )
+        },
+        () => worker()
+      )
+    );
+
+    fieldOverviewLayers.forEach(layer => {
+      try { layer.bringToFront?.(); } catch (_) {}
+    });
+
+    document.getElementById('satNdviLegend')?.classList.toggle(
+      'open',
+      loaded > 0
+    );
+
+    if (
+      loadedBounds.length &&
+      map
+    ) {
+      try {
+        const combined =
+          loadedBounds
+            .slice(1)
+            .reduce(
+              (acc, item) =>
+                acc.extend(
+                  item
+                ),
+              loadedBounds[0]
+            );
+
+        map.fitBounds(
+          combined,
+          {
+            padding:
+              [28,28]
+          }
+        );
+      } catch (_) {}
+    }
+
+    if (hideButton) {
+      hideButton.disabled =
+        loaded === 0;
+    }
+
+    if (showButton) {
+      showButton.disabled = false;
+    }
+
+    setStatus(
+      'Mapa NDVI de finca: ' +
+      loaded +
+      ' lote(s) cargados' +
+      (
+        unavailable
+          ? ', ' +
+            unavailable +
+            ' sin periodo confiable'
+          : ''
+      ) +
+      (
+        failed
+          ? ', ' +
+            failed +
+            ' con error'
+          : ''
+      ) +
+      '.',
+      failed
+        ? 'error'
+        : 'ok'
+    );
+  }
+
   async function loadNdviOverlay() {
     if (!selectedFieldId) throw new Error('Selecciona un lote.');
 
@@ -1305,6 +1522,7 @@
     const result = await getApi(periodPath(selectedFieldId, periodValue));
     const bounds = mapBounds(result);
 
+    clearFarmNdviOverlays();
     clearNdviOverlay();
 
     ndviOverlay = L.imageOverlay(
@@ -1348,6 +1566,7 @@
     const beforeBounds = mapBounds(beforeResult);
     const afterBounds = mapBounds(afterResult);
 
+    clearFarmNdviOverlays();
     clearNdviOverlay();
 
     compareBeforeOverlay = L.imageOverlay(
@@ -1738,6 +1957,13 @@
     });
 
     document.getElementById('satBatchSync')?.addEventListener('click',()=>syncSelectedFields().catch(fail));
+    document.getElementById('satFarmNdviShow')?.addEventListener('click',()=>loadFarmNdviMaps().catch(fail));
+    document.getElementById('satFarmNdviHide')?.addEventListener('click',()=>{
+      clearFarmNdviOverlays();
+      document.getElementById('satNdviLegend')?.classList.remove('open');
+      setStatus('Mapa NDVI de finca ocultado.', 'ok');
+      updateBatchButtons();
+    });
     document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satNdviPeriod').disabled=true;document.getElementById('satCompareToggle').disabled=true;document.getElementById('satCompareRun').disabled=true;document.getElementById('satComparePanel').classList.remove('open');document.getElementById('satNdviPeriod').innerHTML='<option value="">Sin periodos NDVI</option>';document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
   }
 
