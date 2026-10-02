@@ -12,6 +12,8 @@
   let chart = null;
   let searchMarker = null;
   let currentSites = [];
+  let currentFields = [];
+  let fieldOverviewLayers = new Map();
   let ndviOverlay = null;
   let compareBeforeOverlay = null;
   let compareAfterOverlay = null;
@@ -88,6 +90,10 @@
       '#satellite .sat-list{display:flex;flex-direction:column;gap:10px;max-height:310px;overflow:auto}' +
       '#satellite .sat-field{padding:13px;border:1px solid var(--border);border-radius:16px;background:var(--panel2);cursor:pointer}' +
       '#satellite .sat-field.active{outline:2px solid var(--brand)}' +
+      '#satellite .sat-field-row{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start}' +
+      '#satellite .sat-field-check{margin-top:3px;width:17px;height:17px;accent-color:var(--brand)}' +
+      '#satellite .sat-batch-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}' +
+      '#satellite .sat-map-lot-label{background:rgba(255,255,255,.92);border:0;box-shadow:0 3px 10px rgba(0,0,0,.16);color:#284a18;font-weight:900;border-radius:999px;padding:3px 7px}' +
       '#satellite .sat-status{margin-top:10px;font-size:13px;color:var(--muted);font-weight:750}' +
       '#satellite .sat-status.ok{color:var(--brand)}#satellite .sat-status.error{color:var(--danger)}' +
       '#satellite .sat-badge{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:850}' +
@@ -133,7 +139,7 @@
       section.id = 'satellite';
       section.className = 'view';
       section.innerHTML =
-        '<div class="card"><div class="module-header"><div><h3 style="margin:0">🛰️ Amelia Satellite</h3><p class="hint" style="margin:6px 0 0">Sentinel-2 · NDVI y NDMI por lote.</p></div><div class="actions"><button class="btn ghost" id="satRefresh">Actualizar</button><button class="btn" id="satSync" disabled>Analizar con satélite</button></div></div></div>' +
+        '<div class="card"><div class="module-header"><div><h3 style="margin:0">🛰️ Amelia Satellite</h3><p class="hint" style="margin:6px 0 0">Análisis de vigor, humedad y evolución de cultivos.</p></div><div class="actions"><button class="btn ghost" id="satRefresh">Actualizar</button><button class="btn" id="satSync" disabled>Analizar con satélite</button></div></div></div>' +
         '<div class="sat-kpis">' +
           '<div class="sat-kpi"><span>NDVI actual</span><b id="satKpiNdvi">—</b><small id="satKpiNdviHint">Sin datos</small></div>' +
           '<div class="sat-kpi"><span>NDMI actual</span><b id="satKpiNdmi">—</b><small id="satKpiNdmiHint">Sin datos</small></div>' +
@@ -152,7 +158,7 @@
             '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
-            '<div class="card"><h3 style="margin-top:0">Lote satelital</h3><div class="sat-form">' +
+            '<div class="card"><h3 style="margin-top:0">Gestión de lotes</h3><div class="sat-form">' +
               '<div class="full"><label>Finca / sitio</label><select id="satSiteSelect"><option value="">Cargando...</option></select></div>' +
               '<div><label>Código</label><input id="satFieldCode" placeholder="SAT-001"></div>' +
               '<div><label>Cultivo</label><input id="satCropType" placeholder="banano, cacao..."></div>' +
@@ -161,7 +167,7 @@
               '<div><label>Intervalo</label><select id="satInterval"><option value="P5D">5 días</option><option value="P10D">10 días</option></select></div>' +
               '<div class="full"><button class="btn" id="satSaveField" disabled>Guardar lote</button></div>' +
             '</div><div id="satelliteStatus" class="sat-status">Esperando datos.</div></div>' +
-            '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Lotes registrados</h3><div id="satelliteFieldList" class="sat-list"><div class="hint">Sin lotes.</div></div></div>' +
+            '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Lotes de la finca</h3><div class="sat-batch-actions"><button class="btn ghost" id="satSelectAllFields" disabled>Seleccionar todos</button><button class="btn" id="satBatchSync" disabled>Analizar seleccionados</button></div><div id="satelliteFieldList" class="sat-list"><div class="hint">Sin lotes.</div></div></div>' +
           '</div>' +
         '</div>';
 
@@ -502,6 +508,105 @@
     return {type:'Polygon',coordinates:[coords]};
   }
 
+  function clearFieldOverview() {
+    fieldOverviewLayers.forEach(layer => {
+      try { layer.remove(); } catch (_) {}
+    });
+    fieldOverviewLayers.clear();
+  }
+
+  function refreshOverviewStyles() {
+    fieldOverviewLayers.forEach((layer, id) => {
+      try {
+        layer.setStyle({
+          weight: id === selectedFieldId ? 3 : 2,
+          fillOpacity: id === selectedFieldId ? .10 : .04,
+          color: id === selectedFieldId ? '#5BC12F' : '#284A18'
+        });
+      } catch (_) {}
+    });
+  }
+
+  function renderFieldOverview(fields) {
+    if (!map) return;
+
+    clearFieldOverview();
+
+    const bounds = [];
+
+    fields.forEach(field => {
+      if (!field?.geometry_geojson) return;
+
+      const layer = L.geoJSON(
+        field.geometry_geojson,
+        {
+          style: {
+            weight: field.id === selectedFieldId ? 3 : 2,
+            fillOpacity: field.id === selectedFieldId ? .10 : .04,
+            color: field.id === selectedFieldId ? '#5BC12F' : '#284A18'
+          }
+        }
+      ).addTo(map);
+
+      fieldOverviewLayers.set(field.id, layer);
+
+      try {
+        layer.bindTooltip(
+          esc(field.name || field.code || 'Lote'),
+          {
+            permanent: false,
+            direction: 'center',
+            className: 'sat-map-lot-label'
+          }
+        );
+      } catch (_) {}
+
+      layer.on('click', event => {
+        try { L.DomEvent.stopPropagation(event); } catch (_) {}
+        selectField(field.id, fields).catch(fail);
+      });
+
+      try {
+        const fieldBounds = layer.getBounds();
+        if (fieldBounds?.isValid?.()) bounds.push(fieldBounds);
+      } catch (_) {}
+    });
+
+    if (!selectedFieldId && bounds.length) {
+      try {
+        const combined = bounds.slice(1).reduce(
+          (acc, item) => acc.extend(item),
+          bounds[0]
+        );
+        map.fitBounds(combined, {padding:[28,28]});
+      } catch (_) {}
+    }
+  }
+
+  function updateBatchButtons() {
+    const checks = [...document.querySelectorAll('#satelliteFieldList .sat-field-check')];
+    const checked = checks.filter(input => input.checked);
+
+    const selectAll = document.getElementById('satSelectAllFields');
+    const batch = document.getElementById('satBatchSync');
+
+    if (selectAll) {
+      selectAll.disabled = checks.length === 0;
+      selectAll.textContent =
+        checks.length > 0 && checked.length === checks.length
+          ? 'Quitar selección'
+          : 'Seleccionar todos';
+    }
+
+    if (batch) {
+      batch.disabled = checked.length === 0;
+      batch.textContent =
+        checked.length > 0
+          ? 'Analizar seleccionados (' + checked.length + ')'
+          : 'Analizar seleccionados';
+    }
+  }
+
   async function loadSites() {
     setStatus('Cargando sitios...');
     const rows = await getApi('/satellite/sites');
@@ -532,19 +637,46 @@
     const rows = await getApi('/satellite/fields?site_id=' + encodeURIComponent(siteId));
     if (document.getElementById('satSiteSelect')?.value !== siteId) return;
     const fields = Array.isArray(rows) ? rows : [];
+    currentFields = fields;
+    renderFieldOverview(fields);
+
     const host = document.getElementById('satelliteFieldList');
     host.innerHTML = fields.length
-      ? fields.map(f => '<div class="sat-field" data-id="' + esc(f.id) + '"><b>' + esc(f.name) + '</b><div><small>' + esc(f.code) + ' · ' + esc(f.crop_type || 'Sin cultivo') + ' · ' + Number(f.area_hectares||0).toFixed(2) + ' ha</small></div></div>').join('')
+      ? fields.map(f =>
+          '<div class="sat-field" data-id="' + esc(f.id) + '">' +
+            '<div class="sat-field-row">' +
+              '<input class="sat-field-check" type="checkbox" data-id="' + esc(f.id) + '" aria-label="Seleccionar ' + esc(f.name) + '">' +
+              '<div><b>' + esc(f.name) + '</b><div><small>' + esc(f.code) + ' · ' + esc(f.crop_type || 'Sin cultivo') + ' · ' + Number(f.area_hectares||0).toFixed(2) + ' ha</small></div></div>' +
+            '</div>' +
+          '</div>'
+        ).join('')
       : '<div class="hint">Aún no hay lotes satelitales.</div>';
-    host.querySelectorAll('.sat-field').forEach(el => el.addEventListener('click', () => selectField(el.dataset.id, fields)));
+
+    host.querySelectorAll('.sat-field').forEach(el =>
+      el.addEventListener('click', event => {
+        if (event.target?.closest?.('.sat-field-check')) return;
+        selectField(el.dataset.id, fields).catch(fail);
+      })
+    );
+
+    host.querySelectorAll('.sat-field-check').forEach(input =>
+      input.addEventListener('change', updateBatchButtons)
+    );
+
+    updateBatchButtons();
+
     if (selectedFieldId && fields.some(f => f.id === selectedFieldId)) {
       await selectField(selectedFieldId, fields);
+    } else if (selectedFieldId) {
+      selectedFieldId = null;
+      refreshOverviewStyles();
     }
   }
 
   async function selectField(id, fields) {
     selectedFieldId = id;
     document.querySelectorAll('#satelliteFieldList .sat-field').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+    refreshOverviewStyles();
     document.getElementById('satSync').disabled = false;
     document.getElementById('satNdviMapButton').disabled = true;
     document.getElementById('satNdviPeriod').disabled = true;
