@@ -14,6 +14,7 @@
   let currentSites = [];
   let currentFields = [];
   let fieldOverviewLayers = new Map();
+  let fieldOverviewStates = new Map();
   let showArchivedFields = false;
   let ndviOverlay = null;
   let compareBeforeOverlay = null;
@@ -95,6 +96,10 @@
       '#satellite .sat-field-check{margin-top:3px;width:17px;height:17px;accent-color:var(--brand)}' +
       '#satellite .sat-batch-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}' +
       '#satellite .sat-map-lot-label{background:rgba(255,255,255,.92);border:0;box-shadow:0 3px 10px rgba(0,0,0,.16);color:#284a18;font-weight:900;border-radius:999px;padding:3px 7px}' +
+      '#satellite .sat-farm-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:14px;background:var(--panel2);font-size:12px;font-weight:800;align-items:center}' +
+      '#satellite .sat-farm-legend .item{display:inline-flex;align-items:center;gap:5px}' +
+      '#satellite .sat-farm-legend .dot{width:11px;height:11px;border-radius:50%;display:inline-block}' +
+      '#satellite .sat-field-status{display:inline-flex;margin-top:5px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900;background:rgba(148,163,184,.16);color:var(--muted)}' +
       '#satellite .sat-field-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}' +
       '#satellite .sat-field-menu-wrap{position:relative}' +
       '#satellite .sat-field-menu-btn{border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}' +
@@ -165,7 +170,7 @@
         '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
-            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareHandle" class="sat-compare-handle"><span>↔</span></div></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button><select id="satNdviPeriod" disabled><option value="">Sin periodos NDVI</option></select><button class="btn ghost" id="satNdviMapButton" disabled>Mapa NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Antes vs después</button></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-grid"><div><label>Antes</label><select id="satCompareBefore" disabled><option value="">Sin periodos</option></select></div><div><label>Después</label><select id="satCompareAfter" disabled><option value="">Sin periodos</option></select></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><p class="hint" style="margin:8px 0 0">Arrastra la línea vertical sobre el mapa para revelar el periodo Antes o Después.</p></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
+            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareHandle" class="sat-compare-handle"><span>↔</span></div></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button><select id="satNdviPeriod" disabled><option value="">Sin periodos NDVI</option></select><button class="btn ghost" id="satNdviMapButton" disabled>Mapa NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Antes vs después</button></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-grid"><div><label>Antes</label><select id="satCompareBefore" disabled><option value="">Sin periodos</option></select></div><div><label>Después</label><select id="satCompareAfter" disabled><option value="">Sin periodos</option></select></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><p class="hint" style="margin:8px 0 0">Arrastra la línea vertical sobre el mapa para revelar el periodo Antes o Después.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
             '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
@@ -526,14 +531,24 @@
     fieldOverviewLayers.clear();
   }
 
+  function overviewStyleForField(id) {
+    const state = fieldOverviewStates.get(id);
+    const baseColor = state?.color || '#94a3b8';
+
+    return {
+      weight: id === selectedFieldId ? 4 : 2,
+      fillOpacity: id === selectedFieldId ? .24 : .16,
+      color: id === selectedFieldId ? '#5BC12F' : baseColor,
+      fillColor: baseColor
+    };
+  }
+
   function refreshOverviewStyles() {
     fieldOverviewLayers.forEach((layer, id) => {
       try {
-        layer.setStyle({
-          weight: id === selectedFieldId ? 3 : 2,
-          fillOpacity: id === selectedFieldId ? .10 : .04,
-          color: id === selectedFieldId ? '#5BC12F' : '#284A18'
-        });
+        layer.setStyle(
+          overviewStyleForField(id)
+        );
       } catch (_) {}
     });
   }
@@ -551,11 +566,7 @@
       const layer = L.geoJSON(
         field.geometry_geojson,
         {
-          style: {
-            weight: field.id === selectedFieldId ? 3 : 2,
-            fillOpacity: field.id === selectedFieldId ? .10 : .04,
-            color: field.id === selectedFieldId ? '#5BC12F' : '#284A18'
-          }
+          style: overviewStyleForField(field.id)
         }
       ).addTo(map);
 
@@ -592,6 +603,239 @@
         map.fitBounds(combined, {padding:[28,28]});
       } catch (_) {}
     }
+  }
+
+  function farmStateFromObservation(observation) {
+    const value = Number(observation?.ndvi_mean);
+
+    if (
+      !observation ||
+      !(
+        observation.quality === 'good' ||
+        observation.quality === 'limited'
+      ) ||
+      !Number.isFinite(value)
+    ) {
+      return {
+        label: 'Sin dato confiable',
+        color: '#94a3b8',
+        ndvi: null,
+        period: null
+      };
+    }
+
+    let label = 'Muy bajo';
+    let color = '#c62828';
+
+    if (value >= 0.65) {
+      label = 'Alto';
+      color = '#1b5e20';
+    } else if (value >= 0.45) {
+      label = 'Moderado';
+      color = '#7cb342';
+    } else if (value >= 0.25) {
+      label = 'Bajo';
+      color = '#fdd835';
+    }
+
+    const period =
+      observation.interval_to
+        ? new Date(observation.interval_to).toLocaleDateString('es-EC')
+        : null;
+
+    return {
+      label,
+      color,
+      ndvi: value,
+      period
+    };
+  }
+
+  function updateFieldOverviewCard(fieldId, state) {
+    const card =
+      document.querySelector(
+        '#satelliteFieldList .sat-field[data-id="' +
+        CSS.escape(String(fieldId)) +
+        '"]'
+      );
+
+    if (!card) return;
+
+    let badge =
+      card.querySelector(
+        '.sat-field-status'
+      );
+
+    if (!badge) {
+      badge =
+        document.createElement('span');
+
+      badge.className =
+        'sat-field-status';
+
+      const info =
+        card.querySelector(
+          '.sat-field-head > div:first-child'
+        );
+
+      info?.appendChild(
+        badge
+      );
+    }
+
+    badge.textContent =
+      state.ndvi === null
+        ? state.label
+        : state.label +
+          ' · NDVI ' +
+          state.ndvi.toFixed(3) +
+          (
+            state.period
+              ? ' · ' + state.period
+              : ''
+          );
+
+    badge.style.background =
+      state.color + '22';
+
+    badge.style.color =
+      state.color;
+  }
+
+  async function loadFarmOverviewStates(fields, siteId) {
+    if (
+      showArchivedFields ||
+      !Array.isArray(fields) ||
+      !fields.length
+    ) {
+      return;
+    }
+
+    const queue = [...fields];
+    const results = new Map();
+
+    async function worker() {
+      while (queue.length) {
+        const field = queue.shift();
+        if (!field) continue;
+
+        try {
+          const rows =
+            await getApi(
+              '/satellite/fields/' +
+              encodeURIComponent(field.id) +
+              '/observations?limit=36'
+            );
+
+          const observations =
+            Array.isArray(rows)
+              ? rows
+              : [];
+
+          const latestUsable =
+            observations.find(row =>
+              (
+                row?.quality === 'good' ||
+                row?.quality === 'limited'
+              ) &&
+              Number.isFinite(
+                Number(row?.ndvi_mean)
+              )
+            ) || null;
+
+          results.set(
+            field.id,
+            farmStateFromObservation(
+              latestUsable
+            )
+          );
+
+        } catch (_) {
+          results.set(
+            field.id,
+            farmStateFromObservation(
+              null
+            )
+          );
+        }
+      }
+    }
+
+    await Promise.all(
+      Array.from(
+        {
+          length:
+            Math.min(
+              4,
+              fields.length
+            )
+        },
+        () => worker()
+      )
+    );
+
+    if (
+      showArchivedFields ||
+      document.getElementById('satSiteSelect')?.value !== siteId
+    ) {
+      return;
+    }
+
+    fieldOverviewStates =
+      results;
+
+    refreshOverviewStyles();
+
+    results.forEach(
+      (state, fieldId) => {
+        updateFieldOverviewCard(
+          fieldId,
+          state
+        );
+
+        const layer =
+          fieldOverviewLayers.get(
+            fieldId
+          );
+
+        if (!layer) return;
+
+        try {
+          const field =
+            fields.find(
+              row =>
+                row.id === fieldId
+            );
+
+          const tooltip =
+            (field?.name || field?.code || 'Lote') +
+            '<br>' +
+            state.label +
+            (
+              state.ndvi === null
+                ? ''
+                : ' · NDVI ' +
+                  state.ndvi.toFixed(3)
+            ) +
+            (
+              state.period
+                ? '<br>Último dato: ' +
+                  state.period
+                : ''
+            );
+
+          layer.bindTooltip(
+            tooltip,
+            {
+              permanent: false,
+              direction: 'center',
+              className:
+                'sat-map-lot-label'
+            }
+          );
+        } catch (_) {}
+      }
+    );
   }
 
   function updateBatchButtons() {
@@ -659,7 +903,11 @@
       : allFields.filter(field => !field?.status || field.status === 'active');
 
     currentFields = fields;
+    fieldOverviewStates = new Map();
     renderFieldOverview(fields);
+
+    const farmLegend = document.getElementById('satFarmLegend');
+    if (farmLegend) farmLegend.style.display = showArchivedFields ? 'none' : 'flex';
 
     const batchActions = document.getElementById('satBatchActions');
     if (batchActions) batchActions.style.display = showArchivedFields ? 'none' : 'flex';
@@ -731,6 +979,16 @@
     );
 
     updateBatchButtons();
+
+    loadFarmOverviewStates(
+      fields,
+      siteId
+    ).catch(error => {
+      console.warn(
+        'Amelia Satellite overview:',
+        error
+      );
+    });
 
     if (selectedFieldId && fields.some(f => f.id === selectedFieldId)) {
       await selectField(selectedFieldId, fields);
