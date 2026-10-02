@@ -1187,6 +1187,20 @@
     }
 
     await loadObservations(selectedFieldId);
+
+    const siteId =
+      document.getElementById('satSiteSelect')?.value;
+
+    if (
+      siteId &&
+      !showArchivedFields &&
+      currentFields.length
+    ) {
+      await loadFarmOverviewStates(
+        currentFields,
+        siteId
+      );
+    }
   }
 
   async function syncSelectedFields() {
@@ -1258,6 +1272,20 @@
 
     if (selectedFieldId) {
       await loadObservations(selectedFieldId);
+    }
+
+    const siteId =
+      document.getElementById('satSiteSelect')?.value;
+
+    if (
+      siteId &&
+      !showArchivedFields &&
+      currentFields.length
+    ) {
+      await loadFarmOverviewStates(
+        currentFields,
+        siteId
+      );
     }
 
     updateBatchButtons();
