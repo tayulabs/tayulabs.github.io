@@ -590,11 +590,23 @@
     if (!selectedFieldId) throw new Error('Selecciona un lote.');
 
     const interval = document.getElementById('satInterval')?.value || 'P5D';
+    const intervalDays = interval === 'P10D' ? 10 : 5;
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    // Ventanas determinísticas: evitan crear periodos casi iguales
+    // cada vez que el usuario vuelve a analizar el mismo día.
+    const todayUtcDay = Math.floor(Date.now() / dayMs);
+    const alignedToDay = Math.floor(todayUtcDay / intervalDays) * intervalDays;
+    const to = new Date(alignedToDay * dayMs);
+    const recentFrom = new Date(to.getTime() - (30 * dayMs));
+
     setStatus('Consultando Sentinel-2...');
 
     let result = await postApi(
       '/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/sync',
       {
+        from: recentFrom.toISOString(),
+        to: to.toISOString(),
         aggregationInterval: interval,
         maxCloudCoverage: 100
       }
@@ -602,20 +614,27 @@
 
     let usedFallback = false;
 
-    if (
-      Number(result?.saved || 0) === 0 &&
-      Number(result?.skipped_no_data || 0) > 0
-    ) {
-      usedFallback = true;
-      setStatus('Sin periodos utilizables en los últimos 30 días. Buscando hasta 120 días atrás...');
+    const hasUsableObservation = value =>
+      Array.isArray(value?.observations) &&
+      value.observations.some(row =>
+        row?.quality === 'good' ||
+        row?.quality === 'limited'
+      );
 
-      const to = new Date();
-      const from = new Date(to.getTime() - (120 * 24 * 60 * 60 * 1000));
+    if (!hasUsableObservation(result)) {
+      usedFallback = true;
+      setStatus('Los datos recientes tienen baja calidad. Buscando periodos utilizables hasta 120 días atrás...');
+
+      const historicalFrom =
+        new Date(
+          to.getTime() -
+          (120 * dayMs)
+        );
 
       result = await postApi(
         '/satellite/fields/' + encodeURIComponent(selectedFieldId) + '/sync',
         {
-          from: from.toISOString(),
+          from: historicalFrom.toISOString(),
           to: to.toISOString(),
           aggregationInterval: interval,
           maxCloudCoverage: 100
@@ -625,13 +644,21 @@
 
     const saved = Number(result?.saved || 0);
     const skippedNoData = Number(result?.skipped_no_data || 0);
+    const usableCount = Array.isArray(result?.observations)
+      ? result.observations.filter(row => row?.quality === 'good' || row?.quality === 'limited').length
+      : 0;
 
-    if (saved > 0) {
+    if (usableCount > 0) {
       setStatus(
         (usedFallback ? 'Se amplió la búsqueda histórica. ' : '') +
-        'Análisis completado: ' + saved + ' periodos guardados' +
+        'Análisis completado: ' + usableCount + ' periodos utilizables' +
         (skippedNoData > 0 ? ' y ' + skippedNoData + ' sin datos útiles.' : '.'),
         'ok'
+      );
+    } else if (saved > 0) {
+      setStatus(
+        'El satélite respondió, pero los periodos encontrados tienen baja calidad. Se muestran en el historial, pero no se usarán para el mapa NDVI.',
+        'error'
       );
     } else {
       setStatus(
@@ -777,18 +804,71 @@
   }
 
   function renderObservations(rows) {
-    const sorted = [...rows].sort((a,b)=>new Date(a.interval_from||0)-new Date(b.interval_from||0));
-    const usable = sorted.filter(r =>
-      (r.quality === 'good' || r.quality === 'limited') &&
+    const qualityRank = {
+      good: 3,
+      limited: 2,
+      poor: 1,
+      no_data: 0
+    };
+
+    // La API puede contener análisis antiguos con horas distintas
+    // pero el mismo rango visible. Amelia muestra solo la mejor fila
+    // por par de fechas para evitar duplicados en tabla/selectores.
+    const dedupedByDay = new Map();
+
+    [...rows].forEach(row => {
+      const from = row?.interval_from ? new Date(row.interval_from) : null;
+      const to = row?.interval_to ? new Date(row.interval_to) : null;
+
+      const key =
+        from && to && !Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime())
+          ? from.toISOString().slice(0,10) + '|' + to.toISOString().slice(0,10)
+          : String(row?.id || Math.random());
+
+      const current = dedupedByDay.get(key);
+
+      if (!current) {
+        dedupedByDay.set(key, row);
+        return;
+      }
+
+      const currentRank = qualityRank[current?.quality] ?? -1;
+      const nextRank = qualityRank[row?.quality] ?? -1;
+      const currentValid = Number(current?.valid_pixel_percent ?? -1);
+      const nextValid = Number(row?.valid_pixel_percent ?? -1);
+      const currentTime = new Date(current?.interval_from || 0).getTime();
+      const nextTime = new Date(row?.interval_from || 0).getTime();
+
+      if (
+        nextRank > currentRank ||
+        (nextRank === currentRank && nextValid > currentValid) ||
+        (nextRank === currentRank && nextValid === currentValid && nextTime > currentTime)
+      ) {
+        dedupedByDay.set(key, row);
+      }
+    });
+
+    const sorted = [...dedupedByDay.values()]
+      .sort((a,b)=>new Date(a.interval_from||0)-new Date(b.interval_from||0));
+
+    const observed = sorted.filter(r =>
       Number.isFinite(Number(r.ndvi_mean)) &&
       Number.isFinite(Number(r.ndmi_mean))
     );
-    const latest = usable[usable.length - 1] || null;
+
+    const usable = observed.filter(r =>
+      r.quality === 'good' ||
+      r.quality === 'limited'
+    );
+
+    const latestUsable = usable[usable.length - 1] || null;
     const previous = usable.length > 1 ? usable[usable.length - 2] : null;
+    const latestObserved = observed[observed.length - 1] || null;
+    const displayLatest = latestObserved || latestUsable;
     const fmt = v => Number.isFinite(Number(v)) ? Number(v).toFixed(3) : '—';
 
-    const ndviInfo = ndviLabel(latest?.ndvi_mean);
-    const ndmiInfo = ndmiLabel(latest?.ndmi_mean);
+    const ndviInfo = ndviLabel(latestUsable?.ndvi_mean);
+    const ndmiInfo = ndmiLabel(latestUsable?.ndmi_mean);
 
     const ndviPeriodSelect = document.getElementById('satNdviPeriod');
     const ndviMapButton = document.getElementById('satNdviMapButton');
@@ -867,12 +947,20 @@
     if (compareToggle) compareToggle.disabled = compareOptions.length < 2;
     if (compareRun) compareRun.disabled = compareOptions.length < 2;
 
-    document.getElementById('satKpiNdvi').textContent = fmt(latest?.ndvi_mean);
-    document.getElementById('satKpiNdmi').textContent = fmt(latest?.ndmi_mean);
-    document.getElementById('satKpiValid').textContent = latest?.valid_pixel_percent == null ? '—' : Number(latest.valid_pixel_percent).toFixed(1) + '%';
-    document.getElementById('satKpiQuality').textContent = qualityLabel(latest?.quality);
-    document.getElementById('satKpiNdviHint').textContent = latest ? 'Último periodo utilizable' : 'Sin datos';
-    document.getElementById('satKpiNdmiHint').textContent = latest ? 'Último periodo utilizable' : 'Sin datos';
+    document.getElementById('satKpiNdvi').textContent = fmt(displayLatest?.ndvi_mean);
+    document.getElementById('satKpiNdmi').textContent = fmt(displayLatest?.ndmi_mean);
+    document.getElementById('satKpiValid').textContent = displayLatest?.valid_pixel_percent == null ? '—' : Number(displayLatest.valid_pixel_percent).toFixed(1) + '%';
+    document.getElementById('satKpiQuality').textContent = qualityLabel(displayLatest?.quality);
+
+    const latestHint =
+      displayLatest?.quality === 'poor'
+        ? 'Último periodo · baja confianza'
+        : displayLatest
+          ? 'Último periodo observado'
+          : 'Sin datos';
+
+    document.getElementById('satKpiNdviHint').textContent = latestHint;
+    document.getElementById('satKpiNdmiHint').textContent = latestHint;
 
     document.getElementById('satInsightVigor').textContent = ndviInfo.label;
     document.getElementById('satInsightVigorNote').textContent = ndviInfo.note;
@@ -881,8 +969,8 @@
 
     const trendEl = document.getElementById('satInsightTrend');
     const trendNoteEl = document.getElementById('satInsightTrendNote');
-    if (latest && previous) {
-      const current = Number(latest.ndvi_mean);
+    if (latestUsable && previous) {
+      const current = Number(latestUsable.ndvi_mean);
       const prior = Number(previous.ndvi_mean);
       const delta = current - prior;
       const pct = Math.abs(prior) > 0.0001 ? (delta / Math.abs(prior)) * 100 : null;
