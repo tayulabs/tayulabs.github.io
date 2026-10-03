@@ -35,7 +35,8 @@
       `<script src="cloud-admin-site-sector-form.js?v=20260914-sectorform2"><\/script>`,
       `<script src="cloud-admin-terminology-fixes.js?v=${VERSION}"><\/script>`,
       `<script src="cloud-admin-branding.js?v=${VERSION}"><\/script>`,
-      `<script src="cloud-admin-sector-services.js?v=${VERSION}"><\/script>`
+      `<script src="cloud-admin-sector-services.js?v=${VERSION}"><\/script>`,
+      `<script src="cloud-admin-whatsapp-groups.js?v=20261003-wa-groups1"><\/script>`
     ].join('\n');
     if(!html.includes('</body>'))throw new Error('La consola administrativa no contiene </body>');
     html=html.replace('</body>',`${addons}\n</body>`);
