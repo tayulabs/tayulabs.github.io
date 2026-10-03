@@ -523,6 +523,28 @@
         'satCompareMaps'
       );
 
+    const panel =
+      document.getElementById(
+        'satComparePanel'
+      );
+
+    const toggle =
+      document.getElementById(
+        'satCompareToggle'
+      );
+
+    panel?.classList.toggle(
+      'open',
+      Boolean(open)
+    );
+
+    if (toggle) {
+      toggle.textContent =
+        open
+          ? 'Cerrar comparación'
+          : 'Antes vs después';
+    }
+
     wrap?.classList.toggle(
       'compare-open',
       Boolean(open)
@@ -1302,6 +1324,12 @@
     }
     document.getElementById('satKpiArea').textContent = Number(field?.area_hectares||0).toFixed(2);
     await loadObservations(id);
+
+    if (
+      document.getElementById('satComparePanel')?.classList.contains('open')
+    ) {
+      setCompareMode(true);
+    }
   }
 
   async function saveField() {
@@ -1523,6 +1551,9 @@
   }
 
   async function loadFarmNdviMaps() {
+    setCompareMode(false);
+    clearComparison();
+
     const selectedIds =
       [...document.querySelectorAll('#satelliteFieldList .sat-field-check:checked')]
         .map(input => input.dataset.id)
@@ -1715,7 +1746,6 @@
     if (!selectedFieldId) throw new Error('Selecciona un lote.');
 
     setCompareMode(false);
-    document.getElementById('satComparePanel')?.classList.remove('open');
     clearComparison();
 
     setStatus('Generando mapa NDVI...');
@@ -2474,7 +2504,11 @@
           .forEach(menu => menu.classList.remove('open'));
       }
     });
-    document.getElementById('satDrawStart')?.addEventListener('click',startDraw);
+    document.getElementById('satDrawStart')?.addEventListener('click',()=>{
+      setCompareMode(false);
+      clearComparison();
+      startDraw();
+    });
     document.getElementById('satDrawUndo')?.addEventListener('click',()=>{if(points.length){points.pop();markers.pop()?.remove();redraw();}});
     document.getElementById('satDrawFinish')?.addEventListener('click',finishDraw);
     document.getElementById('satDrawClear')?.addEventListener('click',clearDraw);
@@ -2490,11 +2524,6 @@
         !panel?.classList.contains(
           'open'
         );
-
-      panel?.classList.toggle(
-        'open',
-        open
-      );
 
       setCompareMode(
         open
@@ -2521,6 +2550,8 @@
     document.getElementById('satActiveFieldsTab')?.addEventListener('click',()=>{
       showArchivedFields = false;
       selectedFieldId = null;
+      setCompareMode(false);
+      clearComparison();
       clearDraw();
       loadFields().catch(fail);
     });
@@ -2528,6 +2559,8 @@
     document.getElementById('satArchivedFieldsTab')?.addEventListener('click',()=>{
       showArchivedFields = true;
       selectedFieldId = null;
+      setCompareMode(false);
+      clearComparison();
       clearDraw();
       loadFields().catch(fail);
     });
@@ -2547,7 +2580,7 @@
       setStatus('Mapa NDVI de finca ocultado.', 'ok');
       updateBatchButtons();
     });
-    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satCompareToggle').disabled=true;document.getElementById('satCompareRun').disabled=true;document.getElementById('satComparePanel').classList.remove('open');setCompareMode(false);clearComparison();document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
+    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satCompareToggle').disabled=true;document.getElementById('satCompareRun').disabled=true;setCompareMode(false);clearComparison();document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
   }
 
   function boot() { ensureUi(); }
