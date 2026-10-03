@@ -171,7 +171,7 @@
         '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
-            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareHandle" class="sat-compare-handle"><span>↔</span></div></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button><select id="satNdviPeriod" disabled><option value="">Sin periodos NDVI</option></select><button class="btn ghost" id="satNdviMapButton" disabled>Mapa NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Antes vs después</button></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-grid"><div><label>Antes</label><select id="satCompareBefore" disabled><option value="">Sin periodos</option></select></div><div><label>Después</label><select id="satCompareAfter" disabled><option value="">Sin periodos</option></select></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><p class="hint" style="margin:8px 0 0">Arrastra la línea vertical sobre el mapa para revelar el periodo Antes o Después.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
+            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareHandle" class="sat-compare-handle"><span>↔</span></div></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button><button class="btn ghost" id="satNdviMapButton" disabled>Mapa NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Antes vs después</button></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-grid"><div><label>Antes</label><select id="satCompareBefore" disabled><option value="">Sin periodos</option></select></div><div><label>Después</label><select id="satCompareAfter" disabled><option value="">Sin periodos</option></select></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><p class="hint" style="margin:8px 0 0">Arrastra la línea vertical sobre el mapa para revelar el periodo Antes o Después.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
             '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
@@ -1081,7 +1081,6 @@
     refreshOverviewStyles();
     document.getElementById('satSync').disabled = false;
     document.getElementById('satNdviMapButton').disabled = true;
-    document.getElementById('satNdviPeriod').disabled = true;
     document.getElementById('satCompareToggle').disabled = true;
     document.getElementById('satCompareRun').disabled = true;
     let field = fields.find(f => f.id === id);
@@ -1516,10 +1515,11 @@
   async function loadNdviOverlay() {
     if (!selectedFieldId) throw new Error('Selecciona un lote.');
 
-    const periodValue = document.getElementById('satNdviPeriod')?.value || '';
     setStatus('Generando mapa NDVI...');
 
-    const result = await getApi(periodPath(selectedFieldId, periodValue));
+    // El botón Mapa NDVI usa siempre el último periodo confiable.
+    // La selección manual de fechas queda exclusivamente en Antes vs después.
+    const result = await getApi(periodPath(selectedFieldId, ''));
     const bounds = mapBounds(result);
 
     clearFarmNdviOverlays();
@@ -1710,32 +1710,10 @@
     const ndviInfo = ndviLabel(latestUsable?.ndvi_mean);
     const ndmiInfo = ndmiLabel(latestUsable?.ndmi_mean);
 
-    const ndviPeriodSelect = document.getElementById('satNdviPeriod');
     const ndviMapButton = document.getElementById('satNdviMapButton');
-    const previousPeriod = ndviPeriodSelect?.value || '';
     const mapPeriods = [...usable]
       .filter(r => r.interval_from && r.interval_to)
       .sort((a,b)=>new Date(b.interval_to||0)-new Date(a.interval_to||0));
-
-    if (ndviPeriodSelect) {
-      ndviPeriodSelect.innerHTML = mapPeriods.length
-        ? mapPeriods.map(r => {
-            const from = new Date(r.interval_from).toLocaleDateString('es-EC');
-            const to = new Date(r.interval_to).toLocaleDateString('es-EC');
-            const value = String(r.interval_from) + '|' + String(r.interval_to);
-            return '<option value="' + esc(value) + '">' + esc(from + ' → ' + to + ' · ' + qualityLabel(r.quality)) + '</option>';
-          }).join('')
-        : '<option value="">Sin periodos NDVI</option>';
-
-      if (
-        previousPeriod &&
-        mapPeriods.some(r => (String(r.interval_from) + '|' + String(r.interval_to)) === previousPeriod)
-      ) {
-        ndviPeriodSelect.value = previousPeriod;
-      }
-
-      ndviPeriodSelect.disabled = mapPeriods.length === 0;
-    }
 
     if (ndviMapButton) {
       ndviMapButton.disabled = mapPeriods.length === 0;
@@ -1964,7 +1942,7 @@
       setStatus('Mapa NDVI de finca ocultado.', 'ok');
       updateBatchButtons();
     });
-    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satNdviPeriod').disabled=true;document.getElementById('satCompareToggle').disabled=true;document.getElementById('satCompareRun').disabled=true;document.getElementById('satComparePanel').classList.remove('open');document.getElementById('satNdviPeriod').innerHTML='<option value="">Sin periodos NDVI</option>';document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
+    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satCompareToggle').disabled=true;document.getElementById('satCompareRun').disabled=true;document.getElementById('satComparePanel').classList.remove('open');document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
   }
 
   function boot() { ensureUi(); }
