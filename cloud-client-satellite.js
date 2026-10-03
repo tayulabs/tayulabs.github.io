@@ -20,7 +20,6 @@
   let farmNdviOverlays = new Map();
   let compareBeforeOverlay = null;
   let compareAfterOverlay = null;
-  let compareDragging = false;
   let comparePositionPct = 50;
   let comparePeriods = [];
   let compareBeforeIndex = 0;
@@ -92,11 +91,10 @@
       '#satellite .sat-compare-label{position:absolute;top:14px;z-index:900;background:rgba(255,255,255,.9);color:#17310f;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.14)}' +
       '#satellite .sat-compare-label.before{left:14px}' +
       '#satellite .sat-compare-label.after{right:14px}' +
-      '#satellite .sat-compare-handle{display:none;position:absolute;top:0;left:50%;width:3px;height:0;transform:translateX(-1.5px);background:linear-gradient(to bottom,rgba(40,74,24,0),rgba(40,74,24,.96) 10%,rgba(40,74,24,.96) 90%,rgba(40,74,24,0));z-index:920;box-shadow:0 0 0 1px rgba(255,255,255,.34),0 0 10px rgba(0,0,0,.34);cursor:ew-resize;touch-action:none}' +
-      '#satellite .sat-compare-handle.open{display:block}' +
-      '#satellite .sat-compare-handle::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:15px;transform:translateX(-50%);background:linear-gradient(to right,transparent,rgba(255,255,255,.12),transparent);pointer-events:none}' +
-      '#satellite .sat-compare-handle span{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);min-width:58px;height:36px;padding:0 12px;border-radius:999px;display:grid;place-items:center;background:rgba(40,74,24,.96);color:#fff;font-size:17px;font-weight:1000;letter-spacing:3px;border:2px solid rgba(255,255,255,.9);box-shadow:0 6px 18px rgba(0,0,0,.28);backdrop-filter:blur(4px)}' +
-      '#satellite .sat-compare-handle span::before{content:"ARRASTRA";position:absolute;top:-24px;left:50%;transform:translateX(-50%);padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.92);color:#284a18;font-size:9px;font-weight:1000;letter-spacing:.08em;box-shadow:0 2px 8px rgba(0,0,0,.14)}' +
+      '#satellite .sat-compare-control{display:none;position:absolute;left:50%;bottom:30px;transform:translateX(-50%);z-index:930;width:min(360px,calc(100% - 48px));padding:8px 12px 9px;border-radius:16px;background:rgba(255,255,255,.94);border:1px solid rgba(40,74,24,.18);box-shadow:0 8px 24px rgba(0,0,0,.24);backdrop-filter:blur(8px)}' +
+      '#satellite .sat-compare-control.open{display:block}' +
+      '#satellite .sat-compare-control-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px;color:#284a18;font-size:10px;font-weight:1000;letter-spacing:.06em}' +
+      '#satellite .sat-compare-control input{display:block;width:100%;height:20px;margin:0;accent-color:#284a18;cursor:ew-resize}' +
       '#satellite .sat-map-wrap{position:relative}' +
       '#satellite .sat-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}' +
       '#satellite .sat-form .full{grid-column:1/-1}' +
@@ -191,7 +189,7 @@
         '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
-            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareHandle" class="sat-compare-handle"><span>‹ ›</span></div></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button><button class="btn ghost" id="satNdviMapButton" disabled>Mapa NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Antes vs después</button></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-head"><div class="sat-compare-period"><span>Antes</span><b id="satCompareBeforeText">Sin periodo</b><small id="satCompareBeforeQuality">—</small></div><div class="sat-compare-period"><span>Después</span><b id="satCompareAfterText">Sin periodo</b><small id="satCompareAfterQuality">—</small></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><div class="sat-compare-timeline"><div class="sat-compare-track"></div><div class="sat-compare-selected" id="satCompareSelected"></div><div class="sat-compare-ticks" id="satCompareTicks"></div><input class="sat-compare-range before" id="satCompareBeforeRange" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Periodo Antes"><input class="sat-compare-range after" id="satCompareAfterRange" type="range" min="0" max="1" step="1" value="1" disabled aria-label="Periodo Después"><div class="sat-compare-axis"><span id="satCompareAxisStart">—</span><span id="satCompareAxisEnd">—</span></div></div><p class="hint" style="margin:8px 0 0">Mueve los dos puntos sobre la línea de tiempo y pulsa Comparar. Después arrastra el control central sobre el mapa para revelar Antes y Después.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
+            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareControl" class="sat-compare-control"><div class="sat-compare-control-head"><span>ANTES</span><span>DESPUÉS</span></div><input id="satCompareRevealRange" type="range" min="0" max="100" step="1" value="50" aria-label="Revelar Antes y Después"></div></div><div class="sat-toolbar"><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button><button class="btn ghost" id="satNdviMapButton" disabled>Mapa NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Antes vs después</button></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-head"><div class="sat-compare-period"><span>Antes</span><b id="satCompareBeforeText">Sin periodo</b><small id="satCompareBeforeQuality">—</small></div><div class="sat-compare-period"><span>Después</span><b id="satCompareAfterText">Sin periodo</b><small id="satCompareAfterQuality">—</small></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><div class="sat-compare-timeline"><div class="sat-compare-track"></div><div class="sat-compare-selected" id="satCompareSelected"></div><div class="sat-compare-ticks" id="satCompareTicks"></div><input class="sat-compare-range before" id="satCompareBeforeRange" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Periodo Antes"><input class="sat-compare-range after" id="satCompareAfterRange" type="range" min="0" max="1" step="1" value="1" disabled aria-label="Periodo Después"><div class="sat-compare-axis"><span id="satCompareAxisStart">—</span><span id="satCompareAxisEnd">—</span></div></div><p class="hint" style="margin:8px 0 0">Mueve los dos puntos sobre la línea de tiempo y pulsa Comparar. Después usa el deslizador pequeño en la parte inferior del mapa para revelar Antes y Después.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
             '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
@@ -358,10 +356,11 @@
     compareAfterOverlay?.remove();
     compareBeforeOverlay = null;
     compareAfterOverlay = null;
-    compareDragging = false;
     comparePositionPct = 50;
 
-    document.getElementById('satCompareHandle')?.classList.remove('open');
+    document.getElementById('satCompareControl')?.classList.remove('open');
+    const revealRange = document.getElementById('satCompareRevealRange');
+    if (revealRange) revealRange.value = '50';
 
     const beforeLabel = document.getElementById('satCompareBeforeLabel');
     const afterLabel = document.getElementById('satCompareAfterLabel');
@@ -391,67 +390,85 @@
   }
 
   function setComparePosition(percent) {
-    const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+    const pct =
+      Math.max(
+        0,
+        Math.min(
+          100,
+          Number(percent) || 0
+        )
+      );
+
     comparePositionPct = pct;
 
-    const handle = document.getElementById('satCompareHandle');
-    const wrap = document.querySelector('#satellite .sat-map-wrap');
-    const afterImage = compareAfterOverlay?.getElement?.();
+    const wrap =
+      document.querySelector(
+        '#satellite .sat-map-wrap'
+      );
 
-    if (!handle || !wrap || !afterImage) return;
+    const afterImage =
+      compareAfterOverlay?.getElement?.();
 
-    const wrapRect = wrap.getBoundingClientRect();
-    const imageRect = afterImage.getBoundingClientRect();
+    const revealRange =
+      document.getElementById(
+        'satCompareRevealRange'
+      );
 
-    if (!wrapRect.width || !imageRect.width || !imageRect.height) return;
+    if (revealRange) {
+      revealRange.value =
+        String(
+          Math.round(pct)
+        );
+    }
+
+    if (
+      !wrap ||
+      !afterImage
+    ) {
+      return;
+    }
+
+    const wrapRect =
+      wrap.getBoundingClientRect();
+
+    const imageRect =
+      afterImage.getBoundingClientRect();
+
+    if (
+      !wrapRect.width ||
+      !imageRect.width
+    ) {
+      return;
+    }
 
     const dividerX =
-      imageRect.left +
+      wrapRect.left +
       (
-        imageRect.width *
+        wrapRect.width *
         pct /
         100
       );
 
-    handle.style.left =
-      (dividerX - wrapRect.left) +
-      'px';
-
-    handle.style.top =
-      Math.max(
-        0,
-        imageRect.top - wrapRect.top
-      ) +
-      'px';
-
-    handle.style.bottom = 'auto';
-
-    handle.style.height =
+    const clipLeft =
       Math.max(
         0,
         Math.min(
-          wrapRect.bottom,
-          imageRect.bottom
-        ) -
-        Math.max(
-          wrapRect.top,
-          imageRect.top
+          imageRect.width,
+          dividerX -
+          imageRect.left
         )
-      ) +
-      'px';
-
-    const clipLeft =
-      imageRect.width *
-      pct /
-      100;
+      );
 
     const clip =
       'inset(0 0 0 ' +
       clipLeft.toFixed(1) +
       'px)';
 
-    afterImage.style.clipPath = clip;
-    afterImage.style.webkitClipPath = clip;
+    afterImage.style.clipPath =
+      clip;
+
+    afterImage.style.webkitClipPath =
+      clip;
   }
 
   function periodPath(fieldId, periodValue) {
@@ -1614,8 +1631,8 @@
       }
     ).addTo(map);
 
-    const handle = document.getElementById('satCompareHandle');
-    handle?.classList.add('open');
+    const compareControl = document.getElementById('satCompareControl');
+    compareControl?.classList.add('open');
 
     const beforeLabel = document.getElementById('satCompareBeforeLabel');
     const afterLabel = document.getElementById('satCompareAfterLabel');
@@ -1637,7 +1654,7 @@
     try { polygon?.bringToFront?.(); } catch (_) {}
     try { map.fitBounds(beforeBounds, {padding:[24,24]}); } catch (_) {}
 
-    setStatus('Comparación cargada. Arrastra el control central para revelar Antes y Después.', 'ok');
+    setStatus('Comparación cargada. Usa el deslizador inferior del mapa para revelar Antes y Después.', 'ok');
   }
 
   function comparePeriodText(period) {
@@ -2207,54 +2224,11 @@
       updateCompareTimeline('after');
     });
 
-    const compareHandle = document.getElementById('satCompareHandle');
-    const compareWrap = document.querySelector('#satellite .sat-map-wrap');
-
-    const moveCompareHandle = event => {
-      if (!compareDragging || !compareWrap) return;
-      event.preventDefault();
-
-      const afterImage =
-        compareAfterOverlay?.getElement?.();
-
-      if (!afterImage) return;
-
-      const rect =
-        afterImage.getBoundingClientRect();
-
-      if (!rect.width) return;
-
-      const pct =
-        (
-          (
-            event.clientX -
-            rect.left
-          ) /
-          rect.width
-        ) *
-        100;
-
-      setComparePosition(pct);
-    };
-
-    compareHandle?.addEventListener('pointerdown', event => {
-      compareDragging = true;
-      try { compareHandle.setPointerCapture(event.pointerId); } catch (_) {}
-      try { map?.dragging?.disable(); } catch (_) {}
-      moveCompareHandle(event);
+    document.getElementById('satCompareRevealRange')?.addEventListener('input',event=>{
+      setComparePosition(
+        event.target.value
+      );
     });
-
-    compareHandle?.addEventListener('pointermove', moveCompareHandle);
-
-    const stopCompareDrag = event => {
-      if (!compareDragging) return;
-      compareDragging = false;
-      try { compareHandle?.releasePointerCapture(event.pointerId); } catch (_) {}
-      try { map?.dragging?.enable(); } catch (_) {}
-    };
-
-    compareHandle?.addEventListener('pointerup', stopCompareDrag);
-    compareHandle?.addEventListener('pointercancel', stopCompareDrag);
 
     document.getElementById('satSaveField')?.addEventListener('click',()=>saveField().catch(fail));
     document.getElementById('satSync')?.addEventListener('click',()=>syncField().catch(fail));
