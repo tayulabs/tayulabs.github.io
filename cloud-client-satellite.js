@@ -2265,7 +2265,7 @@
       setStatus('Mapa NDVI de finca ocultado.', 'ok');
       updateBatchButtons();
     });
-    document.getElementById('satSiteSelect')?.addEventListener('change',async()=>{
+    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{
       const siteId =
         document.getElementById('satSiteSelect')?.value || '';
 
@@ -2276,13 +2276,6 @@
         );
       }
 
-      selectedFieldId = null;
-      currentFields = [];
-      fieldOverviewStates = new Map();
-
-      clearDraw();
-      clearFieldOverview();
-
       const listHost =
         document.getElementById('satelliteFieldList');
 
@@ -2291,34 +2284,10 @@
           '<div class="hint">Cargando lotes de esta finca...</div>';
       }
 
-      document.getElementById('satSync').disabled = true;
-      document.getElementById('satNdviMapButton').disabled = true;
-      document.getElementById('satCompareToggle').disabled = true;
-      document.getElementById('satCompareRun').disabled = true;
-      document.getElementById('satComparePanel').classList.remove('open');
-      document.getElementById('satFieldCode').value = '';
-      document.getElementById('satCropType').value = '';
-      document.getElementById('satFieldName').value = '';
-
-      renderObservations([]);
-      centerSelectedSite();
-
-      // El botón "Actualizar" es el flujo que ya comprobamos que
-      // carga correctamente sitios + lotes. Al cambiar de finca disparamos
-      // exactamente ese mismo evento, fuera del handler del <select>, para
-      // evitar que la recarga se quede a medias durante el cambio nativo.
+      // Programa primero la recarga. Así, aunque alguna limpieza visual
+      // falle después, la carga de la nueva finca no queda bloqueada.
       window.setTimeout(
         () => {
-          const refreshButton =
-            document.getElementById(
-              'satRefresh'
-            );
-
-          if (refreshButton) {
-            refreshButton.click();
-            return;
-          }
-
           loadSites().catch(error => {
             if (listHost) {
               listHost.innerHTML =
@@ -2327,9 +2296,63 @@
             fail(error);
           });
         },
-        80
+        0
       );
+
+      try {
+        selectedFieldId = null;
+        currentFields = [];
+        fieldOverviewStates = new Map();
+
+        clearDraw();
+        clearFieldOverview();
+
+        const syncButton =
+          document.getElementById('satSync');
+        const ndviButton =
+          document.getElementById('satNdviMapButton');
+        const compareToggle =
+          document.getElementById('satCompareToggle');
+        const compareRun =
+          document.getElementById('satCompareRun');
+        const comparePanel =
+          document.getElementById('satComparePanel');
+
+        if (syncButton) syncButton.disabled = true;
+        if (ndviButton) ndviButton.disabled = true;
+        if (compareToggle) compareToggle.disabled = true;
+        if (compareRun) compareRun.disabled = true;
+        comparePanel?.classList.remove('open');
+
+        const codeInput =
+          document.getElementById('satFieldCode');
+        const cropInput =
+          document.getElementById('satCropType');
+        const nameInput =
+          document.getElementById('satFieldName');
+
+        if (codeInput) codeInput.value = '';
+        if (cropInput) cropInput.value = '';
+        if (nameInput) nameInput.value = '';
+
+        renderObservations([]);
+
+        try {
+          centerSelectedSite();
+        } catch (error) {
+          console.warn(
+            'Amelia Satellite center site:',
+            error
+          );
+        }
+      } catch (error) {
+        console.warn(
+          'Amelia Satellite site cleanup:',
+          error
+        );
+      }
     });
+
   }
 
   function boot() { ensureUi(); }
