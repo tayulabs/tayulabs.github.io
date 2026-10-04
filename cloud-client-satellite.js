@@ -2303,19 +2303,32 @@
       renderObservations([]);
       centerSelectedSite();
 
-      try {
-        // Reutilizamos el mismo flujo de "Actualizar" porque ya es el
-        // comportamiento probado que refresca correctamente sitios + lotes.
-        // El sitio recién elegido ya quedó guardado en sessionStorage, así
-        // loadSites() lo conserva y luego carga sus lotes automáticamente.
-        await loadSites();
-      } catch (error) {
-        if (listHost) {
-          listHost.innerHTML =
-            '<div class="hint">No se pudieron cargar los lotes de esta finca.</div>';
-        }
-        fail(error);
-      }
+      // El botón "Actualizar" es el flujo que ya comprobamos que
+      // carga correctamente sitios + lotes. Al cambiar de finca disparamos
+      // exactamente ese mismo evento, fuera del handler del <select>, para
+      // evitar que la recarga se quede a medias durante el cambio nativo.
+      window.setTimeout(
+        () => {
+          const refreshButton =
+            document.getElementById(
+              'satRefresh'
+            );
+
+          if (refreshButton) {
+            refreshButton.click();
+            return;
+          }
+
+          loadSites().catch(error => {
+            if (listHost) {
+              listHost.innerHTML =
+                '<div class="hint">No se pudieron cargar los lotes de esta finca.</div>';
+            }
+            fail(error);
+          });
+        },
+        80
+      );
     });
   }
 
