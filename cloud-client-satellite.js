@@ -2304,7 +2304,11 @@
       centerSelectedSite();
 
       try {
-        await loadFields(siteId);
+        // Reutilizamos el mismo flujo de "Actualizar" porque ya es el
+        // comportamiento probado que refresca correctamente sitios + lotes.
+        // El sitio recién elegido ya quedó guardado en sessionStorage, así
+        // loadSites() lo conserva y luego carga sus lotes automáticamente.
+        await loadSites();
       } catch (error) {
         if (listHost) {
           listHost.innerHTML =
