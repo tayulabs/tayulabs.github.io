@@ -927,9 +927,19 @@
     if (document.getElementById('satSiteSelect')?.value !== siteId) return;
 
     const allFields = Array.isArray(rows) ? rows : [];
+
+    // Defensa adicional por sitio: aunque el backend ya recibe site_id,
+    // si la respuesta incluye site_id filtramos también en frontend para
+    // evitar que lotes de otra finca queden visibles por una respuesta stale
+    // o por un endpoint que devuelva más registros de los esperados.
+    const siteScopedFields =
+      allFields.some(field => field?.site_id)
+        ? allFields.filter(field => String(field.site_id) === String(siteId))
+        : allFields;
+
     const fields = showArchivedFields
-      ? allFields.filter(field => field?.status === 'archived')
-      : allFields.filter(field => !field?.status || field.status === 'active');
+      ? siteScopedFields.filter(field => field?.status === 'archived')
+      : siteScopedFields.filter(field => !field?.status || field.status === 'active');
 
     currentFields = fields;
     fieldOverviewStates = new Map();
@@ -2226,7 +2236,54 @@
       setStatus('Mapa NDVI de finca ocultado.', 'ok');
       updateBatchButtons();
     });
-    document.getElementById('satSiteSelect')?.addEventListener('change',()=>{const siteId=document.getElementById('satSiteSelect')?.value||'';if(siteId)sessionStorage.setItem('tayuSatelliteSiteId',siteId);selectedFieldId=null;clearDraw();document.getElementById('satSync').disabled=true;document.getElementById('satNdviMapButton').disabled=true;document.getElementById('satCompareToggle').disabled=true;document.getElementById('satCompareRun').disabled=true;document.getElementById('satComparePanel').classList.remove('open');document.getElementById('satFieldCode').value='';document.getElementById('satCropType').value='';document.getElementById('satFieldName').value='';renderObservations([]);centerSelectedSite();loadFields().catch(fail);});
+    document.getElementById('satSiteSelect')?.addEventListener('change',async()=>{
+      const siteId =
+        document.getElementById('satSiteSelect')?.value || '';
+
+      if (siteId) {
+        sessionStorage.setItem(
+          'tayuSatelliteSiteId',
+          siteId
+        );
+      }
+
+      selectedFieldId = null;
+      currentFields = [];
+      fieldOverviewStates = new Map();
+
+      clearDraw();
+      clearFieldOverview();
+
+      const listHost =
+        document.getElementById('satelliteFieldList');
+
+      if (listHost) {
+        listHost.innerHTML =
+          '<div class="hint">Cargando lotes de esta finca...</div>';
+      }
+
+      document.getElementById('satSync').disabled = true;
+      document.getElementById('satNdviMapButton').disabled = true;
+      document.getElementById('satCompareToggle').disabled = true;
+      document.getElementById('satCompareRun').disabled = true;
+      document.getElementById('satComparePanel').classList.remove('open');
+      document.getElementById('satFieldCode').value = '';
+      document.getElementById('satCropType').value = '';
+      document.getElementById('satFieldName').value = '';
+
+      renderObservations([]);
+      centerSelectedSite();
+
+      try {
+        await loadFields();
+      } catch (error) {
+        if (listHost) {
+          listHost.innerHTML =
+            '<div class="hint">No se pudieron cargar los lotes de esta finca.</div>';
+        }
+        fail(error);
+      }
+    });
   }
 
   function boot() { ensureUi(); }
