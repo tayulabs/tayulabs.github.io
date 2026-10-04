@@ -161,7 +161,7 @@
     if (nav && !nav.querySelector('button[data-view="satellite"]')) {
       const btn = document.createElement('button');
       btn.dataset.view = 'satellite';
-      btn.innerHTML = '<span class="nav-icon">🛰️</span><span class="nav-label">Satélite</span>';
+      btn.innerHTML = '<span class="nav-icon"><img class="tayu-nav-img icon-color" src="imagenes/icons/satelite-color.png" alt=""><img class="tayu-nav-img icon-white" src="imagenes/icons/satelite-white.png" alt="" aria-hidden="true"></span><span class="nav-label">Satélite</span>';
       const fincas = nav.querySelector('button[data-view="fincas"]');
       if (fincas?.nextSibling) nav.insertBefore(btn, fincas.nextSibling);
       else nav.appendChild(btn);
