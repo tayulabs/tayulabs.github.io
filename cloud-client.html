@@ -19,7 +19,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20261003-satellite23';
+const VERSION='20261004-satellite24';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -200,7 +200,7 @@ if(typeof refreshLiveTelemetry==='function')window.refreshLiveTelemetry=refreshL
     '<scr'+'ipt src="cloud-client-premium-dark-edges.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-premium-mobile.js?v='+VERSION+'"></scr'+'ipt>\n'+
     '<scr'+'ipt src="cloud-client-notifications.js?v=20260918-notifications13"></scr'+'ipt>\n'+
-    '<scr'+'ipt src="cloud-client-satellite.js?v=20261003-satellite23"></scr'+'ipt>';
+    '<scr'+'ipt src="cloud-client-satellite.js?v=20261004-satellite24"></scr'+'ipt>';
   html=html.replace('</body>',addons+'</body>');
 
   document.open();
