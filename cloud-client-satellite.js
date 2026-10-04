@@ -24,6 +24,7 @@
   let comparePeriods = [];
   let compareBeforeIndex = 0;
   let compareAfterIndex = 1;
+  let fieldsRequestSeq = 0;
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -910,21 +911,48 @@
     if (select?.value) sessionStorage.setItem('tayuSatelliteSiteId', select.value);
     if (sites.length) {
       centerSelectedSite();
-      await loadFields();
+      await loadFields(select?.value || '');
     }
     setStatus('Amelia Satellite listo.', 'ok');
   }
 
-  async function loadFields() {
-    const siteId = document.getElementById('satSiteSelect')?.value;
-    if (!siteId) return;
+  async function loadFields(siteIdOverride = '') {
+    const siteId =
+      String(
+        siteIdOverride ||
+        document.getElementById('satSiteSelect')?.value ||
+        ''
+      );
+
+    const host =
+      document.getElementById('satelliteFieldList');
+
+    if (!siteId) {
+      currentFields = [];
+      clearFieldOverview();
+      if (host) {
+        host.innerHTML =
+          '<div class="hint">Selecciona una finca / sitio.</div>';
+      }
+      return;
+    }
+
+    const requestSeq =
+      ++fieldsRequestSeq;
+
     const endpoint =
       showArchivedFields
         ? '/satellite/archived-fields?site_id=' + encodeURIComponent(siteId)
         : '/satellite/fields?site_id=' + encodeURIComponent(siteId);
 
     const rows = await getApi(endpoint);
-    if (document.getElementById('satSiteSelect')?.value !== siteId) return;
+
+    // Ignora únicamente respuestas viejas. No dependemos del valor actual
+    // del <select>, porque ese guard podía abortar la carga nueva y dejar
+    // el mensaje "Cargando lotes..." indefinidamente.
+    if (requestSeq !== fieldsRequestSeq) {
+      return;
+    }
 
     const allFields = Array.isArray(rows) ? rows : [];
 
@@ -956,7 +984,8 @@
     activeTab?.classList.toggle('active', !showArchivedFields);
     archivedTab?.classList.toggle('active', showArchivedFields);
 
-    const host = document.getElementById('satelliteFieldList');
+    if (!host) return;
+
     host.innerHTML = fields.length
       ? fields.map(f => {
           const actions = showArchivedFields
@@ -2275,7 +2304,7 @@
       centerSelectedSite();
 
       try {
-        await loadFields();
+        await loadFields(siteId);
       } catch (error) {
         if (listHost) {
           listHost.innerHTML =
