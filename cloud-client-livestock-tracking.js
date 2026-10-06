@@ -79,6 +79,8 @@
           speed_kmh:speed,
           battery_pct:firstNum(p,['battery_pct','battery','bateria']),
           activity_index:firstNum(p,['activity_index','activity']),
+          temperature_c:firstNum(p,['temperature_c','temperature','temp_c','body_temperature_c']),
+          estrus_detected:Boolean(p.estrus_detected??p.heat_detected??p.in_heat??false),
           heading:firstNum(p,['heading','course']),
           satellites:firstNum(p,['satellites','sats']),
           hdop:firstNum(p,['hdop']),
@@ -335,6 +337,9 @@
           <div><span>Batería TAURO</span><b>${t.battery_pct??'—'}%</b></div>
           <div><span>Velocidad</span><b>${t.speed_kmh??'—'} km/h</b></div>
           <div><span>Actividad</span><b>${t.activity_index??'—'}</b></div>
+          <div><span>Temperatura</span><b>${t.temperature_c??'—'} °C</b></div>
+          <div><span>Celo</span><b>${t.estrus_detected===true?'Detectado':'No detectado'}</b></div>
+          <div><span>Valor animal</span><b>${r.estimated_value_usd!=null?'$'+Number(r.estimated_value_usd).toFixed(2):'—'}</b></div>
           <div><span>Movimiento</span><b>${t.motion===true?'En movimiento':t.motion===false?'En reposo':'—'}</b></div>
         </div>
 
@@ -384,6 +389,9 @@
         <div><span>Batería</span><b>${t.battery_pct??'—'}%</b></div>
         <div><span>Velocidad</span><b>${t.speed_kmh??'—'} km/h</b></div>
         <div><span>Actividad</span><b>${t.activity_index??'—'}</b></div>
+        <div><span>Temperatura corporal</span><b>${t.temperature_c??'—'} °C</b></div>
+        <div><span>Estado de celo</span><b>${t.estrus_detected===true?'🔥 Celo detectado':'No detectado'}</b></div>
+        <div><span>Valor estimado</span><b>${r.estimated_value_usd!=null?'$'+Number(r.estimated_value_usd).toFixed(2):'—'}</b></div>
         <div><span>Movimiento</span><b>${t.motion===true?'En movimiento':t.motion===false?'En reposo':'—'}</b></div>
         <div><span>Satélites / HDOP</span><b>${t.satellites??'—'} / ${t.hdop??'—'}</b></div>
         <div><span>Última conexión</span><b>${esc(ago(d.last_seen_at||r.telemetry_time))}</b></div>
