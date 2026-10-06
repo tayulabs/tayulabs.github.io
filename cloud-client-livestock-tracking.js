@@ -118,12 +118,26 @@
       #ganaderia .lc-kpi b{display:block;margin-top:6px;font-size:25px}
       #ganaderia .lc-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
       #ganaderia .lc-tools>div{flex:1;min-width:150px}
-      #ganaderia .lc-layout{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(300px,.9fr);gap:16px}
-      #ganaderia .lc-map-card{padding:0!important;overflow:hidden;position:relative}
-      #ganaderia #cattleSatelliteMap{height:680px;min-height:540px;border-radius:20px}
+      #ganaderia .lc-layout{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(300px,.9fr);gap:16px;align-items:start}
+      #ganaderia .lc-map-card{padding:0!important;overflow:hidden;position:relative;height:auto;align-self:start;background:transparent!important}
+      #ganaderia #cattleSatelliteMap{height:680px;min-height:540px;border-radius:20px;display:block}
       #ganaderia .lc-live{position:absolute;left:14px;top:14px;z-index:500;background:rgba(6,20,15,.9);color:#fff;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900}
       #ganaderia .lc-live i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 5px rgba(34,197,94,.16);margin-right:7px}
+      #ganaderia .lc-map-hud{position:absolute;left:14px;right:14px;bottom:14px;z-index:500;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+      #ganaderia .lc-map-chip{background:rgba(6,20,15,.88);color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;backdrop-filter:blur(8px)}
       #ganaderia .lc-side{display:grid;gap:12px;align-content:start}
+      .lc-leaflet-popup .leaflet-popup-content-wrapper{border-radius:18px;box-shadow:0 18px 45px rgba(0,0,0,.24);padding:0;overflow:hidden}
+      .lc-leaflet-popup .leaflet-popup-content{margin:0;width:310px!important}
+      .lc-popup{padding:14px;background:#fff;color:#17231a}
+      .lc-popup-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:11px}
+      .lc-popup-head strong{font-size:15px}
+      .lc-popup-sub{font-size:11px;color:#64748b;margin-top:3px}
+      .lc-popup-status{font-size:10px;font-weight:900;padding:6px 8px;border-radius:999px;background:#e8f8df;color:#2d8f14}
+      .lc-popup-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+      .lc-popup-grid>div{background:#f7f9f7;border:1px solid #e5e9e5;border-radius:11px;padding:8px}
+      .lc-popup-grid span{display:block;font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.03em}
+      .lc-popup-grid b{display:block;margin-top:3px;font-size:11px;line-height:1.25}
+      .lc-popup-foot{margin-top:10px;padding-top:9px;border-top:1px solid #edf0ed;font-size:10px;color:#64748b}
       #ganaderia .lc-list{display:grid;gap:8px;max-height:370px;overflow:auto}
       #ganaderia .lc-row{width:100%;border:1px solid var(--border);background:var(--panel2);color:var(--text);border-radius:15px;padding:11px;display:flex;justify-content:space-between;gap:10px;text-align:left;cursor:pointer}
       #ganaderia .lc-row:hover,#ganaderia .lc-row.active{outline:2px solid var(--brand);background:rgba(91,193,47,.09)}
@@ -154,7 +168,7 @@
       .lc-cow.moving{animation:lcPulse 1.5s infinite}
       @keyframes lcPulse{50%{transform:scale(1.12)}}
       @media(max-width:1100px){#ganaderia .lc-kpis{grid-template-columns:repeat(3,1fr)}#ganaderia .lc-layout{grid-template-columns:1fr}}
-      @media(max-width:700px){#ganaderia .lc-kpis{grid-template-columns:1fr 1fr}#ganaderia #cattleSatelliteMap{height:520px}}
+      @media(max-width:700px){#ganaderia .lc-kpis{grid-template-columns:1fr 1fr}#ganaderia #cattleSatelliteMap{height:520px}.lc-leaflet-popup .leaflet-popup-content{width:270px!important}.lc-popup-grid{grid-template-columns:1fr 1fr}}
     `;
     document.head.appendChild(style);
   }
@@ -183,7 +197,15 @@
           <div><label>Buscar animal</label><input id="lcSearch" placeholder="Código, arete, nombre…"></div>
         </div>
         <div class="lc-layout">
-          <div class="card lc-map-card"><div class="lc-live"><i></i>TAURO GPS · seguimiento activo</div><div id="cattleSatelliteMap"></div></div>
+          <div class="card lc-map-card">
+            <div class="lc-live"><i></i>TAURO GPS · seguimiento activo</div>
+            <div id="cattleSatelliteMap"></div>
+            <div class="lc-map-hud">
+              <span class="lc-map-chip" id="lcMapAnimals">🐄 0 animales</span>
+              <span class="lc-map-chip" id="lcMapGroups">📍 0 grupos</span>
+              <span class="lc-map-chip" id="lcMapUpdated">🛰 Esperando datos</span>
+            </div>
+          </div>
           <div class="lc-side">
             <div class="card"><h3>Inventario del hato</h3><p class="hint">Selecciona un animal para centrarlo y abrir su ficha.</p><div class="lc-list" id="lcAnimalList"></div></div>
             <div class="card" id="lcAnimalDetails"><h3>Ficha del animal</h3><p class="hint">Selecciona una vaca del mapa o del listado.</p></div>
@@ -276,8 +298,14 @@
     const rows=s.rows,online=rows.filter(r=>String(r.device?.status).toLowerCase()==='online').length;
     const moving=rows.filter(r=>r.tracking?.motion===true).length,resting=rows.filter(r=>r.tracking?.motion===false).length;
     const bs=rows.map(r=>num(r.tracking?.battery_pct)).filter(v=>v!==null);
+    const groups=[...new Set(rows.map(r=>r.herd?.name).filter(Boolean))];
+    const latest=rows.map(r=>new Date(r.telemetry_time||r.device?.last_seen_at||0).getTime()).filter(Number.isFinite).sort((a,b)=>b-a)[0];
+
     text('lcTotal',rows.length);text('lcOnline',online);text('lcMoving',moving);text('lcResting',resting);
     text('lcBattery',bs.length?(bs.reduce((a,b)=>a+b,0)/bs.length).toFixed(1)+'%':'—');
+    text('lcMapAnimals','🐄 '+rows.length+' animales');
+    text('lcMapGroups','📍 '+groups.length+' grupos');
+    text('lcMapUpdated',latest?'🛰 '+ago(new Date(latest).toISOString()):'🛰 Esperando datos');
   }
 
   function icon(r,i){
@@ -286,7 +314,34 @@
   }
 
   function popup(r){
-    return `<b>${esc(r.name||r.animal_code)}</b><br><small>${esc(r.animal_code||'')} · ${esc(r.herd?.name||'Sin grupo')}</small><br><br>🔋 ${r.tracking?.battery_pct??'—'}% · 🚶 ${r.tracking?.speed_kmh??'—'} km/h`;
+    const t=r.tracking||{},d=r.device||{};
+    const online=String(d.status||'').toLowerCase()==='online';
+    const animalState=r.reproductive_status||r.productive_status||r.status||'Activo';
+    return `
+      <div class="lc-popup">
+        <div class="lc-popup-head">
+          <div>
+            <strong>🐄 ${esc(r.name||r.animal_code||'Animal')}</strong>
+            <div class="lc-popup-sub">${esc(r.animal_code||'')} ${r.ear_tag?'· Arete '+esc(r.ear_tag):''}</div>
+          </div>
+          <span class="lc-popup-status">${online?'ONLINE':'OFFLINE'}</span>
+        </div>
+
+        <div class="lc-popup-grid">
+          <div><span>Grupo / hato</span><b>${esc(r.herd?.name||'—')}</b></div>
+          <div><span>Raza</span><b>${esc(r.breed||'—')}</b></div>
+          <div><span>Peso actual</span><b>${r.current_weight_kg?esc(r.current_weight_kg)+' kg':'—'}</b></div>
+          <div><span>Estado animal</span><b>${esc(animalState)}</b></div>
+          <div><span>Batería TAURO</span><b>${t.battery_pct??'—'}%</b></div>
+          <div><span>Velocidad</span><b>${t.speed_kmh??'—'} km/h</b></div>
+          <div><span>Actividad</span><b>${t.activity_index??'—'}</b></div>
+          <div><span>Movimiento</span><b>${t.motion===true?'En movimiento':t.motion===false?'En reposo':'—'}</b></div>
+        </div>
+
+        <div class="lc-popup-foot">
+          ${esc(d.device_key||'TAURO GPS')} · ${esc(ago(d.last_seen_at||r.telemetry_time))}
+        </div>
+      </div>`;
   }
 
   function markers(){
@@ -297,7 +352,7 @@
       const id=String(r.animal_id||r.device?.device_key||r.animal_code),lat=num(r.tracking?.lat),lon=num(r.tracking?.lon);
       if(lat===null||lon===null)return;
       let m=s.markers.get(id);
-      if(!m){m=L.marker([lat,lon],{icon:icon(r,i)}).addTo(s.map).bindPopup(popup(r));m.on('click',()=>select(id,true));s.markers.set(id,m)}
+      if(!m){m=L.marker([lat,lon],{icon:icon(r,i)}).addTo(s.map).bindPopup(popup(r),{className:'lc-leaflet-popup',maxWidth:330,autoPan:true,autoPanPadding:[30,30]});m.on('click',()=>select(id,true));s.markers.set(id,m)}
       else{m.setLatLng([lat,lon]);m.setIcon(icon(r,i));m.setPopupContent(popup(r))}
     });
     if(!s.fitted&&s.markers.size){const g=L.featureGroup([...s.markers.values()]);s.map.fitBounds(g.getBounds().pad(.28),{maxZoom:18});s.fitted=true}
@@ -335,6 +390,11 @@
         ${r.breed?`<div><span>Raza</span><b>${esc(r.breed)}</b></div>`:''}
         ${r.current_weight_kg?`<div><span>Peso actual</span><b>${esc(r.current_weight_kg)} kg</b></div>`:''}
         <div><span>Gateway</span><b>${esc(t.gateway_model||t.gateway_id||'UG67')}</b></div>
+        <div><span>Sexo / tipo</span><b>${esc([r.sex,r.animal_type].filter(Boolean).join(' · ')||'—')}</b></div>
+        <div><span>Propósito</span><b>${esc(r.production_purpose||'—')}</b></div>
+        <div><span>Estado reproductivo</span><b>${esc(r.reproductive_status||'—')}</b></div>
+        <div><span>Estado productivo</span><b>${esc(r.productive_status||r.status||'—')}</b></div>
+        ${r.paddock?.name?`<div><span>Potrero</span><b>${esc(r.paddock.name)}</b></div>`:''}
       </div>
       <div class="lc-actions"><button class="btn ghost" id="lcCenter">Centrar en mapa</button>${r.animal_id?'<button class="btn" id="lcHistory">Ver recorrido 24 h</button>':''}</div>
       <p class="hint" style="margin-top:10px">Posición: ${t.lat??'—'}, ${t.lon??'—'}</p>
