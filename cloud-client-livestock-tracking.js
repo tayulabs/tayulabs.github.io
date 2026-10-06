@@ -2,7 +2,7 @@
 (function(){
   'use strict';
 
-  const REFRESH_MS=20000;
+  const REFRESH_MS=5000;
   const COLORS=['#22c55e','#0ea5e9','#f59e0b','#a855f7','#ef4444'];
   const s={map:null,markers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null};
 
@@ -148,7 +148,7 @@
       #ganaderia .lc-iot-box .tayu-sector-secondary{display:none!important}
       #ganaderia .lc-iot-box .tayu-sector-note{display:none!important}
       .lc-cow-icon{background:transparent!important;border:0!important}
-      .lc-cow{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#fff;border:3px solid var(--cow);font-size:19px;box-shadow:0 8px 18px rgba(0,0,0,.28)}
+      .lc-cow{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#fff;border:3px solid var(--cow);font-size:19px;box-shadow:0 8px 18px rgba(0,0,0,.28);transition:transform .8s ease}
       .lc-cow.online:after{content:"";position:absolute;width:8px;height:8px;border-radius:50%;right:0;bottom:0;background:#22c55e;border:2px solid #fff}
       .lc-cow.offline{filter:grayscale(.7);opacity:.7}
       .lc-cow.moving{animation:lcPulse 1.5s infinite}
@@ -185,8 +185,8 @@
         <div class="lc-layout">
           <div class="card lc-map-card"><div class="lc-live"><i></i>TAURO GPS · seguimiento activo</div><div id="cattleSatelliteMap"></div></div>
           <div class="lc-side">
-            <div class="card"><h3>Inventario del hato</h3><p class="hint">Selecciona un animal para centrarlo y abrir su ficha.</p><div class="lc-list" id="cattleSatelliteList"></div></div>
-            <div class="card" id="cattleSatelliteDetails"><h3>Ficha del animal</h3><p class="hint">Selecciona una vaca del mapa o del listado.</p></div>
+            <div class="card"><h3>Inventario del hato</h3><p class="hint">Selecciona un animal para centrarlo y abrir su ficha.</p><div class="lc-list" id="lcAnimalList"></div></div>
+            <div class="card" id="lcAnimalDetails"><h3>Ficha del animal</h3><p class="hint">Selecciona una vaca del mapa o del listado.</p></div>
           </div>
         </div>
 
@@ -236,9 +236,10 @@
     const el=document.getElementById('cattleSatelliteMap');if(!el||!window.L)return;
     if(s.map&&s.map.getContainer()===el){setTimeout(()=>s.map.invalidateSize(),50);return}
     try{s.map?.remove?.()}catch(_){}
-    s.map=L.map(el).setView([-0.470341,-80.081111],16);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,attribution:'Tiles © Esri'}).addTo(s.map);
-    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,opacity:.7}).addTo(s.map);
+    s.map=L.map(el,{minZoom:13,maxZoom:18}).setView([-0.470341,-80.081111],16);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,attribution:'Tiles © Esri'}).addTo(s.map);
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,opacity:.7}).addTo(s.map);
+    s.map.on('zoomend',()=>{if(s.map.getZoom()>18)s.map.setZoom(18);});
     window.cattleSatelliteMap=s.map;
   }
 
@@ -304,7 +305,7 @@
   }
 
   function list(){
-    const el=document.getElementById('cattleSatelliteList');if(!el)return;
+    const el=document.getElementById('lcAnimalList');if(!el)return;
     const rows=filtered();
     el.innerHTML=rows.length?rows.map((r,i)=>{
       const id=String(r.animal_id||r.device?.device_key||r.animal_code),active=id===s.selected,c=color(r.herd?.name,i);
@@ -343,14 +344,14 @@
   function select(id,center=false){
     const r=s.rows.find(x=>String(x.animal_id||x.device?.device_key||x.animal_code)===String(id));if(!r)return;
     s.selected=String(id);list();
-    const el=document.getElementById('cattleSatelliteDetails');
+    const el=document.getElementById('lcAnimalDetails');
     if(el){el.innerHTML=detail(r);el.querySelector('#lcCenter')?.addEventListener('click',()=>centerRow(r,true));el.querySelector('#lcHistory')?.addEventListener('click',()=>history(r))}
     if(center)centerRow(r,true);
   }
 
   function centerRow(r,popupOpen=false){
     const lat=num(r.tracking?.lat),lon=num(r.tracking?.lon);if(lat===null||lon===null||!s.map)return;
-    s.map.setView([lat,lon],19,{animate:true});
+    s.map.setView([lat,lon],18,{animate:true});
     const id=String(r.animal_id||r.device?.device_key||r.animal_code);if(popupOpen)s.markers.get(id)?.openPopup();
   }
 
@@ -362,11 +363,11 @@
       if(!pts.length){alert('Aún no hay recorrido histórico disponible.');return}
       if(s.history)s.map.removeLayer(s.history);
       s.history=L.polyline(pts.map(p=>[Number(p.lat),Number(p.lon)]),{color:'#16a34a',weight:4,opacity:.86}).addTo(s.map);
-      s.map.fitBounds(s.history.getBounds().pad(.2),{maxZoom:19});
+      s.map.fitBounds(s.history.getBounds().pad(.2),{maxZoom:18});
     }catch(error){console.error(error);alert('No se pudo cargar el recorrido histórico.')}
   }
 
-  function render(){kpis();list();markers();compactIotPanel();if(s.selected){const r=s.rows.find(x=>String(x.animal_id||x.device?.device_key||x.animal_code)===s.selected);if(r){const el=document.getElementById('cattleSatelliteDetails');if(el)el.innerHTML=detail(r)}}}
+  function render(){kpis();list();markers();compactIotPanel();if(s.selected){const r=s.rows.find(x=>String(x.animal_id||x.device?.device_key||x.animal_code)===s.selected);if(r){const el=document.getElementById('lcAnimalDetails');if(el)el.innerHTML=detail(r)}}}
 
   async function refresh(fit=false){
     if(!shell())return;siteSelect();
