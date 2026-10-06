@@ -400,7 +400,13 @@
             <label>Acceso hasta</label>
             <input name="access_ends_at" type="datetime-local" value="${esc(toDateTimeLocal(editing?.access_ends_at))}">
           </div>
-          ${editing ? '' : `
+          ${editing ? `
+            <div class="field full">
+              <label>Nueva contraseña temporal</label>
+              <input name="reset_password" type="password" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Mínimo 12 caracteres">
+              <div class="user-password-note">Úsala solo si necesitas restablecer el acceso. La contraseña no se guarda ni se vuelve a mostrar. El usuario deberá cambiarla al iniciar sesión.</div>
+            </div>
+          ` : `
             <div class="field full">
               <label>Contraseña temporal *</label>
               <input name="temporary_password" type="password" minlength="12" maxlength="128" required autocomplete="new-password">
@@ -414,6 +420,7 @@
         </div>
         <div class="form-actions">
           <button type="button" class="btn ghost" id="cancelUserAdmin">Cancelar</button>
+          ${editing ? '<button type="button" class="btn ghost" id="resetUserPasswordButton">Restablecer contraseña</button>' : ''}
           <button type="submit" class="btn">${editing ? 'Guardar usuario' : 'Crear usuario'}</button>
         </div>
       </form>
@@ -423,6 +430,7 @@
     form.site_mode.addEventListener('change', toggleSiteMode);
     form.addEventListener('submit', saveUser);
     document.getElementById('cancelUserAdmin')?.addEventListener('click', closeUserEditor);
+    document.getElementById('resetUserPasswordButton')?.addEventListener('click', resetUserPassword);
     document.getElementById('userAdminModal').classList.add('open');
   }
 
@@ -432,6 +440,60 @@
     state.editingUserId = null;
     setModalError('');
     document.getElementById('userAdminModal')?.classList.remove('open');
+  }
+
+  async function resetUserPassword() {
+    setModalError('');
+
+    const form = document.getElementById('userAdminForm');
+    const userId = state.editingUserId;
+    const password = form?.reset_password?.value || '';
+
+    if (!userId || !state.organizationId) {
+      setModalError('No se encontró el usuario que quieres actualizar.');
+      return;
+    }
+
+    if (password.length < 12 || password.length > 128) {
+      setModalError('La nueva contraseña temporal debe tener entre 12 y 128 caracteres.');
+      form?.reset_password?.focus();
+      return;
+    }
+
+    if (!window.confirm('¿Restablecer la contraseña de este usuario? La contraseña actual dejará de funcionar.')) {
+      return;
+    }
+
+    const button = document.getElementById('resetUserPasswordButton');
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Restableciendo…';
+    }
+
+    try {
+      await post('/admin/organization/user/password', {
+        organization_id: state.organizationId,
+        user_id: userId,
+        temporary_password: password,
+      });
+
+      form.reset_password.value = '';
+      setModalError('');
+      setViewSuccess('Contraseña restablecida. El usuario deberá cambiarla en su próximo ingreso.');
+      const success = document.getElementById('userAdminError');
+      if (success) {
+        success.textContent = 'Contraseña restablecida correctamente.';
+        success.classList.remove('show');
+      }
+      window.alert('Contraseña restablecida correctamente. El usuario deberá cambiarla en su próximo ingreso.');
+    } catch (error) {
+      setModalError(error.message);
+    } finally {
+      if (button && document.body.contains(button)) {
+        button.disabled = false;
+        button.textContent = 'Restablecer contraseña';
+      }
+    }
   }
 
   async function saveUser(event) {
