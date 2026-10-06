@@ -3351,7 +3351,7 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
     const value = `${row.device_type || ''} ${row.name || ''}`.toLowerCase();
     if (value.includes('nova_edge') || value.includes('nova edge')) return 'novaEdge';
     if (value.includes('orion')) return 'gpsOrion';
-    if (value.includes('ganado') || value.includes('collar')) return 'gpsCattle';
+    if (value.includes('tauro') || value.includes('ganado') || value.includes('collar')) return 'gpsCattle';
     if (value.includes('alimentador')) return 'feeder';
     if (value.includes('aireador')) return 'aerator';
     if (value.includes('gateway')) return 'gateway';
