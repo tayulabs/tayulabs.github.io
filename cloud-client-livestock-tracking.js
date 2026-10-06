@@ -134,6 +134,19 @@
       #ganaderia .lc-detail span{display:block;color:var(--muted);font-size:11px}
       #ganaderia .lc-detail b{display:block;margin-top:4px;font-size:13px;overflow-wrap:anywhere}
       #ganaderia .lc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+      #ganaderia .lc-iot-details{padding:0;overflow:hidden}
+      #ganaderia .lc-iot-details>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:14px;align-items:center;padding:15px 17px}
+      #ganaderia .lc-iot-details>summary::-webkit-details-marker{display:none}
+      #ganaderia .lc-iot-details>summary b{display:block}
+      #ganaderia .lc-iot-details>summary small{display:block;color:var(--muted);margin-top:4px}
+      #ganaderia .lc-iot-toggle{font-size:12px;font-weight:900;color:var(--brand);white-space:nowrap}
+      #ganaderia .lc-iot-box{border-top:1px solid var(--border);max-height:390px;overflow:auto;padding:12px}
+      #ganaderia .lc-iot-box>[data-tayu-sector-iot="ganaderia"]{margin:0!important;box-shadow:none!important}
+      #ganaderia .lc-iot-box .tayu-sector-iot-list{max-height:330px;overflow:auto}
+      #ganaderia .lc-iot-box .tayu-sector-device{padding:11px;border-radius:14px}
+      #ganaderia .lc-iot-box .tayu-sector-resources{display:none!important}
+      #ganaderia .lc-iot-box .tayu-sector-secondary{display:none!important}
+      #ganaderia .lc-iot-box .tayu-sector-note{display:none!important}
       .lc-cow-icon{background:transparent!important;border:0!important}
       .lc-cow{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#fff;border:3px solid var(--cow);font-size:19px;box-shadow:0 8px 18px rgba(0,0,0,.28)}
       .lc-cow.online:after{content:"";position:absolute;width:8px;height:8px;border-radius:50%;right:0;bottom:0;background:#22c55e;border:2px solid #fff}
@@ -176,10 +189,19 @@
             <div class="card" id="cattleSatelliteDetails"><h3>Ficha del animal</h3><p class="hint">Selecciona una vaca del mapa o del listado.</p></div>
           </div>
         </div>
+
+        <details class="card lc-iot-details" id="lcIotDetails">
+          <summary>
+            <span><b>Dispositivos IoT asociados</b><small id="lcIotSummary">Collares TAURO GPS vinculados a esta unidad ganadera.</small></span>
+            <span class="lc-iot-toggle">Ver dispositivos ▾</span>
+          </summary>
+          <div class="lc-iot-box" id="lcIotBox"></div>
+        </details>
       </div>
     `;
-    if(iot)view.prepend(iot);
+    if(iot)document.getElementById('lcIotBox')?.appendChild(iot);
     view.dataset.livestockMap='1';
+    compactIotPanel();
     view.querySelector('#lcRefresh')?.addEventListener('click',()=>refresh(true));
     view.querySelector('#lcSite')?.addEventListener('change',e=>{s.siteId=e.target.value;s.fitted=false;s.selected='';refresh(true)});
     view.querySelector('#lcHerd')?.addEventListener('change',render);
@@ -187,6 +209,27 @@
     view.querySelector('#lcSearch')?.addEventListener('input',render);
     initMap();
     return view;
+  }
+
+  function compactIotPanel(){
+    const view=document.getElementById('ganaderia');if(!view)return;
+    const box=view.querySelector('#lcIotBox');
+    const host=view.querySelector('[data-tayu-sector-iot="ganaderia"]');
+    if(box&&host&&host.parentElement!==box)box.appendChild(host);
+
+    const count=devices().filter(d=>!s.siteId||String(d.site_id)===String(s.siteId)).length;
+    const summary=view.querySelector('#lcIotSummary');
+    if(summary)summary.textContent=count
+      ? count+' collares TAURO GPS asociados. Abre esta sección solo si necesitas revisar los dispositivos.'
+      : 'Sin dispositivos IoT asociados a esta unidad.';
+
+    const details=view.querySelector('#lcIotDetails');
+    const toggle=details?.querySelector('.lc-iot-toggle');
+    if(details&&toggle){
+      const sync=()=>{toggle.textContent=details.open?'Ocultar dispositivos ▴':'Ver dispositivos ▾';};
+      if(!details.dataset.bound){details.dataset.bound='1';details.addEventListener('toggle',sync);}
+      sync();
+    }
   }
 
   function initMap(){
@@ -323,7 +366,7 @@
     }catch(error){console.error(error);alert('No se pudo cargar el recorrido histórico.')}
   }
 
-  function render(){kpis();list();markers();if(s.selected){const r=s.rows.find(x=>String(x.animal_id||x.device?.device_key||x.animal_code)===s.selected);if(r){const el=document.getElementById('cattleSatelliteDetails');if(el)el.innerHTML=detail(r)}}}
+  function render(){kpis();list();markers();compactIotPanel();if(s.selected){const r=s.rows.find(x=>String(x.animal_id||x.device?.device_key||x.animal_code)===s.selected);if(r){const el=document.getElementById('cattleSatelliteDetails');if(el)el.innerHTML=detail(r)}}}
 
   async function refresh(fit=false){
     if(!shell())return;siteSelect();
@@ -333,7 +376,11 @@
   }
 
   function activate(){
-    shell();refresh(!s.fitted).catch(console.error);
+    shell();
+    compactIotPanel();
+    setTimeout(compactIotPanel,450);
+    setTimeout(compactIotPanel,1200);
+    refresh(!s.fitted).catch(console.error);
     if(s.timer)clearInterval(s.timer);
     s.timer=setInterval(()=>{if(!document.hidden&&document.getElementById('ganaderia')?.classList.contains('active'))refresh(false).catch(console.error)},REFRESH_MS);
   }
