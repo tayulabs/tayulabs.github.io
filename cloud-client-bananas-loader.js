@@ -29,5 +29,11 @@
     }catch(error){
       console.error('Bananeras loader:',error);
     }
+
+    try{
+      await loadScript('cloud-client-livestock-tracking.js?v=1.1');
+    }catch(error){
+      console.error('Ganadería tracking loader:',error);
+    }
   })();
 })();
