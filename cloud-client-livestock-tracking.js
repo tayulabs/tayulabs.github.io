@@ -19,7 +19,7 @@
   }
 
   function tauro(d){
-    const text=\x60${d?.device_type||''} ${d?.profile_key||''} ${d?.profile_name||''} ${d?.name||''}\x60.toLowerCase();
+    const text=`${d?.device_type||''} ${d?.profile_key||''} ${d?.profile_name||''} ${d?.name||''}`.toLowerCase();
     return /tauro|ganado|collar/.test(text);
   }
 
@@ -60,8 +60,8 @@
       const speed=firstNum(p,['speed_kmh','speed','gps.speed']);
       return {
         animal_id:null,
-        animal_code:code||\x60GAN-${suffix}\x60,
-        name:p.animal_name||\x60Vaca ${suffix}\x60,
+        animal_code:code||`GAN-${suffix}`,
+        name:p.animal_name||`Vaca ${suffix}`,
         ear_tag:p.ear_tag||null,
         breed:null,
         current_weight_kg:null,
@@ -110,7 +110,7 @@
 
   function styles(){
     if(document.getElementById('tayuLivestockCss'))return;
-    const style=document.createElement('style');style.id='tayuLivestockCss';style.textContent=\x60
+    const style=document.createElement('style');style.id='tayuLivestockCss';style.textContent=`
       #ganaderia .lc-shell{display:grid;gap:16px}
       #ganaderia .lc-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
       #ganaderia .lc-kpi{border:1px solid var(--border);background:var(--panel);border-radius:18px;padding:15px}
@@ -142,7 +142,7 @@
       @keyframes lcPulse{50%{transform:scale(1.12)}}
       @media(max-width:1100px){#ganaderia .lc-kpis{grid-template-columns:repeat(3,1fr)}#ganaderia .lc-layout{grid-template-columns:1fr}}
       @media(max-width:700px){#ganaderia .lc-kpis{grid-template-columns:1fr 1fr}#ganaderia #cattleSatelliteMap{height:520px}}
-    \x60;
+    `;
     document.head.appendChild(style);
   }
 
@@ -153,7 +153,7 @@
     const iot=view.querySelector('[data-tayu-sector-iot="ganaderia"]');
     try{window.cattleSatelliteMap?.remove?.()}catch(_){}
     window.cattleSatelliteMap=null;
-    view.innerHTML=\x60
+    view.innerHTML=`
       <div class="lc-shell">
         <div class="card module-header"><div><h3>🐄 Ganadería · Mapa de ganado</h3><p class="hint">Ubicación GPS por animal, estado de TAURO, movimiento, batería y trazabilidad.</p></div><button class="btn ghost" id="lcRefresh">Actualizar datos</button></div>
         <div class="lc-kpis">
@@ -177,7 +177,7 @@
           </div>
         </div>
       </div>
-    \x60;
+    `;
     if(iot)view.prepend(iot);
     view.dataset.livestockMap='1';
     view.querySelector('#lcRefresh')?.addEventListener('click',()=>refresh(true));
@@ -202,7 +202,7 @@
   function siteSelect(){
     const el=document.getElementById('lcSite');if(!el)return;
     const list=sites(),old=s.siteId||el.value;
-    el.innerHTML=list.length?list.map(x=>\x60<option value="${esc(x.id)}">${esc(x.name)}</option>\x60).join(''):'<option value="">Sin unidad ganadera</option>';
+    el.innerHTML=list.length?list.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join(''):'<option value="">Sin unidad ganadera</option>';
     if(old&&list.some(x=>x.id===old))el.value=old;
     s.siteId=el.value||list[0]?.id||'';
   }
@@ -214,7 +214,7 @@
     return s.rows.filter(r=>{
       if(herd&&String(r.herd?.name||'')!==herd)return false;
       if(status&&String(r.device?.status||'').toLowerCase()!==status)return false;
-      if(q&&!\x60${r.animal_code||''} ${r.name||''} ${r.ear_tag||''} ${r.device?.device_key||''} ${r.herd?.name||''}\x60.toLowerCase().includes(q))return false;
+      if(q&&!`${r.animal_code||''} ${r.name||''} ${r.ear_tag||''} ${r.device?.device_key||''} ${r.herd?.name||''}`.toLowerCase().includes(q))return false;
       return true;
     });
   }
@@ -222,7 +222,7 @@
   function herdSelect(){
     const el=document.getElementById('lcHerd');if(!el)return;
     const old=el.value,names=[...new Set(s.rows.map(r=>r.herd?.name).filter(Boolean))].sort();
-    el.innerHTML='<option value="">Todos</option>'+names.map(x=>\x60<option value="${esc(x)}">${esc(x)}</option>\x60).join('');
+    el.innerHTML='<option value="">Todos</option>'+names.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
     if(names.includes(old))el.value=old;
   }
 
@@ -238,11 +238,11 @@
 
   function icon(r,i){
     const c=color(r.herd?.name,i),online=String(r.device?.status).toLowerCase()==='online',moving=r.tracking?.motion===true;
-    return L.divIcon({className:'lc-cow-icon',html:\x60<div class="lc-cow ${online?'online':'offline'} ${moving?'moving':''}" style="--cow:${c}">🐄</div>\x60,iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-18]});
+    return L.divIcon({className:'lc-cow-icon',html:`<div class="lc-cow ${online?'online':'offline'} ${moving?'moving':''}" style="--cow:${c}">🐄</div>`,iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-18]});
   }
 
   function popup(r){
-    return \x60<b>${esc(r.name||r.animal_code)}</b><br><small>${esc(r.animal_code||'')} · ${esc(r.herd?.name||'Sin grupo')}</small><br><br>🔋 ${r.tracking?.battery_pct??'—'}% · 🚶 ${r.tracking?.speed_kmh??'—'} km/h\x60;
+    return `<b>${esc(r.name||r.animal_code)}</b><br><small>${esc(r.animal_code||'')} · ${esc(r.herd?.name||'Sin grupo')}</small><br><br>🔋 ${r.tracking?.battery_pct??'—'}% · 🚶 ${r.tracking?.speed_kmh??'—'} km/h`;
   }
 
   function markers(){
@@ -265,7 +265,7 @@
     const rows=filtered();
     el.innerHTML=rows.length?rows.map((r,i)=>{
       const id=String(r.animal_id||r.device?.device_key||r.animal_code),active=id===s.selected,c=color(r.herd?.name,i);
-      return \x60<button class="lc-row ${active?'active':''}" data-cow="${esc(id)}"><span><b><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin-right:7px"></i>${esc(r.name||r.animal_code)}</b><small>${esc(r.animal_code||'')} · ${esc(r.herd?.name||'Sin grupo')}</small></span><span class="lc-right"><b>${r.tracking?.battery_pct??'—'}% 🔋</b><br><small>${r.tracking?.speed_kmh??'—'} km/h</small></span></button>\x60;
+      return `<button class="lc-row ${active?'active':''}" data-cow="${esc(id)}"><span><b><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin-right:7px"></i>${esc(r.name||r.animal_code)}</b><small>${esc(r.animal_code||'')} · ${esc(r.herd?.name||'Sin grupo')}</small></span><span class="lc-right"><b>${r.tracking?.battery_pct??'—'}% 🔋</b><br><small>${r.tracking?.speed_kmh??'—'} km/h</small></span></button>`;
     }).join(''):'<p class="hint">No hay animales que coincidan con los filtros.</p>';
     el.querySelectorAll('[data-cow]').forEach(b=>b.addEventListener('click',()=>select(b.dataset.cow,true)));
   }
@@ -277,7 +277,7 @@
 
   function detail(r){
     const t=r.tracking||{},d=r.device||{},online=String(d.status||'').toLowerCase()==='online';
-    return \x60
+    return `
       <div style="display:flex;justify-content:space-between;gap:10px"><div><h3 style="margin:0">${esc(r.name||r.animal_code)}</h3><p class="hint" style="margin:5px 0 0">${esc(r.animal_code||'')} ${r.ear_tag?'· Arete '+esc(r.ear_tag):''}</p></div><span class="${online?'status':'status off'}">${online?'ONLINE':'OFFLINE'}</span></div>
       <div class="lc-detail">
         <div><span>Grupo / hato</span><b>${esc(r.herd?.name||'—')}</b></div>
@@ -288,13 +288,13 @@
         <div><span>Movimiento</span><b>${t.motion===true?'En movimiento':t.motion===false?'En reposo':'—'}</b></div>
         <div><span>Satélites / HDOP</span><b>${t.satellites??'—'} / ${t.hdop??'—'}</b></div>
         <div><span>Última conexión</span><b>${esc(ago(d.last_seen_at||r.telemetry_time))}</b></div>
-        ${r.breed?\x60<div><span>Raza</span><b>${esc(r.breed)}</b></div>\x60:''}
-        ${r.current_weight_kg?\x60<div><span>Peso actual</span><b>${esc(r.current_weight_kg)} kg</b></div>\x60:''}
+        ${r.breed?`<div><span>Raza</span><b>${esc(r.breed)}</b></div>`:''}
+        ${r.current_weight_kg?`<div><span>Peso actual</span><b>${esc(r.current_weight_kg)} kg</b></div>`:''}
         <div><span>Gateway</span><b>${esc(t.gateway_model||t.gateway_id||'UG67')}</b></div>
       </div>
       <div class="lc-actions"><button class="btn ghost" id="lcCenter">Centrar en mapa</button>${r.animal_id?'<button class="btn" id="lcHistory">Ver recorrido 24 h</button>':''}</div>
       <p class="hint" style="margin-top:10px">Posición: ${t.lat??'—'}, ${t.lon??'—'}</p>
-    \x60;
+    `;
   }
 
   function select(id,center=false){
