@@ -31,7 +31,7 @@
     }
 
     try{
-      await loadScript('cloud-client-livestock-tracking.js?v=1.1');
+      await loadScript('cloud-client-livestock-tracking.js?v=1.2');
     }catch(error){
       console.error('Ganadería tracking loader:',error);
     }
