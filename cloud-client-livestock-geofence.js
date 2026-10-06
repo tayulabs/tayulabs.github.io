@@ -97,7 +97,16 @@
         <label>Nombre de la zona</label>
         <input id="lgfName" value="Perímetro principal" placeholder="Ej. Potrero Norte">
         <div class="lgf-counter" id="lgfCounter">0 puntos marcados</div>
+        <div style="margin-top:10px">
+          <label>Severidad de la alerta</label>
+          <select id="lgfSeverity" style="margin-top:5px">
+            <option value="critical">Crítica</option>
+            <option value="warning">Advertencia</option>
+            <option value="info">Información</option>
+          </select>
+        </div>
         <div class="lgf-legend"><span class="lgf-dot"></span><span>Alerta cuando un animal salga del perímetro.</span></div>
+        <p style="margin-top:8px">Los destinatarios y canales se gestionan en <b>Notificaciones</b>; esta zona no guarda números ni grupos.</p>
         <div class="lgf-actions">
           <button type="button" class="btn ghost" id="lgfUndo">Deshacer</button>
           <button type="button" class="btn ghost" id="lgfCancel">Cancelar</button>
@@ -281,7 +290,7 @@
       geofence_type:'polygon',
       points:state.points.map(([lat,lon])=>({lat,lon})),
       alerts_enabled:true,
-      notification_channels:['whatsapp']
+      severity:String(document.getElementById('lgfSeverity')?.value||'critical')
     };
 
     const button=document.getElementById('lgfSave');
