@@ -428,7 +428,7 @@
       const id=String(r.animal_id||r.device?.device_key||r.animal_code),lat=num(r.tracking?.lat),lon=num(r.tracking?.lon);
       if(lat===null||lon===null)return;
       let m=s.markers.get(id);
-      if(!m){m=L.marker([lat,lon],{icon:icon(r,i)}).addTo(s.map).bindPopup(popup(r),{className:'lc-leaflet-popup',maxWidth:330,autoPan:true,autoPanPadding:[30,30]});m.on('click',()=>select(id,false));s.markers.set(id,m)}
+      if(!m){m=L.marker([lat,lon],{icon:icon(r,i)}).addTo(s.map).bindPopup(popup(r),{className:'lc-leaflet-popup',maxWidth:390,autoPan:true,autoPanPadding:[30,30]});m.on('click',()=>select(id,false));s.markers.set(id,m)}
       else{m.setLatLng([lat,lon]);m.setIcon(icon(r,i));m.setPopupContent(popup(r))}
     });
     if(!s.fitted&&s.markers.size){const g=L.featureGroup([...s.markers.values()]);s.map.fitBounds(g.getBounds().pad(.28),{maxZoom:18});s.fitted=true}
