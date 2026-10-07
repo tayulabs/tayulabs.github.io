@@ -123,7 +123,7 @@
       #ganaderia .lc-layout{display:grid;grid-template-columns:minmax(0,2.35fr) minmax(300px,.65fr);gap:16px;align-items:start}
       #ganaderia .lc-map-card{padding:0!important;overflow:hidden;position:relative;height:600px;min-height:600px;align-self:start;background:transparent!important}
       #ganaderia #cattleSatelliteMap{height:100%;min-height:600px;border-radius:20px;display:block}
-      #ganaderia .lc-live{position:absolute;left:14px;top:14px;z-index:500;background:rgba(6,20,15,.9);color:#fff;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900}
+      #ganaderia .lc-live{position:absolute;right:14px;left:auto;top:14px;z-index:500;background:rgba(6,20,15,.9);color:#fff;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900;max-width:calc(100% - 90px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       #ganaderia .lc-live i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 5px rgba(34,197,94,.16);margin-right:7px}
       #ganaderia .lc-map-hud{position:absolute;left:14px;right:14px;bottom:14px;z-index:500;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
       #ganaderia .lc-map-chip{background:rgba(6,20,15,.88);color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;backdrop-filter:blur(8px)}
