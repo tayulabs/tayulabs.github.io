@@ -120,9 +120,9 @@
       #ganaderia .lc-kpi b{display:block;margin-top:6px;font-size:25px}
       #ganaderia .lc-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
       #ganaderia .lc-tools>div{flex:1;min-width:150px}
-      #ganaderia .lc-layout{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(300px,.9fr);gap:16px;align-items:start}
-      #ganaderia .lc-map-card{padding:0!important;overflow:hidden;position:relative;height:auto;align-self:start;background:transparent!important}
-      #ganaderia #cattleSatelliteMap{height:680px;min-height:540px;border-radius:20px;display:block}
+      #ganaderia .lc-layout{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(300px,.9fr);gap:16px;align-items:stretch}
+      #ganaderia .lc-map-card{padding:0!important;overflow:hidden;position:relative;display:flex;flex-direction:column;min-height:680px;height:auto;align-self:stretch;background:transparent!important}
+      #ganaderia #cattleSatelliteMap{flex:1 1 auto;height:auto;min-height:680px;border-radius:20px;display:block}
       #ganaderia .lc-live{position:absolute;left:14px;top:14px;z-index:500;background:rgba(6,20,15,.9);color:#fff;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900}
       #ganaderia .lc-live i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 5px rgba(34,197,94,.16);margin-right:7px}
       #ganaderia .lc-map-hud{position:absolute;left:14px;right:14px;bottom:14px;z-index:500;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
@@ -176,8 +176,8 @@
       .lc-cow.offline{filter:grayscale(.7);opacity:.7}
       .lc-cow.moving{animation:lcPulse 1.5s infinite}
       @keyframes lcPulse{50%{transform:scale(1.12)}}
-      @media(max-width:1100px){#ganaderia .lc-kpis{grid-template-columns:repeat(3,1fr)}#ganaderia .lc-layout{grid-template-columns:1fr}}
-      @media(max-width:700px){#ganaderia .lc-kpis{grid-template-columns:1fr 1fr}#ganaderia #cattleSatelliteMap{height:520px}.lc-leaflet-popup .leaflet-popup-content{width:270px!important}.lc-popup-grid{grid-template-columns:1fr 1fr}}
+      @media(max-width:1100px){#ganaderia .lc-kpis{grid-template-columns:repeat(3,1fr)}#ganaderia .lc-layout{grid-template-columns:1fr;align-items:start}#ganaderia .lc-map-card{min-height:620px;height:620px;align-self:start}#ganaderia #cattleSatelliteMap{min-height:620px;height:100%}}
+      @media(max-width:700px){#ganaderia .lc-kpis{grid-template-columns:1fr 1fr}#ganaderia .lc-map-card{min-height:520px;height:520px}#ganaderia #cattleSatelliteMap{min-height:520px;height:100%}.lc-leaflet-popup .leaflet-popup-content{width:270px!important}.lc-popup-grid{grid-template-columns:1fr 1fr}}
     `;
     document.head.appendChild(style);
   }
@@ -465,7 +465,15 @@
     const r=s.rows.find(x=>String(x.animal_id||x.device?.device_key||x.animal_code)===String(id));if(!r)return;
     s.selected=String(id);list();
     const el=document.getElementById('lcAnimalDetails');
-    if(el){el.innerHTML=detail(r);el.querySelector('#lcCenter')?.addEventListener('click',()=>centerRow(r,true));el.querySelector('#lcHistory')?.addEventListener('click',()=>history(r))}
+    if(el){
+      el.innerHTML=detail(r);
+      el.querySelector('#lcCenter')?.addEventListener('click',()=>centerRow(r,true));
+      el.querySelector('#lcHistory')?.addEventListener('click',()=>history(r));
+      requestAnimationFrame(()=>{
+        s.map?.invalidateSize({animate:false});
+        setTimeout(()=>s.map?.invalidateSize({animate:false}),120);
+      });
+    }
     if(center)centerRow(r,true);
   }
 
@@ -487,7 +495,7 @@
     }catch(error){console.error(error);alert('No se pudo cargar el recorrido histórico.')}
   }
 
-  function render(){kpis();list();markers();compactIotPanel();if(s.selected){const r=s.rows.find(x=>String(x.animal_id||x.device?.device_key||x.animal_code)===s.selected);if(r){const el=document.getElementById('lcAnimalDetails');if(el)el.innerHTML=detail(r)}}}
+  function render(){kpis();list();markers();compactIotPanel();if(s.selected){const r=s.rows.find(x=>String(x.animal_id||x.device?.device_key||x.animal_code)===s.selected);if(r){const el=document.getElementById('lcAnimalDetails');if(el)el.innerHTML=detail(r)}}requestAnimationFrame(()=>{s.map?.invalidateSize({animate:false});setTimeout(()=>s.map?.invalidateSize({animate:false}),120)})}
 
   async function refresh(fit=false){
     if(!shell())return;siteSelect();
