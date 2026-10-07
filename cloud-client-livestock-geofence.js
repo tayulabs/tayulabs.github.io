@@ -9,7 +9,8 @@
     preview:null,
     pointLayers:[],
     savedLayers:[],
-    geofences:[]
+    geofences:[],
+    editingId:null
   };
 
   const esc=v=>String(v??'')
@@ -40,8 +41,19 @@
       #ganaderia .lgf-panel h4{margin:0;font-size:14px}
       #ganaderia .lgf-panel p{margin:5px 0 10px;color:#64748b;font-size:11px;line-height:1.45}
       #ganaderia .lgf-panel label{font-size:10px;font-weight:800;color:#64748b}
-      #ganaderia .lgf-panel input{margin-top:5px}
+      #ganaderia .lgf-panel input,#ganaderia .lgf-panel select{margin-top:5px;width:100%}
+      #ganaderia .lgf-check{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:11px;font-weight:800}
+      #ganaderia .lgf-check input{width:auto;margin:0}
       #ganaderia .lgf-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+      #ganaderia .lgf-manager{display:grid;gap:12px}
+      #ganaderia .lgf-manager-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
+      #ganaderia .lgf-zone-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
+      #ganaderia .lgf-zone{border:1px solid var(--border);background:var(--panel2);border-radius:15px;padding:12px;display:grid;gap:8px}
+      #ganaderia .lgf-zone-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+      #ganaderia .lgf-zone small{color:var(--muted)}
+      #ganaderia .lgf-zone-actions{display:flex;gap:7px;flex-wrap:wrap}
+      #ganaderia .lgf-zone-badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:rgba(91,193,47,.12);font-size:10px;font-weight:900;color:#2f7e18}
+      #ganaderia .lgf-zone-badge.noalert{background:rgba(100,116,139,.10);color:#64748b}
       #ganaderia .lgf-counter{margin-top:9px;padding:8px 10px;border-radius:11px;background:#f4f7f4;font-size:11px}
       #ganaderia .lgf-legend{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--muted);margin-top:7px}
       #ganaderia .lgf-dot{width:10px;height:10px;border-radius:50%;background:#5BC12F;box-shadow:0 0 0 4px rgba(91,193,47,.15)}
@@ -92,21 +104,37 @@
       panel.id='lgfPanel';
       panel.className='lgf-panel';
       panel.innerHTML=`
-        <h4>Delimitar zona ganadera</h4>
-        <p>Haz clic sobre el mapa siguiendo el borde de la propiedad o potrero. Con 3 o más puntos puedes guardar el perímetro.</p>
+        <h4 id="lgfPanelTitle">Nueva zona ganadera</h4>
+        <p>Marca el perímetro con clics sobre el mapa. Al editar puedes arrastrar los vértices existentes o agregar nuevos.</p>
         <label>Nombre de la zona</label>
-        <input id="lgfName" value="Perímetro principal" placeholder="Ej. Potrero Norte">
-        <div class="lgf-counter" id="lgfCounter">0 puntos marcados</div>
+        <input id="lgfName" value="Perímetro principal" placeholder="Ej. Potrero A">
+        <div style="margin-top:10px">
+          <label>Tipo de zona</label>
+          <select id="lgfZoneType">
+            <option value="farm">Perímetro de finca</option>
+            <option value="paddock">Potrero</option>
+            <option value="water">Zona de agua</option>
+            <option value="custom">Otra zona</option>
+          </select>
+        </div>
+        <div style="margin-top:10px">
+          <label>Aplicar alerta a</label>
+          <select id="lgfHerd">
+            <option value="">Todos los animales</option>
+          </select>
+        </div>
+        <label class="lgf-check"><input type="checkbox" id="lgfAlerts" checked> Alertar cuando el animal salga de esta zona</label>
         <div style="margin-top:10px">
           <label>Severidad de la alerta</label>
-          <select id="lgfSeverity" style="margin-top:5px">
+          <select id="lgfSeverity">
             <option value="critical">Crítica</option>
             <option value="warning">Advertencia</option>
             <option value="info">Información</option>
           </select>
         </div>
-        <div class="lgf-legend"><span class="lgf-dot"></span><span>Alerta cuando un animal salga del perímetro.</span></div>
-        <p style="margin-top:8px">Los destinatarios y canales se gestionan en <b>Notificaciones</b>; esta zona no guarda números ni grupos.</p>
+        <div class="lgf-counter" id="lgfCounter">0 puntos marcados</div>
+        <div class="lgf-legend"><span class="lgf-dot"></span><span>Las zonas se guardan en la finca y vuelven a cargarse al ingresar.</span></div>
+        <p style="margin-top:8px">Los destinatarios se gestionan en <b>Notificaciones</b>. Para agua u otras zonas informativas puedes desactivar la alerta.</p>
         <div class="lgf-actions">
           <button type="button" class="btn ghost" id="lgfUndo">Deshacer</button>
           <button type="button" class="btn ghost" id="lgfCancel">Cancelar</button>
@@ -119,7 +147,28 @@
       panel.querySelector('#lgfSave')?.addEventListener('click',saveGeofence);
     }
 
+    if(!document.getElementById('lgfManager')){
+      const shell=view.querySelector('.lc-shell');
+      const before=view.querySelector('#lcIotDetails');
+      const manager=document.createElement('div');
+      manager.id='lgfManager';
+      manager.className='card lgf-manager';
+      manager.innerHTML=`
+        <div class="lgf-manager-head">
+          <div><h3 style="margin:0">Zonas del mapa</h3><p class="hint" style="margin:5px 0 0">Perímetros, potreros, puntos de agua y otras áreas de la finca.</p></div>
+          <button type="button" class="btn" id="lgfNewZone">+ Nueva zona</button>
+        </div>
+        <div class="lgf-zone-list" id="lgfZoneList"><p class="hint">Cargando zonas…</p></div>
+      `;
+      if(shell){
+        if(before) shell.insertBefore(manager,before);
+        else shell.appendChild(manager);
+      }
+      manager.querySelector('#lgfNewZone')?.addEventListener('click',startDrawing);
+    }
+
     bindMap();
+    fillHerdOptions();
     return true;
   }
 
