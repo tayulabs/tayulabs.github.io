@@ -120,17 +120,17 @@
       #ganaderia .lc-kpi b{display:block;margin-top:6px;font-size:25px}
       #ganaderia .lc-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
       #ganaderia .lc-tools>div{flex:1;min-width:150px}
-      #ganaderia .lc-layout{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(300px,.9fr);gap:16px;align-items:stretch}
-      #ganaderia .lc-map-card{padding:0!important;overflow:hidden;position:relative;display:flex;flex-direction:column;min-height:680px;height:auto;align-self:stretch;background:transparent!important}
-      #ganaderia #cattleSatelliteMap{flex:1 1 auto;height:auto;min-height:680px;border-radius:20px;display:block}
+      #ganaderia .lc-layout{display:grid;grid-template-columns:minmax(0,2.35fr) minmax(300px,.65fr);gap:16px;align-items:start}
+      #ganaderia .lc-map-card{padding:0!important;overflow:hidden;position:relative;height:600px;min-height:600px;align-self:start;background:transparent!important}
+      #ganaderia #cattleSatelliteMap{height:100%;min-height:600px;border-radius:20px;display:block}
       #ganaderia .lc-live{position:absolute;left:14px;top:14px;z-index:500;background:rgba(6,20,15,.9);color:#fff;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900}
       #ganaderia .lc-live i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 5px rgba(34,197,94,.16);margin-right:7px}
       #ganaderia .lc-map-hud{position:absolute;left:14px;right:14px;bottom:14px;z-index:500;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
       #ganaderia .lc-map-chip{background:rgba(6,20,15,.88);color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;backdrop-filter:blur(8px)}
       #ganaderia .lc-side{display:grid;gap:12px;align-content:start}
       .lc-leaflet-popup .leaflet-popup-content-wrapper{border-radius:18px;box-shadow:0 18px 45px rgba(0,0,0,.24);padding:0;overflow:hidden}
-      .lc-leaflet-popup .leaflet-popup-content{margin:0;width:310px!important}
-      .lc-popup{padding:14px;background:#fff;color:#17231a}
+      .lc-leaflet-popup .leaflet-popup-content{margin:0;width:370px!important}
+      .lc-popup{padding:14px;background:#fff;color:#17231a;max-height:440px;overflow-y:auto}
       .lc-popup-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:11px}
       .lc-popup-head strong{font-size:15px}
       .lc-popup-sub{font-size:11px;color:#64748b;margin-top:3px}
@@ -140,7 +140,7 @@
       .lc-popup-grid span{display:block;font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.03em}
       .lc-popup-grid b{display:block;margin-top:3px;font-size:11px;line-height:1.25}
       .lc-popup-foot{margin-top:10px;padding-top:9px;border-top:1px solid #edf0ed;font-size:10px;color:#64748b}
-      #ganaderia .lc-list{display:grid;gap:8px;max-height:370px;overflow:auto}
+      #ganaderia .lc-list{display:grid;gap:8px;max-height:520px;overflow:auto}
       #ganaderia .lc-row{width:100%;border:1px solid var(--border);background:var(--panel2);color:var(--text);border-radius:15px;padding:11px;display:flex;justify-content:space-between;gap:10px;text-align:left;cursor:pointer}
       #ganaderia .lc-row:hover,#ganaderia .lc-row.active{outline:2px solid var(--brand);background:rgba(91,193,47,.09)}
       #ganaderia .lc-row small{display:block;color:var(--muted);margin-top:4px}
@@ -176,8 +176,8 @@
       .lc-cow.offline{filter:grayscale(.7);opacity:.7}
       .lc-cow.moving{animation:lcPulse 1.5s infinite}
       @keyframes lcPulse{50%{transform:scale(1.12)}}
-      @media(max-width:1100px){#ganaderia .lc-kpis{grid-template-columns:repeat(3,1fr)}#ganaderia .lc-layout{grid-template-columns:1fr;align-items:start}#ganaderia .lc-map-card{min-height:620px;height:620px;align-self:start}#ganaderia #cattleSatelliteMap{min-height:620px;height:100%}}
-      @media(max-width:700px){#ganaderia .lc-kpis{grid-template-columns:1fr 1fr}#ganaderia .lc-map-card{min-height:520px;height:520px}#ganaderia #cattleSatelliteMap{min-height:520px;height:100%}.lc-leaflet-popup .leaflet-popup-content{width:270px!important}.lc-popup-grid{grid-template-columns:1fr 1fr}}
+      @media(max-width:1100px){#ganaderia .lc-kpis{grid-template-columns:repeat(3,1fr)}#ganaderia .lc-layout{grid-template-columns:1fr;align-items:start}#ganaderia .lc-map-card{min-height:560px;height:560px;align-self:start}#ganaderia #cattleSatelliteMap{min-height:560px;height:100%}#ganaderia .lc-list{max-height:360px}}
+      @media(max-width:700px){#ganaderia .lc-kpis{grid-template-columns:1fr 1fr}#ganaderia .lc-map-card{min-height:500px;height:500px}#ganaderia #cattleSatelliteMap{min-height:500px;height:100%}.lc-leaflet-popup .leaflet-popup-content{width:285px!important}.lc-popup{max-height:390px}.lc-popup-grid{grid-template-columns:1fr 1fr}}
     `;
     document.head.appendChild(style);
   }
@@ -216,8 +216,7 @@
             </div>
           </div>
           <div class="lc-side">
-            <div class="card"><h3>Inventario del hato</h3><p class="hint">Selecciona un animal para centrarlo y abrir su ficha.</p><div class="lc-list" id="lcAnimalList"></div></div>
-            <div class="card" id="lcAnimalDetails"><h3>Ficha del animal</h3><p class="hint">Selecciona una vaca del mapa o del listado.</p></div>
+            <div class="card"><h3>Inventario del hato</h3><p class="hint">Selecciona una vaca para centrarla y abrir su ficha sobre el mapa.</p><div class="lc-list" id="lcAnimalList"></div></div>
           </div>
         </div>
 
@@ -367,11 +366,14 @@
   function popup(r){
     const t=r.tracking||{},d=r.device||{};
     const online=String(d.status||'').toLowerCase()==='online';
-    const animalState=r.reproductive_status||r.productive_status||r.status||'Activo';
     const outside=outsideInfo(r);
+    const animalState=r.reproductive_status||r.productive_status||r.status||'Activo';
+    const sexType=[r.sex,r.animal_type].filter(Boolean).join(' · ')||'—';
+
     return `
       <div class="lc-popup">
         ${outside?`<div class="lc-popup-alert">🚨 FUERA DEL PERÍMETRO · ${esc(outside.geofenceName)}</div>`:''}
+
         <div class="lc-popup-head">
           <div>
             <strong>🐄 ${esc(r.name||r.animal_code||'Animal')}</strong>
@@ -382,20 +384,38 @@
 
         <div class="lc-popup-grid">
           <div><span>Grupo / hato</span><b>${esc(r.herd?.name||'—')}</b></div>
+          <div><span>Collar TAURO</span><b>${esc(d.device_key||d.name||'—')}</b></div>
+
+          <div><span>Batería</span><b>${t.battery_pct??'—'}%</b></div>
+          <div><span>Velocidad</span><b>${t.speed_kmh??'—'} km/h</b></div>
+
+          <div><span>Actividad</span><b>${t.activity_index??'—'}</b></div>
+          <div><span>Temperatura corporal</span><b>${t.temperature_c??'—'} °C</b></div>
+
+          <div><span>Estado de celo</span><b>${t.estrus_detected===true?'🔥 Celo detectado':'No detectado'}</b></div>
+          <div><span>Movimiento</span><b>${t.motion===true?'En movimiento':t.motion===false?'En reposo':'—'}</b></div>
+
           <div><span>Raza</span><b>${esc(r.breed||'—')}</b></div>
           <div><span>Peso actual</span><b>${r.current_weight_kg?esc(r.current_weight_kg)+' kg':'—'}</b></div>
-          <div><span>Estado animal</span><b>${esc(animalState)}</b></div>
-          <div><span>Batería TAURO</span><b>${t.battery_pct??'—'}%</b></div>
-          <div><span>Velocidad</span><b>${t.speed_kmh??'—'} km/h</b></div>
-          <div><span>Actividad</span><b>${t.activity_index??'—'}</b></div>
-          <div><span>Temperatura</span><b>${t.temperature_c??'—'} °C</b></div>
-          <div><span>Celo</span><b>${t.estrus_detected===true?'Detectado':'No detectado'}</b></div>
-          <div><span>Valor animal</span><b>${r.estimated_value_usd!=null?'$'+Number(r.estimated_value_usd).toFixed(2):'—'}</b></div>
-          <div><span>Movimiento</span><b>${t.motion===true?'En movimiento':t.motion===false?'En reposo':'—'}</b></div>
+
+          <div><span>Valor estimado</span><b>${r.estimated_value_usd!=null?'$'+Number(r.estimated_value_usd).toFixed(2):'—'}</b></div>
+          <div><span>Satélites / HDOP</span><b>${t.satellites??'—'} / ${t.hdop??'—'}</b></div>
+
+          <div><span>Sexo / tipo</span><b>${esc(sexType)}</b></div>
+          <div><span>Propósito</span><b>${esc(r.production_purpose||'—')}</b></div>
+
+          <div><span>Estado reproductivo</span><b>${esc(r.reproductive_status||'—')}</b></div>
+          <div><span>Estado productivo</span><b>${esc(r.productive_status||animalState||'—')}</b></div>
+
+          ${r.paddock?.name?`<div><span>Potrero</span><b>${esc(r.paddock.name)}</b></div>`:''}
+          <div><span>Gateway</span><b>${esc(t.gateway_model||t.gateway_id||'UG67')}</b></div>
+
+          <div><span>Última conexión</span><b>${esc(ago(d.last_seen_at||r.telemetry_time))}</b></div>
         </div>
 
         <div class="lc-popup-foot">
-          ${esc(d.device_key||'TAURO GPS')} · ${esc(ago(d.last_seen_at||r.telemetry_time))}
+          <b>Posición actual</b><br>
+          ${t.lat??'—'}, ${t.lon??'—'}
         </div>
       </div>`;
   }
@@ -408,7 +428,7 @@
       const id=String(r.animal_id||r.device?.device_key||r.animal_code),lat=num(r.tracking?.lat),lon=num(r.tracking?.lon);
       if(lat===null||lon===null)return;
       let m=s.markers.get(id);
-      if(!m){m=L.marker([lat,lon],{icon:icon(r,i)}).addTo(s.map).bindPopup(popup(r),{className:'lc-leaflet-popup',maxWidth:330,autoPan:true,autoPanPadding:[30,30]});m.on('click',()=>select(id,true));s.markers.set(id,m)}
+      if(!m){m=L.marker([lat,lon],{icon:icon(r,i)}).addTo(s.map).bindPopup(popup(r),{className:'lc-leaflet-popup',maxWidth:330,autoPan:true,autoPanPadding:[30,30]});m.on('click',()=>select(id,false));s.markers.set(id,m)}
       else{m.setLatLng([lat,lon]);m.setIcon(icon(r,i));m.setPopupContent(popup(r))}
     });
     if(!s.fitted&&s.markers.size){const g=L.featureGroup([...s.markers.values()]);s.map.fitBounds(g.getBounds().pad(.28),{maxZoom:18});s.fitted=true}
@@ -462,18 +482,10 @@
   }
 
   function select(id,center=false){
-    const r=s.rows.find(x=>String(x.animal_id||x.device?.device_key||x.animal_code)===String(id));if(!r)return;
-    s.selected=String(id);list();
-    const el=document.getElementById('lcAnimalDetails');
-    if(el){
-      el.innerHTML=detail(r);
-      el.querySelector('#lcCenter')?.addEventListener('click',()=>centerRow(r,true));
-      el.querySelector('#lcHistory')?.addEventListener('click',()=>history(r));
-      requestAnimationFrame(()=>{
-        s.map?.invalidateSize({animate:false});
-        setTimeout(()=>s.map?.invalidateSize({animate:false}),120);
-      });
-    }
+    const r=s.rows.find(x=>String(x.animal_id||x.device?.device_key||x.animal_code)===String(id));
+    if(!r)return;
+    s.selected=String(id);
+    list();
     if(center)centerRow(r,true);
   }
 
@@ -495,7 +507,7 @@
     }catch(error){console.error(error);alert('No se pudo cargar el recorrido histórico.')}
   }
 
-  function render(){kpis();list();markers();compactIotPanel();if(s.selected){const r=s.rows.find(x=>String(x.animal_id||x.device?.device_key||x.animal_code)===s.selected);if(r){const el=document.getElementById('lcAnimalDetails');if(el)el.innerHTML=detail(r)}}requestAnimationFrame(()=>{s.map?.invalidateSize({animate:false});setTimeout(()=>s.map?.invalidateSize({animate:false}),120)})}
+  function render(){kpis();list();markers();compactIotPanel();requestAnimationFrame(()=>{s.map?.invalidateSize({animate:false});setTimeout(()=>s.map?.invalidateSize({animate:false}),120)})}
 
   async function refresh(fit=false){
     if(!shell())return;siteSelect();
