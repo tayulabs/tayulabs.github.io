@@ -172,6 +172,31 @@
     return true;
   }
 
+  function zoneMeta(type){
+    const key=String(type||'farm');
+    const all={
+      farm:{label:'Perímetro de finca',color:'#5BC12F'},
+      paddock:{label:'Potrero',color:'#f59e0b'},
+      water:{label:'Zona de agua',color:'#0ea5e9'},
+      custom:{label:'Otra zona',color:'#a855f7'}
+    };
+    return all[key]||all.custom;
+  }
+
+  function fillHerdOptions(selected=''){
+    const el=document.getElementById('lgfHerd');
+    if(!el)return;
+    const source=document.getElementById('lcHerd');
+    const names=[...new Set(
+      [...(source?.options||[])]
+        .map(o=>String(o.value||'').trim())
+        .filter(Boolean)
+    )];
+    el.innerHTML='<option value="">Todos los animales</option>'+
+      names.map(name=>'<option value="'+esc(name)+'">'+esc(name)+'</option>').join('');
+    if(selected&&names.includes(selected))el.value=selected;
+  }
+
   function clearPreview(){
     const m=map();
     if(state.preview&&m){
