@@ -360,21 +360,72 @@
     state.savedLayers=[];
   }
 
+  function focusZone(id){
+    const layer=state.savedLayers.find(x=>String(x.__geofenceId)===String(id));
+    if(layer&&map()){
+      map().fitBounds(layer.getBounds().pad(.2),{maxZoom:18});
+      layer.openTooltip?.();
+    }
+  }
+
+  function renderZoneManager(){
+    const el=document.getElementById('lgfZoneList');
+    if(!el)return;
+
+    if(!state.geofences.length){
+      el.innerHTML='<p class="hint">No hay zonas guardadas. Puedes crear el perímetro de la finca, potreros o zonas de agua.</p>';
+      return;
+    }
+
+    el.innerHTML=state.geofences.map(g=>{
+      const meta=zoneMeta(g.zone_type);
+      const scope=g.scope_herd?'Hato: '+esc(g.scope_herd):'Todos los animales';
+      const alertText=g.alerts_enabled!==false?'Alerta activa':'Solo visual';
+      return '<div class="lgf-zone">'+
+        '<div class="lgf-zone-top">'+
+          '<div>'+
+            '<b><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+meta.color+';margin-right:7px"></span>'+esc(g.name||'Zona ganadera')+'</b>'+
+            '<small>'+esc(meta.label)+' · '+scope+'</small>'+
+          '</div>'+
+          '<span class="lgf-zone-badge '+(g.alerts_enabled!==false?'':'noalert')+'">'+alertText+'</span>'+
+        '</div>'+
+        '<div class="lgf-zone-actions">'+
+          '<button type="button" class="btn ghost" data-lgf-focus="'+esc(g.id)+'">Ver</button>'+
+          '<button type="button" class="btn ghost" data-lgf-edit="'+esc(g.id)+'">Editar</button>'+
+          '<button type="button" class="btn ghost" data-lgf-delete="'+esc(g.id)+'">Eliminar</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+
+    el.querySelectorAll('[data-lgf-focus]').forEach(b=>b.addEventListener('click',()=>focusZone(b.dataset.lgfFocus)));
+    el.querySelectorAll('[data-lgf-edit]').forEach(b=>b.addEventListener('click',()=>startEdit(b.dataset.lgfEdit)));
+    el.querySelectorAll('[data-lgf-delete]').forEach(b=>b.addEventListener('click',()=>deleteGeofence(b.dataset.lgfDelete)));
+  }
+
   function renderSaved(){
     const m=map();if(!m)return;
     clearSaved();
 
     for(const g of state.geofences){
+      if(g.enabled===false)continue;
       const points=Array.isArray(g.points)?g.points:[];
       const latlngs=points.map(p=>[Number(p.lat),Number(p.lon)]).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
       if(latlngs.length<3)continue;
+
+      const meta=zoneMeta(g.zone_type);
       const layer=L.polygon(latlngs,{
-        color:'#5BC12F',
+        color:meta.color,
         weight:3,
-        fillColor:'#5BC12F',
-        fillOpacity:.08
+        fillColor:meta.color,
+        fillOpacity:g.zone_type==='water'?.16:.08
       }).addTo(m);
-      layer.bindTooltip(esc(g.name||'Zona ganadera'),{sticky:true});
+
+      layer.__geofenceId=g.id;
+      layer.bindTooltip(
+        '<b>'+esc(g.name||'Zona ganadera')+'</b><br><small>'+esc(meta.label)+'</small>',
+        {sticky:true}
+      );
+
       state.savedLayers.push(layer);
     }
 
@@ -383,9 +434,11 @@
     if(status){
       status.classList.toggle('off',!active.length);
       status.textContent=active.length
-        ? active.length+' perímetro'+(active.length===1?' activo':'s activos')
-        : 'Sin perímetro';
+        ? active.length+' zona'+(active.length===1?' activa':'s activas')
+        : 'Sin zonas';
     }
+
+    renderZoneManager();
   }
 
   async function loadGeofences(){
