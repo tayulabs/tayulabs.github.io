@@ -38,15 +38,16 @@
       #ganaderia .lgf-map-control a:hover{background:#f4f7f4!important;color:#2f7e18!important}
       #ganaderia .lgf-map-control a.lgf-map-zones{border-top:1px solid #ccc}
       #ganaderia .lgf-map-control a:focus{outline:2px solid #5BC12F;outline-offset:-2px}
-      #ganaderia .lgf-panel{display:none;position:absolute;right:14px;top:14px;z-index:650;width:min(330px,calc(100% - 28px));background:rgba(255,255,255,.97);border:1px solid rgba(148,163,184,.28);border-radius:18px;padding:14px;box-shadow:0 18px 50px rgba(15,23,42,.24);backdrop-filter:blur(12px);color:#17231a}
+      #ganaderia .lgf-panel{display:none;position:absolute;right:14px;top:14px;z-index:650;width:min(315px,calc(100% - 28px));max-height:calc(100% - 28px);overflow-y:auto;background:rgba(255,255,255,.97);border:1px solid rgba(148,163,184,.28);border-radius:16px;padding:12px;box-shadow:0 18px 50px rgba(15,23,42,.24);backdrop-filter:blur(12px);color:#17231a;scrollbar-width:thin}
       #ganaderia .lgf-panel.show{display:block}
       #ganaderia .lgf-panel h4{margin:0;font-size:14px}
-      #ganaderia .lgf-panel p{margin:5px 0 10px;color:#64748b;font-size:11px;line-height:1.45}
-      #ganaderia .lgf-panel label{font-size:10px;font-weight:800;color:#64748b}
-      #ganaderia .lgf-panel input,#ganaderia .lgf-panel select{margin-top:5px;width:100%}
-      #ganaderia .lgf-check{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:11px;font-weight:800}
+      #ganaderia .lgf-panel p{margin:4px 0 8px;color:#64748b;font-size:10px;line-height:1.35}
+      #ganaderia .lgf-panel label{font-size:9px;font-weight:800;color:#64748b}
+      #ganaderia .lgf-panel input,#ganaderia .lgf-panel select{margin-top:4px;width:100%;min-height:38px;padding:8px 10px}
+      #ganaderia .lgf-check{display:flex;gap:7px;align-items:center;margin-top:8px;font-size:10px;font-weight:800}
       #ganaderia .lgf-check input{width:auto;margin:0}
-      #ganaderia .lgf-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+      #ganaderia .lgf-actions{position:sticky;bottom:-12px;z-index:2;display:flex;gap:6px;flex-wrap:nowrap;margin:10px -12px -12px;padding:10px 12px;background:rgba(255,255,255,.98);border-top:1px solid rgba(148,163,184,.22);backdrop-filter:blur(10px)}
+      #ganaderia .lgf-actions .btn{flex:1;min-width:0;padding:9px 8px;font-size:11px}
       #ganaderia .lgf-manager{display:grid;gap:12px}
       #ganaderia .lgf-manager-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
       #ganaderia .lgf-zone-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
@@ -56,8 +57,8 @@
       #ganaderia .lgf-zone-actions{display:flex;gap:7px;flex-wrap:wrap}
       #ganaderia .lgf-zone-badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:rgba(91,193,47,.12);font-size:10px;font-weight:900;color:#2f7e18}
       #ganaderia .lgf-zone-badge.noalert{background:rgba(100,116,139,.10);color:#64748b}
-      #ganaderia .lgf-counter{margin-top:9px;padding:8px 10px;border-radius:11px;background:#f4f7f4;font-size:11px}
-      #ganaderia .lgf-legend{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--muted);margin-top:7px}
+      #ganaderia .lgf-counter{margin-top:7px;padding:7px 9px;border-radius:10px;background:#f4f7f4;font-size:10px}
+      #ganaderia .lgf-legend{display:flex;gap:7px;align-items:center;font-size:10px;color:var(--muted);margin-top:6px}
       #ganaderia .lgf-dot{width:10px;height:10px;border-radius:50%;background:#5BC12F;box-shadow:0 0 0 4px rgba(91,193,47,.15)}
       .lgf-vertex{width:12px;height:12px;border-radius:50%;background:#fff;border:3px solid #5BC12F;box-shadow:0 2px 8px rgba(0,0,0,.28)}
     `;
@@ -81,7 +82,7 @@
         <p>Marca el perímetro con clics sobre el mapa. Al editar puedes arrastrar los vértices existentes o agregar nuevos.</p>
         <label>Nombre de la zona</label>
         <input id="lgfName" value="Perímetro principal" placeholder="Ej. Potrero A">
-        <div style="margin-top:10px">
+        <div style="margin-top:7px">
           <label>Tipo de zona</label>
           <select id="lgfZoneType">
             <option value="farm">Perímetro de finca</option>
@@ -90,14 +91,14 @@
             <option value="custom">Otra zona</option>
           </select>
         </div>
-        <div style="margin-top:10px">
+        <div style="margin-top:7px">
           <label>Aplicar alerta a</label>
           <select id="lgfHerd">
             <option value="">Todos los animales</option>
           </select>
         </div>
         <label class="lgf-check"><input type="checkbox" id="lgfAlerts" checked> Alertar cuando el animal salga de esta zona</label>
-        <div style="margin-top:10px">
+        <div style="margin-top:7px">
           <label>Severidad de la alerta</label>
           <select id="lgfSeverity">
             <option value="critical">Crítica</option>
@@ -107,7 +108,6 @@
         </div>
         <div class="lgf-counter" id="lgfCounter">0 puntos marcados</div>
         <div class="lgf-legend"><span class="lgf-dot"></span><span>Las zonas se guardan en la finca y vuelven a cargarse al ingresar.</span></div>
-        <p style="margin-top:8px">Los destinatarios se gestionan en <b>Notificaciones</b>. Para agua u otras zonas informativas puedes desactivar la alerta.</p>
         <div class="lgf-actions">
           <button type="button" class="btn ghost" id="lgfUndo">Deshacer</button>
           <button type="button" class="btn ghost" id="lgfCancel">Cancelar</button>
