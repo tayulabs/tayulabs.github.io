@@ -543,7 +543,9 @@
 
   window.addEventListener('tayu:livestock-tracking-refreshed',event=>{
     const siteId=String(event.detail?.siteId||'');
-    if(siteId&&siteId===currentSite())loadGeofences().catch(console.error);
+    if(siteId&&siteId===currentSite()&&(state.siteId!==siteId||!state.geofences.length)){
+      loadGeofences().catch(console.error);
+    }
   });
 
   window.__tayuLoadLivestockGeofences=loadGeofences;
