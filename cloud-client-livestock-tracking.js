@@ -495,6 +495,7 @@
     if(fit)s.fitted=false;
     const [rows]=await Promise.all([load(s.siteId),refreshAlarmState()]);
     s.rows=rows;herdSelect();render();
+    window.dispatchEvent(new CustomEvent('tayu:livestock-tracking-refreshed',{detail:{siteId:s.siteId}}));
   }
 
   function activate(){
