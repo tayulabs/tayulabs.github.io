@@ -166,6 +166,13 @@
       .lc-cow-icon{background:transparent!important;border:0!important}
       .lc-cow{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#fff;border:3px solid var(--cow);font-size:19px;box-shadow:0 8px 18px rgba(0,0,0,.28);transition:transform .8s ease}
       .lc-cow.online:after{content:"";position:absolute;width:8px;height:8px;border-radius:50%;right:0;bottom:0;background:#22c55e;border:2px solid #fff}
+      .lc-cow.outside{--cow:#ef4444!important;border-color:#ef4444!important;box-shadow:0 0 0 5px rgba(239,68,68,.18),0 8px 18px rgba(0,0,0,.32);animation:lcDanger 1.15s infinite}
+      .lc-cow.outside:before{content:"🚨";position:absolute;left:-9px;top:-13px;font-size:15px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+      .lc-row.outside{border-color:#ef4444!important;background:rgba(239,68,68,.07)!important}
+      .lc-row.outside:hover,.lc-row.outside.active{outline:2px solid #ef4444!important}
+      .lc-outside-banner{margin:10px 0 12px;padding:10px 12px;border-radius:13px;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.32);color:#b91c1c;font-size:12px;font-weight:900}
+      .lc-popup-alert{margin-bottom:10px;padding:8px 10px;border-radius:11px;background:#fee2e2;border:1px solid #fecaca;color:#b91c1c;font-size:11px;font-weight:900}
+      @keyframes lcDanger{50%{transform:scale(1.14);box-shadow:0 0 0 9px rgba(239,68,68,.10),0 8px 18px rgba(0,0,0,.32)}}
       .lc-cow.offline{filter:grayscale(.7);opacity:.7}
       .lc-cow.moving{animation:lcPulse 1.5s infinite}
       @keyframes lcPulse{50%{transform:scale(1.12)}}
@@ -307,20 +314,64 @@
     text('lcBattery',bs.length?(bs.reduce((a,b)=>a+b,0)/bs.length).toFixed(1)+'%':'—');
     text('lcMapAnimals','🐄 '+rows.length+' animales');
     text('lcMapGroups','📍 '+groups.length+' grupos');
-    text('lcMapUpdated',latest?'🛰 '+ago(new Date(latest).toISOString()):'🛰 Esperando datos');
+    const outsideCount=rows.filter(r=>Boolean(outsideInfo(r))).length;
+    text('lcMapUpdated',(outsideCount?'🚨 '+outsideCount+' fuera · ':'')+(latest?'🛰 '+ago(new Date(latest).toISOString()):'🛰 Esperando datos'));
+  }
+
+  function geofenceAlarm(r){
+    const events=Array.isArray(window.__tayuAlarmEvents)?window.__tayuAlarmEvents:[];
+    const deviceKey=String(r.device?.device_key||'');
+    const deviceId=String(r.device?.id||'');
+    return events.find(a=>{
+      if(!['active','acknowledged'].includes(String(a.state||'').toLowerCase()))return false;
+      const systemKey=String(a.system_key||a.rule_system_key||'');
+      const ruleName=String(a.rule_name||a.name||'');
+      const message=String(a.message||'');
+      const isGeofence=
+        systemKey.startsWith('livestock_geofence:') ||
+        /salida de perímetro/i.test(ruleName) ||
+        /salió del perímetro/i.test(message);
+      if(!isGeofence)return false;
+      const alarmDeviceKey=String(a.device_key||'');
+      const alarmDeviceId=String(a.device_id||'');
+      return (deviceKey&&alarmDeviceKey===deviceKey)||(deviceId&&alarmDeviceId===deviceId);
+    })||null;
+  }
+
+  function outsideInfo(r){
+    const a=geofenceAlarm(r);
+    if(!a)return null;
+    const value=a.value&&typeof a.value==='object'?a.value:{};
+    return {
+      alarm:a,
+      geofenceName:value.geofence_name||String(a.rule_name||'').replace(/^Salida de perímetro\s*·\s*/i,'')||'Zona ganadera'
+    };
+  }
+
+  async function refreshAlarmState(){
+    if(typeof window.__tayuApi!=='function')return;
+    try{
+      const events=await window.__tayuApi('/alarms/events');
+      if(Array.isArray(events))window.__tayuAlarmEvents=events;
+    }catch(error){
+      console.warn('Ganadería: no se pudieron actualizar alarmas de geocerca.',error);
+    }
   }
 
   function icon(r,i){
-    const c=color(r.herd?.name,i),online=String(r.device?.status).toLowerCase()==='online',moving=r.tracking?.motion===true;
-    return L.divIcon({className:'lc-cow-icon',html:`<div class="lc-cow ${online?'online':'offline'} ${moving?'moving':''}" style="--cow:${c}">🐄</div>`,iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-18]});
+    const outside=Boolean(outsideInfo(r));
+    const c=outside?'#ef4444':color(r.herd?.name,i),online=String(r.device?.status).toLowerCase()==='online',moving=r.tracking?.motion===true;
+    return L.divIcon({className:'lc-cow-icon',html:`<div class="lc-cow ${online?'online':'offline'} ${moving?'moving':''} ${outside?'outside':''}" style="--cow:${c}">🐄</div>`,iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-18]});
   }
 
   function popup(r){
     const t=r.tracking||{},d=r.device||{};
     const online=String(d.status||'').toLowerCase()==='online';
     const animalState=r.reproductive_status||r.productive_status||r.status||'Activo';
+    const outside=outsideInfo(r);
     return `
       <div class="lc-popup">
+        ${outside?`<div class="lc-popup-alert">🚨 FUERA DEL PERÍMETRO · ${esc(outside.geofenceName)}</div>`:''}
         <div class="lc-popup-head">
           <div>
             <strong>🐄 ${esc(r.name||r.animal_code||'Animal')}</strong>
@@ -368,8 +419,8 @@
     const el=document.getElementById('lcAnimalList');if(!el)return;
     const rows=filtered();
     el.innerHTML=rows.length?rows.map((r,i)=>{
-      const id=String(r.animal_id||r.device?.device_key||r.animal_code),active=id===s.selected,c=color(r.herd?.name,i);
-      return `<button class="lc-row ${active?'active':''}" data-cow="${esc(id)}"><span><b><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin-right:7px"></i>${esc(r.name||r.animal_code)}</b><small>${esc(r.animal_code||'')} · ${esc(r.herd?.name||'Sin grupo')}</small></span><span class="lc-right"><b>${r.tracking?.battery_pct??'—'}% 🔋</b><br><small>${r.tracking?.speed_kmh??'—'} km/h</small></span></button>`;
+      const id=String(r.animal_id||r.device?.device_key||r.animal_code),active=id===s.selected,outside=outsideInfo(r),c=outside?'#ef4444':color(r.herd?.name,i);
+      return `<button class="lc-row ${active?'active':''} ${outside?'outside':''}" data-cow="${esc(id)}"><span><b><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin-right:7px"></i>${outside?'🚨 ':''}${esc(r.name||r.animal_code)}</b><small>${esc(r.animal_code||'')} · ${esc(r.herd?.name||'Sin grupo')}${outside?' · FUERA DEL PERÍMETRO':''}</small></span><span class="lc-right"><b>${r.tracking?.battery_pct??'—'}% 🔋</b><br><small>${r.tracking?.speed_kmh??'—'} km/h</small></span></button>`;
     }).join(''):'<p class="hint">No hay animales que coincidan con los filtros.</p>';
     el.querySelectorAll('[data-cow]').forEach(b=>b.addEventListener('click',()=>select(b.dataset.cow,true)));
   }
@@ -380,8 +431,9 @@
   }
 
   function detail(r){
-    const t=r.tracking||{},d=r.device||{},online=String(d.status||'').toLowerCase()==='online';
+    const t=r.tracking||{},d=r.device||{},online=String(d.status||'').toLowerCase()==='online',outside=outsideInfo(r);
     return `
+      ${outside?`<div class="lc-outside-banner">🚨 FUERA DEL PERÍMETRO · ${esc(outside.geofenceName)}</div>`:''}
       <div style="display:flex;justify-content:space-between;gap:10px"><div><h3 style="margin:0">${esc(r.name||r.animal_code)}</h3><p class="hint" style="margin:5px 0 0">${esc(r.animal_code||'')} ${r.ear_tag?'· Arete '+esc(r.ear_tag):''}</p></div><span class="${online?'status':'status off'}">${online?'ONLINE':'OFFLINE'}</span></div>
       <div class="lc-detail">
         <div><span>Grupo / hato</span><b>${esc(r.herd?.name||'—')}</b></div>
@@ -441,7 +493,8 @@
     if(!shell())return;siteSelect();
     if(!s.siteId){s.rows=[];render();return}
     if(fit)s.fitted=false;
-    s.rows=await load(s.siteId);herdSelect();render();
+    const [rows]=await Promise.all([load(s.siteId),refreshAlarmState()]);
+    s.rows=rows;herdSelect();render();
   }
 
   function activate(){
