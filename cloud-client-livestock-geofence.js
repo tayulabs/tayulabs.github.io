@@ -277,6 +277,31 @@
     m.on('click',onMapClick);
   }
 
+  function preparePanel(g=null){
+    fillHerdOptions(g?.scope_herd||'');
+    const type=String(g?.zone_type||'farm');
+    const title=document.getElementById('lgfPanelTitle');
+    if(title)title.textContent=g?'Editar zona ganadera':'Nueva zona ganadera';
+
+    const name=document.getElementById('lgfName');
+    if(name)name.value=g?.name||('Zona '+(state.geofences.length+1));
+
+    const typeEl=document.getElementById('lgfZoneType');
+    if(typeEl)typeEl.value=type;
+
+    const herd=document.getElementById('lgfHerd');
+    if(herd)herd.value=g?.scope_herd||'';
+
+    const alerts=document.getElementById('lgfAlerts');
+    if(alerts)alerts.checked=g?g.alerts_enabled!==false:type==='farm';
+
+    const severity=document.getElementById('lgfSeverity');
+    if(severity)severity.value=String(g?.severity||'critical');
+
+    const save=document.getElementById('lgfSave');
+    if(save)save.textContent=g?'Guardar cambios':'Guardar zona';
+  }
+
   function startDrawing(){
     if(!ensureUi())return;
     state.siteId=currentSite();
@@ -284,12 +309,32 @@
       alert('Selecciona una unidad ganadera.');
       return;
     }
+    state.editingId=null;
     state.drawing=true;
     state.points=[];
     clearPreview();
+    preparePanel(null);
     updateCounter();
     document.getElementById('lgfPanel')?.classList.add('show');
     map()?.getContainer()?.classList.add('lgf-drawing');
+  }
+
+  function startEdit(id){
+    const g=state.geofences.find(x=>String(x.id)===String(id));
+    if(!g)return;
+    state.editingId=String(g.id);
+    state.siteId=String(g.site_id||currentSite());
+    state.drawing=true;
+    state.points=(Array.isArray(g.points)?g.points:[])
+      .map(p=>[Number(p.lat),Number(p.lon)])
+      .filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
+    preparePanel(g);
+    redrawPreview();
+    document.getElementById('lgfPanel')?.classList.add('show');
+    map()?.getContainer()?.classList.add('lgf-drawing');
+    if(state.points.length>=3){
+      map()?.fitBounds(L.latLngBounds(state.points).pad(.2),{maxZoom:18});
+    }
   }
 
   function undoPoint(){
@@ -300,6 +345,7 @@
 
   function cancelDrawing(){
     state.drawing=false;
+    state.editingId=null;
     state.points=[];
     clearPreview();
     document.getElementById('lgfPanel')?.classList.remove('show');
