@@ -10,7 +10,8 @@
     pointLayers:[],
     savedLayers:[],
     geofences:[],
-    editingId:null
+    editingId:null,
+    mapControl:null
   };
 
   const esc=v=>String(v??'')
@@ -33,9 +34,10 @@
     const style=document.createElement('style');
     style.id='tayuLivestockGeofenceCss';
     style.textContent=`
-      #ganaderia .lgf-btn{display:inline-flex;align-items:center;gap:7px}
-      #ganaderia .lgf-status{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:850;background:rgba(91,193,47,.12);color:#2f7e18}
-      #ganaderia .lgf-status.off{background:rgba(100,116,139,.1);color:var(--muted)}
+      #ganaderia .lgf-map-control a{display:flex!important;align-items:center;justify-content:center;width:34px!important;height:34px!important;line-height:34px!important;font-size:18px!important;font-weight:900!important;text-decoration:none!important;color:#17231a!important;background:#fff!important;cursor:pointer}
+      #ganaderia .lgf-map-control a:hover{background:#f4f7f4!important;color:#2f7e18!important}
+      #ganaderia .lgf-map-control a.lgf-map-zones{border-top:1px solid #ccc}
+      #ganaderia .lgf-map-control a:focus{outline:2px solid #5BC12F;outline-offset:-2px}
       #ganaderia .lgf-panel{display:none;position:absolute;right:14px;top:14px;z-index:650;width:min(330px,calc(100% - 28px));background:rgba(255,255,255,.97);border:1px solid rgba(148,163,184,.28);border-radius:18px;padding:14px;box-shadow:0 18px 50px rgba(15,23,42,.24);backdrop-filter:blur(12px);color:#17231a}
       #ganaderia .lgf-panel.show{display:block}
       #ganaderia .lgf-panel h4{margin:0;font-size:14px}
@@ -62,41 +64,12 @@
     document.head.appendChild(style);
   }
 
-  function headerActions(){
-    const header=document.querySelector('#ganaderia .module-header');
-    if(!header)return null;
-    let actions=header.querySelector('.actions');
-    if(!actions){
-      actions=document.createElement('div');
-      actions.className='actions';
-      const refresh=header.querySelector('#lcRefresh');
-      if(refresh)actions.appendChild(refresh);
-      header.appendChild(actions);
-    }
-    return actions;
-  }
+
 
   function ensureUi(){
     const view=document.getElementById('ganaderia');
     if(!view||!view.dataset.livestockMap)return false;
     injectStyles();
-
-    const actions=headerActions();
-    if(actions&&!document.getElementById('lgfStart')){
-      const btn=document.createElement('button');
-      btn.type='button';
-      btn.className='btn ghost lgf-btn';
-      btn.id='lgfStart';
-      btn.innerHTML='⌗ Delimitar zona';
-      btn.addEventListener('click',startDrawing);
-      actions.prepend(btn);
-
-      const status=document.createElement('span');
-      status.id='lgfStatus';
-      status.className='lgf-status off';
-      status.textContent='Sin perímetro';
-      actions.prepend(status);
-    }
 
     const card=document.querySelector('#ganaderia .lc-map-card');
     if(card&&!document.getElementById('lgfPanel')){
@@ -155,8 +128,7 @@
       manager.className='card lgf-manager';
       manager.innerHTML=`
         <div class="lgf-manager-head">
-          <div><h3 style="margin:0">Zonas del mapa</h3><p class="hint" style="margin:5px 0 0">Perímetros, potreros, puntos de agua y otras áreas de la finca.</p></div>
-          <button type="button" class="btn" id="lgfNewZone">+ Nueva zona</button>
+          <div><h3 style="margin:0">Zonas del mapa</h3><p class="hint" style="margin:5px 0 0">Perímetros, potreros, puntos de agua y otras áreas de la finca. Usa el botón ⬡ del mapa para crear una nueva zona.</p></div>
         </div>
         <div class="lgf-zone-list" id="lgfZoneList"><p class="hint">Cargando zonas…</p></div>
       `;
@@ -164,7 +136,6 @@
         if(before) shell.insertBefore(manager,before);
         else shell.appendChild(manager);
       }
-      manager.querySelector('#lgfNewZone')?.addEventListener('click',startDrawing);
     }
 
     bindMap();
@@ -266,6 +237,55 @@
     redrawPreview();
   }
 
+  function openZoneManager(){
+    const el=document.getElementById('lgfManager');
+    if(!el)return;
+    el.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  function installMapControl(m){
+    if(!m||state.mapControl)return;
+
+    const ZoneControl=L.Control.extend({
+      options:{position:'topleft'},
+      onAdd(){
+        const box=L.DomUtil.create('div','leaflet-bar leaflet-control lgf-map-control');
+
+        const draw=L.DomUtil.create('a','lgf-map-draw',box);
+        draw.href='#';
+        draw.innerHTML='⬡';
+        draw.title='Dibujar nueva zona';
+        draw.setAttribute('role','button');
+        draw.setAttribute('aria-label','Dibujar nueva zona');
+
+        const manage=L.DomUtil.create('a','lgf-map-zones',box);
+        manage.href='#';
+        manage.innerHTML='▤';
+        manage.title='Administrar zonas';
+        manage.setAttribute('role','button');
+        manage.setAttribute('aria-label','Administrar zonas');
+
+        L.DomEvent.disableClickPropagation(box);
+        L.DomEvent.disableScrollPropagation(box);
+
+        L.DomEvent.on(draw,'click',event=>{
+          L.DomEvent.preventDefault(event);
+          startDrawing();
+        });
+
+        L.DomEvent.on(manage,'click',event=>{
+          L.DomEvent.preventDefault(event);
+          openZoneManager();
+        });
+
+        return box;
+      }
+    });
+
+    state.mapControl=new ZoneControl();
+    state.mapControl.addTo(m);
+  }
+
   let boundMap=null;
   function bindMap(){
     const m=map();
@@ -274,6 +294,8 @@
       try{boundMap.off('click',onMapClick)}catch(_){}
     }
     boundMap=m;
+    state.mapControl=null;
+    installMapControl(m);
     m.on('click',onMapClick);
   }
 
@@ -427,15 +449,6 @@
       );
 
       state.savedLayers.push(layer);
-    }
-
-    const active=state.geofences.filter(g=>g.enabled!==false);
-    const status=document.getElementById('lgfStatus');
-    if(status){
-      status.classList.toggle('off',!active.length);
-      status.textContent=active.length
-        ? active.length+' zona'+(active.length===1?' activa':'s activas')
-        : 'Sin zonas';
     }
 
     renderZoneManager();
