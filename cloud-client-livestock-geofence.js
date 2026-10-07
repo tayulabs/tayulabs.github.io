@@ -449,6 +449,7 @@
     try{
       const data=await window.__tayuApi('/livestock/geofences?site_id='+encodeURIComponent(siteId));
       state.geofences=Array.isArray(data)?data:(Array.isArray(data?.geofences)?data.geofences:[]);
+      fillHerdOptions();
       renderSaved();
     }catch(error){
       if(String(error?.message||'').includes('404'))return;
@@ -458,7 +459,7 @@
 
   async function saveGeofence(){
     if(state.points.length<3){
-      alert('Marca al menos 3 puntos para crear el perímetro.');
+      alert('Marca al menos 3 puntos para crear la zona.');
       return;
     }
     if(typeof window.__tayuApiPost!=='function'){
@@ -466,13 +467,16 @@
       return;
     }
 
-    const name=String(document.getElementById('lgfName')?.value||'Perímetro principal').trim()||'Perímetro principal';
+    const name=String(document.getElementById('lgfName')?.value||'Zona ganadera').trim()||'Zona ganadera';
     const body={
+      id:state.editingId||undefined,
       site_id:state.siteId||currentSite(),
       name,
       geofence_type:'polygon',
+      zone_type:String(document.getElementById('lgfZoneType')?.value||'farm'),
+      scope_herd:String(document.getElementById('lgfHerd')?.value||'').trim()||null,
       points:state.points.map(([lat,lon])=>({lat,lon})),
-      alerts_enabled:true,
+      alerts_enabled:Boolean(document.getElementById('lgfAlerts')?.checked),
       severity:String(document.getElementById('lgfSeverity')?.value||'critical')
     };
 
@@ -480,18 +484,41 @@
     if(button){button.disabled=true;button.textContent='Guardando…'}
 
     try{
-      await window.__tayuApiPost('/livestock/geofences',body);
+      const endpoint=state.editingId?'/livestock/geofences/update':'/livestock/geofences';
+      await window.__tayuApiPost(endpoint,body);
       state.drawing=false;
+      state.editingId=null;
       state.points=[];
       clearPreview();
       document.getElementById('lgfPanel')?.classList.remove('show');
       map()?.getContainer()?.classList.remove('lgf-drawing');
       await loadGeofences();
+      window.tayuLoadAlarmEvents?.();
     }catch(error){
       console.error('Guardar geocerca:',error);
-      alert('No se pudo guardar el perímetro. Falta activar el servicio de geocercas en el VPS.');
+      alert('No se pudo guardar la zona: '+(error?.message||error));
     }finally{
       if(button){button.disabled=false;button.textContent='Guardar zona'}
+    }
+  }
+
+  async function deleteGeofence(id){
+    const g=state.geofences.find(x=>String(x.id)===String(id));
+    if(!g||typeof window.__tayuApiPost!=='function')return;
+    if(!confirm('¿Eliminar la zona "'+(g.name||'Zona ganadera')+'"?'))return;
+
+    try{
+      await window.__tayuApiPost('/livestock/geofences/delete',{
+        id:g.id,
+        site_id:g.site_id||currentSite()
+      });
+
+      if(String(state.editingId)===String(g.id))cancelDrawing();
+      await loadGeofences();
+      await window.tayuLoadAlarmEvents?.();
+    }catch(error){
+      console.error('Eliminar geocerca:',error);
+      alert('No se pudo eliminar la zona: '+(error?.message||error));
     }
   }
 
@@ -507,6 +534,16 @@
 
   document.addEventListener('change',event=>{
     if(event.target?.id==='lcSite')setTimeout(()=>loadGeofences().catch(console.error),150);
+    if(event.target?.id==='lgfZoneType'&&!state.editingId){
+      const alerts=document.getElementById('lgfAlerts');
+      if(alerts)alerts.checked=String(event.target.value)==='farm';
+      redrawPreview();
+    }
+  });
+
+  window.addEventListener('tayu:livestock-tracking-refreshed',event=>{
+    const siteId=String(event.detail?.siteId||'');
+    if(siteId&&siteId===currentSite())loadGeofences().catch(console.error);
   });
 
   window.__tayuLoadLivestockGeofences=loadGeofences;
