@@ -218,30 +218,40 @@
     const m=map();if(!m)return;
     clearPreview();
 
-    state.pointLayers=state.points.map(([lat,lon])=>
-      L.marker([lat,lon],{
-        interactive:false,
+    state.pointLayers=state.points.map(([lat,lon],index)=>{
+      const marker=L.marker([lat,lon],{
+        interactive:true,
+        draggable:true,
         icon:L.divIcon({
           className:'',
           html:'<div class="lgf-vertex"></div>',
           iconSize:[12,12],
           iconAnchor:[6,6]
         })
-      }).addTo(m)
-    );
+      }).addTo(m);
+
+      marker.on('dragend',event=>{
+        const p=event.target.getLatLng();
+        state.points[index]=[Number(p.lat),Number(p.lng)];
+        redrawPreview();
+      });
+
+      return marker;
+    });
 
     if(state.points.length>=2){
+      const meta=zoneMeta(document.getElementById('lgfZoneType')?.value);
       if(state.points.length>=3){
         state.preview=L.polygon(state.points,{
-          color:'#5BC12F',
+          color:meta.color,
           weight:3,
-          fillColor:'#5BC12F',
+          fillColor:meta.color,
           fillOpacity:.13,
           dashArray:'7 6'
         }).addTo(m);
       }else{
         state.preview=L.polyline(state.points,{
-          color:'#5BC12F',
+          color:meta.color,
           weight:3,
           dashArray:'7 6'
         }).addTo(m);
