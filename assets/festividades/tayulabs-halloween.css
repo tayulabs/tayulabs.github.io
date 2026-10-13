@@ -14,7 +14,8 @@
  display:block;width:100%;height:auto;filter:drop-shadow(0 1px 5px rgb(14 39 16 / 15%))
 }
 #tayu-halloween-overlay .tayu-halloween__web{top:0;width:90px;opacity:.43;will-change:auto}
-#tayu-halloween-overlay .tayu-halloween__web--1{left:0}
+/* Telarana principal grande: cubre 1/4 del ancho de la ventana desde el logo. */
+#tayu-halloween-overlay .tayu-halloween__web--1{left:0;top:0;width:25vw;min-width:220px}
 #tayu-halloween-overlay .tayu-halloween__web--2{right:0;transform:scaleX(-1)}
 #tayu-halloween-overlay .tayu-halloween__bat{
  left:-100px;opacity:.54;animation:tayu-halloween-fly 30s linear infinite
@@ -40,7 +41,8 @@
 @keyframes tayu-halloween-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-12px,0)}}
 @keyframes tayu-halloween-glow{0%,100%{opacity:.67;transform:scale(1)}50%{opacity:.8;transform:scale(1.025)}}
 @media(max-width:767px){
- #tayu-halloween-overlay .tayu-halloween__web{width:66px}
+ #tayu-halloween-overlay .tayu-halloween__web--1{width:38vw;min-width:120px;max-width:190px}
+ #tayu-halloween-overlay .tayu-halloween__web--2{width:56px}
  #tayu-halloween-overlay .tayu-halloween__bat--3,
  #tayu-halloween-overlay .tayu-halloween__ghost--2,
  #tayu-halloween-overlay .tayu-halloween__pumpkin--2{display:none}
