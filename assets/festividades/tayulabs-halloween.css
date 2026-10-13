@@ -1,0 +1,55 @@
+/* TAYULABS Halloween: solo elementos decorativos, nunca bloquea interacciones. */
+#tayu-halloween-overlay{
+ all:initial;position:fixed!important;inset:0!important;display:block!important;
+ width:100%!important;height:100%!important;z-index:2147483000!important;
+ overflow:hidden!important;pointer-events:none!important;user-select:none!important;
+ -webkit-user-select:none!important;contain:layout style;isolation:isolate;
+}
+#tayu-halloween-overlay,#tayu-halloween-overlay *{box-sizing:border-box!important;pointer-events:none!important}
+#tayu-halloween-overlay .tayu-halloween__ornament{
+ display:block;position:absolute!important;margin:0;padding:0;
+ line-height:0;width:40px;will-change:transform
+}
+#tayu-halloween-overlay .tayu-halloween__ornament svg{
+ display:block;width:100%;height:auto;filter:drop-shadow(0 1px 5px rgb(14 39 16 / 15%))
+}
+#tayu-halloween-overlay .tayu-halloween__web{top:0;width:90px;opacity:.43;will-change:auto}
+#tayu-halloween-overlay .tayu-halloween__web--1{left:0}
+#tayu-halloween-overlay .tayu-halloween__web--2{right:0;transform:scaleX(-1)}
+#tayu-halloween-overlay .tayu-halloween__bat{
+ left:-100px;opacity:.54;animation:tayu-halloween-fly 30s linear infinite
+}
+#tayu-halloween-overlay .tayu-halloween__bat--1{top:19%;width:38px;animation-duration:29s;animation-delay:-12s}
+#tayu-halloween-overlay .tayu-halloween__bat--2{top:42%;width:28px;opacity:.4;animation-duration:37s;animation-delay:-27s}
+#tayu-halloween-overlay .tayu-halloween__bat--3{top:68%;width:33px;opacity:.44;animation-duration:34s;animation-delay:-6s}
+#tayu-halloween-overlay .tayu-halloween__ghost{
+ opacity:.43;animation:tayu-halloween-float 7s ease-in-out infinite
+}
+#tayu-halloween-overlay .tayu-halloween__ghost--1{top:29%;right:12px;width:32px;animation-delay:-2s}
+#tayu-halloween-overlay .tayu-halloween__ghost--2{top:70%;left:13px;width:26px;opacity:.32;animation-delay:-5s}
+#tayu-halloween-overlay .tayu-halloween__pumpkin{
+ bottom:10px;opacity:.76;animation:tayu-halloween-glow 6s ease-in-out infinite
+}
+#tayu-halloween-overlay .tayu-halloween__pumpkin--1{left:14px;width:42px}
+#tayu-halloween-overlay .tayu-halloween__pumpkin--2{right:22px;width:35px;opacity:.55;animation-delay:-3s}
+@keyframes tayu-halloween-fly{
+ 0%{transform:translate3d(-30px,8px,0) rotate(-7deg)}
+ 48%{transform:translate3d(calc(50vw + 80px),-17px,0) rotate(5deg)}
+ 100%{transform:translate3d(calc(100vw + 180px),5px,0) rotate(-5deg)}
+}
+@keyframes tayu-halloween-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-12px,0)}}
+@keyframes tayu-halloween-glow{0%,100%{opacity:.67;transform:scale(1)}50%{opacity:.8;transform:scale(1.025)}}
+@media(max-width:767px){
+ #tayu-halloween-overlay .tayu-halloween__web{width:66px}
+ #tayu-halloween-overlay .tayu-halloween__bat--3,
+ #tayu-halloween-overlay .tayu-halloween__ghost--2,
+ #tayu-halloween-overlay .tayu-halloween__pumpkin--2{display:none}
+ #tayu-halloween-overlay .tayu-halloween__pumpkin--1{width:35px;left:9px;bottom:9px}
+}
+@media(prefers-reduced-motion:reduce){
+ #tayu-halloween-overlay .tayu-halloween__bat,
+ #tayu-halloween-overlay .tayu-halloween__ghost{display:none!important}
+ #tayu-halloween-overlay .tayu-halloween__ornament{
+ animation:none!important;transition:none!important;will-change:auto!important
+ }
+}
