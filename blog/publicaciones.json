@@ -1,43 +1,5 @@
 {
   "version": 2,
   "updated_at": "2026-10-13",
-  "posts": [
-    {
-      "slug": "geocercas-ganado",
-      "titulo": "Vallas virtuales para ganado: ¿cómo funciona una geocerca?",
-      "categoria": "Ganadería",
-      "fecha": "2026-10-13",
-      "resumen": "Conoce cómo el GPS y las alertas ayudan a supervisar el ganado y detectar movimientos fuera de zonas definidas.",
-      "cover": "assets/images/ganado-gps-518x345.png",
-      "coverAlt": "Ganado en un potrero",
-      "destacado": true
-    },
-    {
-      "slug": "automatizacion-aireadores-camaron",
-      "titulo": "¿Qué sucede si un aireador se detiene durante la madrugada?",
-      "categoria": "Acuicultura",
-      "fecha": "2026-10-13",
-      "resumen": "Automatización y alertas en acuicultura: por qué supervisar equipos ayuda a reaccionar ante fallos operativos.",
-      "cover": "assets/images/alimentador-3-518x518.png",
-      "coverAlt": "Equipo tecnológico de acuicultura"
-    },
-    {
-      "slug": "lorawan-campo",
-      "titulo": "LoRaWAN en el campo: datos a larga distancia sin depender de WiFi",
-      "categoria": "Ingeniería",
-      "fecha": "2026-10-13",
-      "resumen": "Descubre cuándo una red LoRaWAN puede conectar sensores agrícolas y por qué no sustituye todas las tecnologías.",
-      "cover": "assets/images/gateway-3-518x283.png",
-      "coverAlt": "Gateway IoT para conexiones de largo alcance"
-    },
-    {
-      "slug": "mision-emprende-593",
-      "titulo": "TAYULABS en Misión Emprende 593: tecnología hecha en Ecuador",
-      "categoria": "Eventos",
-      "fecha": "2026-10-13",
-      "resumen": "Una experiencia compartiendo nuestra visión y nuestros desarrollos en Misión Emprende 593.",
-      "cover": "",
-      "coverAlt": ""
-    }
-  ]
+  "posts": []
 }
