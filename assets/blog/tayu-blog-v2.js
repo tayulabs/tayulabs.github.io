@@ -1,5 +1,12 @@
 /* TAYULABS Journal — catálogo dinámico independiente del diseño */
 (()=>{"use strict";
+if(!document.querySelector('script[src*="assets/analytics/tayu-ga4.js"]')){
+ const analytics=document.createElement("script");
+ analytics.src="/assets/analytics/tayu-ga4.js?v=1";
+ analytics.defer=true;
+ document.head.appendChild(analytics);
+}
+
 const grid=document.getElementById("tb-results"),input=document.getElementById("tb-search"),filters=document.querySelector(".tb-filters"),empty=document.getElementById("tb-empty"),featureSection=document.querySelector(".tb-feature"),feature=document.querySelector(".tb-feature-card");
 let all=[],category="Todos";
 const esc=v=>String(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
