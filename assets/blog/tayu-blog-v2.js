@@ -1,0 +1,17 @@
+(()=>{"use strict";
+const grid=document.getElementById("tb-results");
+const search=document.getElementById("tb-search");
+const filterBar=document.querySelector(".tb-filters");
+let active="Todos";
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function norm(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
+function apply(){let count=0;grid?.querySelectorAll(".tb-card").forEach(card=>{let show=(active==="Todos"||active===card.dataset.category)&&norm(card.textContent).includes(norm(search?.value));card.hidden=!show;if(show)count++});const empty=document.getElementById("tb-empty");if(empty)empty.hidden=count!==0}
+function initFilters(){document.querySelectorAll(".tb-filter").forEach(btn=>btn.addEventListener("click",()=>{active=btn.dataset.filter;document.querySelectorAll(".tb-filter").forEach(b=>b.setAttribute("aria-pressed",String(btn===b)));apply()}));search?.addEventListener("input",apply)}
+function render(posts){if(!grid||!posts?.length)return;let categories=[...new Set(posts.map(p=>p.categoria).filter(Boolean))];if(filterBar)filterBar.innerHTML=["Todos",...categories].map((s,i)=>'<button class="tb-filter" data-filter="'+esc(s)+'" aria-pressed="'+String(i===0)+'">'+esc(s)+'</button>').join("");
+grid.innerHTML=posts.sort((a,b)=>String(b.fecha||"").localeCompare(String(a.fecha||""))).map(p=>{let slug=String(p.slug||"").replace(/[^a-z0-9-]/g,"");if(!slug)return "";let image=p.cover?'<img loading="lazy" src="'+esc(p.cover)+'" alt="'+esc(p.coverAlt||p.titulo)+'">':'<div style="height:100%;display:grid;place-items:center;background:#284a18;color:#fff;font:2rem Anton,Impact,sans-serif;padding:20px">TAYULABS</div>';return '<article class="tb-card" data-category="'+esc(p.categoria)+'"><figure><a href="blog/'+slug+'.html">'+image+'</a></figure><div class="tb-card-body"><span class="tb-label">'+esc(p.categoria)+'</span><h3><a href="blog/'+slug+'.html">'+esc(p.titulo)+'</a></h3><p>'+esc(p.resumen)+'</p><div class="tb-card-foot"><span class="tb-date">'+esc(p.fecha)+'</span><a href="blog/'+slug+'.html">Leer historia ↗</a></div></div></article>'}).join("");
+const featured=posts.find(p=>p.destacado);if(featured){const el=document.querySelector(".tb-feature-card");if(el){el.querySelector("h3").textContent=featured.titulo;el.querySelector("p").textContent=featured.resumen;el.querySelector("a.tb-read").href="blog/"+featured.slug+".html";if(featured.cover)el.querySelector("img").src=featured.cover}}
+initFilters();apply()}
+if(grid){fetch("blog/publicaciones.json",{cache:"no-cache"}).then(r=>r.json()).then(d=>render(d.posts)).catch(initFilters)}else initFilters();
+const dlg=document.getElementById("tb-photo-dialog");document.querySelectorAll(".tb-gallery-btn").forEach(b=>b.addEventListener("click",()=>{const source=b.querySelector("img");if(!dlg||!source)return;dlg.querySelector("img").src=source.src;dlg.querySelector("img").alt=source.alt;dlg.showModal()}));dlg?.querySelector("button")?.addEventListener("click",()=>dlg.close());
+document.querySelectorAll("[data-share]").forEach(b=>b.addEventListener("click",async()=>{const url=b.dataset.share||location.href;if(navigator.clipboard){await navigator.clipboard.writeText(url);b.textContent="Enlace copiado"}}));
+})();
