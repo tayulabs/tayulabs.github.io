@@ -1,5 +1,136 @@
 {
   "version": 2,
   "updated_at": "2026-10-13",
-  "posts": []
+  "posts": [
+    {
+      "slug": "robotica-industrial",
+      "titulo": "JORNADA DE INNOVACIÓN EN AUTOMATIZACIÓN Y ROBÓTICA INDUSTRIAL",
+      "categoria": "Eventos",
+      "fecha": "2025-11-06",
+      "resumen": "Jornada de Innovación en Automatización y Robótica Industrial organizada por ESPOL e IEEE RAS Ecuador",
+      "destacado": false,
+      "cover": "blog/media/robotica-industrial/portada.jpg",
+      "coverAlt": "JORNADA DE INNOVACIÓN EN AUTOMATIZACIÓN Y ROBÓTICA INDUSTRIAL"
+    },
+    {
+      "slug": "cidis-espol",
+      "titulo": "CIDIS ESPOL - IMPULSANDO EL ECOSISTEMA ELECTRÓNICO EN ECUADOR",
+      "categoria": "Eventos",
+      "fecha": "2025-10-23",
+      "resumen": "“ECOSISTEMA DE LAS TARJETAS DE CIRCUITO IMPRESO (PCB): DISEÑO, COMPONENTES Y MANUFACTURA”",
+      "destacado": false,
+      "cover": "blog/media/cidis-espol/portada.png",
+      "coverAlt": "CIDIS ESPOL - IMPULSANDO EL ECOSISTEMA ELECTRÓNICO EN ECUADOR"
+    },
+    {
+      "slug": "aerotech-summit-2025",
+      "titulo": "TAYULABS PRESENTE EN EL AEROTECH SUMMIT 2025",
+      "categoria": "Eventos",
+      "fecha": "2025-11-24",
+      "resumen": "Aerotech Summit 2025",
+      "destacado": false,
+      "cover": "blog/media/aerotech-summit-2025/portada.jpeg",
+      "coverAlt": "TAYULABS PRESENTE EN EL AEROTECH SUMMIT 2025"
+    },
+    {
+      "slug": "innovacion-desde-la-mecatronica",
+      "titulo": "Inspirando innovación desde la Mecatrónica: Nuestra visita a la Universidad Politécnica Salesiana",
+      "categoria": "Eventos",
+      "fecha": "2025-12-01",
+      "resumen": "Nuestra visita a la Universidad Politécnica Salesiana",
+      "destacado": false,
+      "cover": "blog/media/innovacion-desde-la-mecatronica/portada.jpg",
+      "coverAlt": "Inspirando innovación desde la Mecatrónica: Nuestra visita a la Universidad Politécnica Salesiana"
+    },
+    {
+      "slug": "conformal-coating",
+      "titulo": "UNA PCB SIN PROTECCIÓN ES UNA FALLA ESPERANDO A OCURRIR.",
+      "categoria": "Ingeniería",
+      "fecha": "2026-03-10",
+      "resumen": "UNA PCB SIN PROTECCIÓN ES UNA FALLA ESPERANDO A OCURRIR.",
+      "destacado": false,
+      "cover": "blog/media/conformal-coating/portada.png",
+      "coverAlt": "UNA PCB SIN PROTECCIÓN ES UNA FALLA ESPERANDO A OCURRIR."
+    },
+    {
+      "slug": "orion-gps",
+      "titulo": "ORIÓN GPS: TRAZABILIDAD INTELIGENTE PARA OPERACIONES EN CAMPO",
+      "categoria": "Agricultura",
+      "fecha": "2026-05-06",
+      "resumen": "TRAZABILIDAD INTELIGENTE PARA OPERACIONES EN CAMPO",
+      "destacado": false,
+      "cover": "blog/media/orion-gps/portada.jpg",
+      "coverAlt": "ORIÓN GPS: TRAZABILIDAD INTELIGENTE PARA OPERACIONES EN CAMPO"
+    },
+    {
+      "slug": "lorawan-en-ecuador",
+      "titulo": "La tecnología que está transformando la industria, agricultura y acuicultura",
+      "categoria": "Noticias",
+      "fecha": "2026-05-25",
+      "resumen": "tecnología IoT ha comenzado a cambiar la forma en que las empresas monitorean y controlan sus operaciones",
+      "destacado": false,
+      "cover": "blog/media/lorawan-en-ecuador/portada.jpg",
+      "coverAlt": "La tecnología que está transformando la industria, agricultura y acuicultura"
+    },
+    {
+      "slug": "espol-industry-connect-summit-2026",
+      "titulo": "ESPOL - INDUSTRY CONNECT SUMMIT 2026",
+      "categoria": "Eventos",
+      "fecha": "2026-05-26",
+      "resumen": "IAS || INDUSTRY CONNECT SUMMIT 2026",
+      "destacado": false,
+      "cover": "blog/media/espol-industry-connect-summit-2026/portada.png",
+      "coverAlt": "ESPOL - INDUSTRY CONNECT SUMMIT 2026"
+    },
+    {
+      "slug": "scie-2026",
+      "titulo": "SIMPOSIO DE CONTROL INTELIGENTE Y ELECTRÓNICA INDUSTRIAL",
+      "categoria": "Eventos",
+      "fecha": "2026-08-07",
+      "resumen": "TAYULABS fue reconocida con la mejor charla del SCIE 2026",
+      "destacado": false,
+      "cover": "blog/media/scie-2026/portada.jpg",
+      "coverAlt": "SIMPOSIO DE CONTROL INTELIGENTE Y ELECTRÓNICA INDUSTRIAL"
+    },
+    {
+      "slug": "mision-emprende-593",
+      "titulo": "MISIÓN EMPRENDE 593",
+      "categoria": "Noticias",
+      "fecha": "2026-09-04",
+      "resumen": "TAYULABS DENTRO DE LOS 100 MEJORES EMPRENDIMIENTOS DEL ECUADOR",
+      "destacado": false,
+      "cover": "blog/media/mision-emprende-593/portada.jpeg",
+      "coverAlt": "MISIÓN EMPRENDE 593"
+    },
+    {
+      "slug": "programa-mision-emprende-593",
+      "titulo": "PROGRAMA MISIÓN EMPRENDE 593",
+      "categoria": "Noticias",
+      "fecha": "2026-10-04",
+      "resumen": "TAYULABS DENTRO DE LOS MEJORES 24 EMPRENDIMIENTOS DEL ECUADOR",
+      "destacado": true,
+      "cover": "blog/media/programa-mision-emprende-593/portada.jpeg",
+      "coverAlt": "PROGRAMA MISIÓN EMPRENDE 593"
+    },
+    {
+      "slug": "tauro-gps-collar-inteligente-ganado",
+      "titulo": "TAURO - COLLAR GPS PARA GANADO EN ECUADOR",
+      "categoria": "Ganadería",
+      "fecha": "2026-10-13",
+      "resumen": "COLLAR GPS PARA GANADO",
+      "destacado": false,
+      "cover": "blog/media/tauro-gps-collar-inteligente-ganado/portada.png",
+      "coverAlt": "TAURO - COLLAR GPS PARA GANADO EN ECUADOR"
+    },
+    {
+      "slug": "monitoreo-automatizacion-camaroneras",
+      "titulo": "Camaroneras inteligentes: monitorea, controla y automatiza con TAYULABS",
+      "categoria": "Acuicultura",
+      "fecha": "2026-10-13",
+      "resumen": "Monitorea el oxígeno disuelto, automatiza aireadores, alimentadores y recibe alertas en tiempo real con Nova Edge y Amelia Cloud de TAYULABS.",
+      "destacado": false,
+      "cover": "blog/media/monitoreo-automatizacion-camaroneras/portada.jpeg",
+      "coverAlt": "Camaroneras inteligentes: monitorea, controla y automatiza con TAYULABS"
+    }
+  ]
 }
