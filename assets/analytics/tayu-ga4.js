@@ -47,6 +47,7 @@
       "#tayu-ga-banner{position:fixed;z-index:2147483640;bottom:16px;left:16px;right:16px;max-width:860px;margin:0 auto;background:#162c1c;color:#f2f9ee;padding:16px 20px;font:13px/1.5 Arial,sans-serif;border:1px solid #426347;border-radius:14px;box-shadow:0 10px 38px #0005}",
       "#tayu-ga-banner .tayu-ga-inner{margin:auto;display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap}",
       "#tayu-ga-banner p{margin:0;flex:1 1 365px;font:inherit;color:inherit}",
+      "#tayu-ga-banner .tayu-ga-title{display:block;font-size:16px;font-weight:800;margin-bottom:5px;color:#f6fff2}",
       "#tayu-ga-banner a{color:#b2f59b;text-decoration:underline}",
       "#tayu-ga-banner .tayu-ga-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}",
       "#tayu-ga-banner button{border:1px solid #9fb49f;padding:10px 15px;border-radius:8px;background:transparent;color:#fff;font:600 13px Arial,sans-serif;cursor:pointer;min-height:42px}",
@@ -60,7 +61,7 @@
     banner.id = "tayu-ga-banner";
     banner.setAttribute("role", "dialog");
     banner.setAttribute("aria-label", "Preferencias de estadísticas");
-    banner.innerHTML = '<div class="tayu-ga-inner"><p>¿Nos ayudas a mejorar TAYULABS? Con tu permiso, usamos Google Analytics para conocer las visitas y mejorar nuestros contenidos. También puedes continuar sin activar estas estadísticas. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Información de privacidad de Google</a>.</p><div class="tayu-ga-actions"><button type="button" data-tayu-consent="reject">Continuar sin estadísticas</button><button type="button" data-tayu-consent="accept">Aceptar estadísticas</button></div></div>';
+    banner.innerHTML = '<div class="tayu-ga-inner"><p><strong class="tayu-ga-title">Ayúdanos a mejorar TAYULABS</strong>Nos gustaría conocer cómo se utiliza nuestra web para crear mejores contenidos y soluciones tecnológicas. ¿Nos permites usar Google Analytics para recopilar estadísticas de navegación? <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Información de privacidad de Google</a>.</p><div class="tayu-ga-actions"><button type="button" data-tayu-consent="reject">Continuar sin estadísticas</button><button type="button" data-tayu-consent="accept">Sí, quiero contribuir</button></div></div>';
     banner.hidden = true;
     // La hoja principal del sitio puede establecer estilos genéricos para div: asegurar el ocultamiento.
     banner.style.display = "none";
