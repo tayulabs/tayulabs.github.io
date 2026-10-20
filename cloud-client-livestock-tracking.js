@@ -149,15 +149,24 @@
   }
 
   async function load(siteId){
+    let apiError=null;
     if(typeof window.__tayuApi==='function'){
       try{
         const data=await window.__tayuApi('/livestock/tracking?site_id='+encodeURIComponent(siteId));
-        if(data&&Array.isArray(data.animals))return data.animals;
+        if(Array.isArray(data?.animals))return data.animals;
+        if(Array.isArray(data))return data;
+        throw new Error('Respuesta inesperada del endpoint /livestock/tracking');
       }catch(error){
-        console.warn('Ganadería: endpoint de ficha completa no disponible; usando telemetría TAURO.',error);
+        apiError=error;
+        console.warn('Ganadería: no se pudo cargar tracking completo.',error);
       }
+    }else{
+      apiError=new Error('La API del cliente todavía no está inicializada');
     }
-    return fallback(siteId);
+
+    const alternate=fallback(siteId);
+    if(alternate.length)return alternate;
+    throw apiError||new Error('No hay información de tracking ni telemetría TAURO disponible');
   }
 
   function color(name,index=0){
