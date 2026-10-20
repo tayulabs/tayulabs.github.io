@@ -232,6 +232,9 @@
       .lc-herd-cluster{min-width:68px;height:54px;padding:0 12px;border-radius:27px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,.96);border:4px solid var(--herd);box-shadow:0 8px 22px rgba(0,0,0,.28);color:#17231a;white-space:nowrap}
       .lc-herd-cluster b{font-size:15px;line-height:1}
       .lc-herd-cluster small{font-size:9px;margin-top:4px;max-width:92px;overflow:hidden;text-overflow:ellipsis}
+      .lc-near-icon{background:transparent!important;border:0!important}
+      .lc-near-dot{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:2px solid #22c55e;border-radius:50%;background:#fff;color:#166534;box-shadow:0 4px 13px rgba(0,0,0,.22);font-size:12px;font-weight:900}
+      .lc-near-dot.outside{border-color:#ef4444;color:#b91c1c}
       .lc-cow-icon{background:transparent!important;border:0!important}
       .lc-cow{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#fff;border:3px solid var(--cow);font-size:19px;box-shadow:0 8px 18px rgba(0,0,0,.28);transition:transform .8s ease}
       .lc-cow.online:after{content:"";position:absolute;width:8px;height:8px;border-radius:50%;right:0;bottom:0;background:#22c55e;border:2px solid #fff}
@@ -338,7 +341,7 @@
     s.map=L.map(el,{minZoom:13,maxZoom:18}).setView([-0.470341,-80.081111],16);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,attribution:'Tiles © Esri'}).addTo(s.map);
     L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,opacity:.7}).addTo(s.map);
-    s.map.on('zoomend',()=>{if(s.map.getZoom()>18)s.map.setZoom(18);markers();});
+    s.map.on('zoomend moveend',()=>{if(s.map.getZoom()>18)s.map.setZoom(18);markers();});
     window.cattleSatelliteMap=s.map;
   }
 
@@ -518,7 +521,7 @@
     if(!s.map)return;
 
     const rows=filtered().filter(r=>num(r.tracking?.lat)!==null&&num(r.tracking?.lon)!==null);
-    const clusterMode=rows.length>500&&s.map.getZoom()<17;
+    const clusterMode=rows.length>75&&s.map.getZoom()<18;
 
     if(clusterMode){
       clearIndividualMarkers();
@@ -533,22 +536,50 @@
         if(outsideInfo(r))g.outside++;
       });
 
-      const wanted=new Set(groups.keys());
+
+      // Resumir bloques que quedan demasiado próximos en la pantalla.
+      const herdList=[...groups.values()];
+      const parent=herdList.map((_,i)=>i);
+      const root=i=>{while(parent[i]!==i){parent[i]=parent[parent[i]];i=parent[i]}return i};
+      const coords=herdList.map(g=>s.map.project([g.sumLat/g.rows.length,g.sumLon/g.rows.length],s.map.getZoom()));
+      for(let i=0;i<herdList.length;i++){
+        for(let j=i+1;j<herdList.length;j++){
+          if(coords[i].distanceTo(coords[j])<110){
+            const a=root(i),b=root(j);if(a!==b)parent[b]=a;
+          }
+        }
+      }
+      const merged=new Map();
+      herdList.forEach((g,i)=>{
+        const id=root(i);
+        if(!merged.has(id))merged.set(id,{names:[],rows:[],sumLat:0,sumLon:0,outside:0,index:g.index});
+        const m=merged.get(id);
+        m.names.push(g.name);m.rows.push(...g.rows);
+        m.sumLat+=g.sumLat;m.sumLon+=g.sumLon;m.outside+=g.outside;
+      });
+      const displayGroups=new Map();
+      for(const g of merged.values()){
+        const key=g.names.slice().sort().join('|');
+        const title=g.names.length===1?g.names[0]:g.names.length+' bloques';
+        displayGroups.set(key,{...g,name:title});
+      }
+      const wanted=new Set(displayGroups.keys());
       for(const [key,m] of s.blockMarkers){
         if(!wanted.has(key)){s.map.removeLayer(m);s.blockMarkers.delete(key)}
       }
 
-      for(const [name,g] of groups){
+      for(const [name,g] of displayGroups){
         const lat=g.sumLat/g.rows.length,lon=g.sumLon/g.rows.length;
         let m=s.blockMarkers.get(name);
         if(!m){
-          m=L.marker([lat,lon],{icon:blockIcon(name,g.rows.length,g.index,g.outside)}).addTo(s.map);
-          m.on('click',()=>s.map.setView([lat,lon],17,{animate:true}));
+          m=L.marker([lat,lon],{icon:blockIcon(g.name,g.rows.length,g.index,g.outside)}).addTo(s.map);
+          m.on('click',()=>s.map.setView(m.getLatLng(),Math.min(18,s.map.getZoom()+1),{animate:true}));
           s.blockMarkers.set(name,m);
         }else{
           m.setLatLng([lat,lon]);
-          m.setIcon(blockIcon(name,g.rows.length,g.index,g.outside));
+          m.setIcon(blockIcon(g.name,g.rows.length,g.index,g.outside));
         }
+        m.bindTooltip(g.names.join(', '));
       }
 
       if(!s.fitted&&s.blockMarkers.size){
@@ -564,16 +595,45 @@
     clearBlockMarkers();
 
     let visibleRows=rows;
-    if(rows.length>600&&s.map.getZoom()>=17){
-      const bounds=s.map.getBounds()?.pad(.2);
-      if(bounds){
-        visibleRows=rows.filter(r=>bounds.contains([Number(r.tracking.lat),Number(r.tracking.lon)]));
+    if(s.map.getZoom()>=17){
+      const bounds=s.map.getBounds()?.pad(.15);
+      if(bounds)visibleRows=rows.filter(r=>bounds.contains([Number(r.tracking.lat),Number(r.tracking.lon)]));
+    }
+
+    if(s.map.getZoom()>=18&&visibleRows.length>20){
+      const cells=new Map(),size=42;
+      for(const r of visibleRows){
+        const p=s.map.project([Number(r.tracking.lat),Number(r.tracking.lon)],18);
+        const key=Math.floor(p.x/size)+':'+Math.floor(p.y/size);
+        if(!cells.has(key))cells.set(key,[]);
+        cells.get(key).push(r);
       }
-      if(visibleRows.length>600){
-        const selected=rows.find(r=>String(r.animal_id||r.device?.device_key||r.animal_code)===String(s.selected));
-        visibleRows=visibleRows.slice(0,599);
-        if(selected&&!visibleRows.includes(selected))visibleRows.push(selected);
+      visibleRows=[];
+      for(const [key,items] of cells){
+        if(items.length===1){visibleRows.push(items[0]);continue}
+        let lat=0,lon=0,outside=0;
+        for(const r of items){
+          lat+=Number(r.tracking.lat);lon+=Number(r.tracking.lon);
+          if(outsideInfo(r))outside++;
+        }
+        const clusterIcon=L.divIcon({
+          className:'lc-near-icon',
+          html:'<span class="lc-near-dot '+(outside?'outside':'')+'">'+(outside?'! ':'')+items.length+'</span>',
+          iconSize:[34,34],iconAnchor:[17,17]
+        });
+        const marker=L.marker([lat/items.length,lon/items.length],{icon:clusterIcon}).addTo(s.map);
+        const names=items.slice(0,10).map(r=>esc(r.name||r.animal_code||'Animal')).join(', ');
+        marker.bindPopup('<div class="lc-popup"><b>🐄 '+items.length+' animales cercanos</b>'+
+          '<p>Agrupados visualmente por proximidad GPS.</p><p>'+names+
+          (items.length>10?' y '+(items.length-10)+' más':'')+
+          '</p><small>Busca un animal por nombre o código para ver su ficha.</small></div>',
+          {className:'lc-leaflet-popup',maxWidth:320});
+        s.blockMarkers.set('near:'+key,marker);
       }
+    }else if(visibleRows.length>600){
+      const selected=visibleRows.find(r=>String(r.animal_id||r.device?.device_key||r.animal_code)===String(s.selected));
+      visibleRows=visibleRows.slice(0,599);
+      if(selected&&!visibleRows.includes(selected))visibleRows.push(selected);
     }
 
     const ids=new Set(visibleRows.map(r=>String(r.animal_id||r.device?.device_key||r.animal_code)));
