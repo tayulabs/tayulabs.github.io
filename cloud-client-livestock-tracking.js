@@ -4,7 +4,7 @@
 
   const REFRESH_MS=8000;
   const COLORS=['#22c55e','#0ea5e9','#f59e0b','#a855f7','#ef4444'];
-  const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null,deviceLoadPromise:null};
+  const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null,deviceLoadPromise:null,siteCatalog:[],siteLoadPromise:null,refreshPromise:null};
 
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
   const num=v=>Number.isFinite(Number(v))?Number(v):null;
@@ -65,12 +65,46 @@
   }
 
   function sites(){
+    if(s.siteCatalog.length)return s.siteCatalog;
     const map=new Map();
     devices().forEach(d=>{
       const id=String(d.site_id||'');
       if(id&&!map.has(id))map.set(id,{id,name:d.site_name||'Unidad ganadera'});
     });
     return [...map.values()];
+  }
+
+  async function ensureSiteCatalog(){
+    if(s.siteCatalog.length)return true;
+    if(typeof window.__tayuApi!=='function')return sites().length>0;
+
+    if(!s.siteLoadPromise){
+      s.siteLoadPromise=(async()=>{
+        try{
+          // Sitios es una consulta liviana: no exige traer 2300 dispositivos.
+          const response=await window.__tayuApi('/client-admin/sites');
+          const all=Array.isArray(response)?response:
+            Array.isArray(response?.sites)?response.sites:[];
+          const allowed=all.filter(row=>{
+            const type=String(row.site_type||row.sector_key||row.sector||'').toLowerCase();
+            return /ganaderia|ganader[ií]a|livestock|cattle|ganado/.test(type);
+          });
+
+          s.siteCatalog=(allowed.length?allowed:all).map(row=>({
+            id:String(row.id||row.site_id||''),
+            name:String(row.name||row.site_name||'Unidad ganadera')
+          })).filter(row=>row.id);
+
+          return s.siteCatalog.length>0;
+        }catch(error){
+          console.warn('Ganadería: no se pudo consultar el catálogo de fincas.',error);
+          return sites().length>0;
+        }finally{
+          s.siteLoadPromise=null;
+        }
+      })();
+    }
+    return s.siteLoadPromise;
   }
 
   function fallback(siteId){
@@ -217,7 +251,7 @@
     window.cattleSatelliteMap=null;
     view.innerHTML=`
       <div class="lc-shell">
-        <div class="card module-header"><div><h3>🐄 Ganadería · Mapa de ganado</h3><p class="hint">Ubicación GPS por animal, estado de TAURO, movimiento, batería y trazabilidad.</p></div><button class="btn ghost" id="lcRefresh">Actualizar datos</button></div>
+        <div class="card module-header"><div><h3>🐄 Ganadería · Mapa de ganado</h3><p class="hint">Ubicación GPS por animal, estado de TAURO, movimiento, batería y trazabilidad.</p><p class="hint" id="lcDataStatus" role="status" style="margin:6px 0 0"></p></div><button class="btn ghost" id="lcRefresh">Actualizar datos</button></div>
         <div class="lc-kpis">
           <div class="lc-kpi"><span>Animales monitoreados</span><b id="lcTotal">0</b></div>
           <div class="lc-kpi"><span>Collares online</span><b id="lcOnline">0</b></div>
@@ -644,34 +678,54 @@
   function render(){kpis();list();markers();compactIotPanel();requestAnimationFrame(()=>{s.map?.invalidateSize({animate:false});setTimeout(()=>s.map?.invalidateSize({animate:false}),120)})}
 
   async function refresh(fit=false){
-    if(!shell())return;
+    if(s.refreshPromise)return s.refreshPromise;
 
-    await ensureDeviceCatalog();
-    siteSelect();
+    s.refreshPromise=(async()=>{
+      if(!shell())return;
+      const status=document.getElementById('lcDataStatus');
+      if(status){status.style.color='';status.textContent='Cargando fincas ganaderas…'}
 
-    if(!s.siteId){
-      s.rows=[];
-      render();
-      return;
-    }
+      await ensureSiteCatalog();
+      siteSelect();
 
-    if(fit)s.fitted=false;
+      if(!s.siteId){
+        s.rows=[];
+        render();
+        if(status){
+          status.style.color='#b45309';
+          status.textContent='No se encontró una finca ganadera accesible. Comprueba la carga de sitios en la API.';
+        }
+        return;
+      }
 
-    const [rows]=await Promise.all([
-      load(s.siteId),
-      refreshAlarmState()
-    ]);
+      if(fit)s.fitted=false;
+      if(status)status.textContent='Cargando posiciones TAURO…';
 
-    s.rows=Array.isArray(rows)?rows:[];
-    herdSelect();
-    render();
+      try{
+        const [rows]=await Promise.all([load(s.siteId),refreshAlarmState()]);
+        s.rows=Array.isArray(rows)?rows:[];
+        herdSelect();
+        render();
+        if(status){
+          status.style.color=s.rows.length?'':'#b45309';
+          status.textContent=s.rows.length
+            ?s.rows.length.toLocaleString('es-EC')+' animales cargados'
+            :'La finca está disponible, pero la consulta de tracking devolvió 0 animales.';
+        }
+        window.dispatchEvent(new CustomEvent('tayu:livestock-tracking-refreshed',{
+          detail:{siteId:s.siteId,count:s.rows.length}
+        }));
+      }catch(error){
+        console.error('Ganadería: error cargando tracking',error);
+        if(status){
+          status.style.color='#b91c1c';
+          status.textContent='Error al cargar tracking: '+String(error?.message||error);
+        }
+      }
+    })();
 
-    window.dispatchEvent(
-      new CustomEvent(
-        'tayu:livestock-tracking-refreshed',
-        {detail:{siteId:s.siteId,count:s.rows.length}}
-      )
-    );
+    try{return await s.refreshPromise}
+    finally{s.refreshPromise=null}
   }
 
   function activate(){
