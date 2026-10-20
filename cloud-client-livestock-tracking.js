@@ -4,7 +4,7 @@
 
   const REFRESH_MS=8000;
   const COLORS=['#22c55e','#0ea5e9','#f59e0b','#a855f7','#ef4444'];
-  const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null};
+  const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null,deviceLoadPromise:null};
 
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
   const num=v=>Number.isFinite(Number(v))?Number(v):null;
@@ -40,6 +40,28 @@
       if(!old||new Date(row.time||0)>=new Date(old.time||0))map.set(key,row);
     }
     return map;
+  }
+
+  async function ensureDeviceCatalog(){
+    if(devices().length)return true;
+    if(typeof window.__tayuApi!=='function')return false;
+
+    if(!s.deviceLoadPromise){
+      s.deviceLoadPromise=(async()=>{
+        try{
+          const loaded=await window.__tayuApi('/devices');
+          if(Array.isArray(loaded))window.__tayuRealDevices=loaded;
+          return devices().length>0;
+        }catch(error){
+          console.error('Ganadería: no se pudo cargar catálogo de dispositivos.',error);
+          return false;
+        }finally{
+          s.deviceLoadPromise=null;
+        }
+      })();
+    }
+
+    return s.deviceLoadPromise;
   }
 
   function sites(){
@@ -622,12 +644,34 @@
   function render(){kpis();list();markers();compactIotPanel();requestAnimationFrame(()=>{s.map?.invalidateSize({animate:false});setTimeout(()=>s.map?.invalidateSize({animate:false}),120)})}
 
   async function refresh(fit=false){
-    if(!shell())return;siteSelect();
-    if(!s.siteId){s.rows=[];render();return}
+    if(!shell())return;
+
+    await ensureDeviceCatalog();
+    siteSelect();
+
+    if(!s.siteId){
+      s.rows=[];
+      render();
+      return;
+    }
+
     if(fit)s.fitted=false;
-    const [rows]=await Promise.all([load(s.siteId),refreshAlarmState()]);
-    s.rows=rows;herdSelect();render();
-    window.dispatchEvent(new CustomEvent('tayu:livestock-tracking-refreshed',{detail:{siteId:s.siteId}}));
+
+    const [rows]=await Promise.all([
+      load(s.siteId),
+      refreshAlarmState()
+    ]);
+
+    s.rows=Array.isArray(rows)?rows:[];
+    herdSelect();
+    render();
+
+    window.dispatchEvent(
+      new CustomEvent(
+        'tayu:livestock-tracking-refreshed',
+        {detail:{siteId:s.siteId,count:s.rows.length}}
+      )
+    );
   }
 
   function activate(){
@@ -643,6 +687,7 @@
   document.addEventListener('click',e=>{if(e.target?.closest?.('.nav button[data-view="ganaderia"]'))setTimeout(activate,80)});
   window.addEventListener('pageshow',()=>{if(document.getElementById('ganaderia')?.classList.contains('active'))setTimeout(activate,120)});
   window.addEventListener('tayu:client-access-ready',()=>{if(document.getElementById('ganaderia')?.classList.contains('active'))setTimeout(activate,120)});
+  window.addEventListener('tayu:real-data-ready',()=>{if(document.getElementById('ganaderia')?.classList.contains('active'))refresh(false).catch(console.error)});
   window.refreshCattleSatellite=()=>refresh(true);
   window.initCattleSatelliteMap=activate;
   window.__tayuRefreshLivestockTracking=refresh;
