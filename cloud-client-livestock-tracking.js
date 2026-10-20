@@ -2,7 +2,7 @@
 (function(){
   'use strict';
 
-  const REFRESH_MS=5000;
+  const REFRESH_MS=8000;
   const COLORS=['#22c55e','#0ea5e9','#f59e0b','#a855f7','#ef4444'];
   const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null};
 
