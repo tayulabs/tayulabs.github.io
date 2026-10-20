@@ -4,7 +4,7 @@
 
   const REFRESH_MS=5000;
   const COLORS=['#22c55e','#0ea5e9','#f59e0b','#a855f7','#ef4444'];
-  const s={map:null,markers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null};
+  const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null};
 
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
   const num=v=>Number.isFinite(Number(v))?Number(v):null;
@@ -163,6 +163,10 @@
       #ganaderia .lc-iot-box .tayu-sector-resources{display:none!important}
       #ganaderia .lc-iot-box .tayu-sector-secondary{display:none!important}
       #ganaderia .lc-iot-box .tayu-sector-note{display:none!important}
+      .lc-herd-icon{background:transparent!important;border:0!important}
+      .lc-herd-cluster{min-width:68px;height:54px;padding:0 12px;border-radius:27px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,.96);border:4px solid var(--herd);box-shadow:0 8px 22px rgba(0,0,0,.28);color:#17231a;white-space:nowrap}
+      .lc-herd-cluster b{font-size:15px;line-height:1}
+      .lc-herd-cluster small{font-size:9px;margin-top:4px;max-width:92px;overflow:hidden;text-overflow:ellipsis}
       .lc-cow-icon{background:transparent!important;border:0!important}
       .lc-cow{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#fff;border:3px solid var(--cow);font-size:19px;box-shadow:0 8px 18px rgba(0,0,0,.28);transition:transform .8s ease}
       .lc-cow.online:after{content:"";position:absolute;width:8px;height:8px;border-radius:50%;right:0;bottom:0;background:#22c55e;border:2px solid #fff}
@@ -269,7 +273,7 @@
     s.map=L.map(el,{minZoom:13,maxZoom:18}).setView([-0.470341,-80.081111],16);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,attribution:'Tiles © Esri'}).addTo(s.map);
     L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,opacity:.7}).addTo(s.map);
-    s.map.on('zoomend',()=>{if(s.map.getZoom()>18)s.map.setZoom(18);});
+    s.map.on('zoomend',()=>{if(s.map.getZoom()>18)s.map.setZoom(18);markers();});
     window.cattleSatelliteMap=s.map;
   }
 
@@ -420,28 +424,136 @@
       </div>`;
   }
 
+  function blockIcon(name,count,index,outsideCount=0){
+    const c=outsideCount>0?'#ef4444':color(name,index);
+    return L.divIcon({
+      className:'lc-herd-icon',
+      html:`<div class="lc-herd-cluster" style="--herd:${c}"><b>${outsideCount?'🚨 ':''}${count}</b><small>${esc(name||'Bloque')}</small></div>`,
+      iconSize:[92,54],
+      iconAnchor:[46,27]
+    });
+  }
+
+  function clearIndividualMarkers(){
+    for(const [,m] of s.markers){
+      try{s.map?.removeLayer(m)}catch(_){}
+    }
+    s.markers.clear();
+  }
+
+  function clearBlockMarkers(){
+    for(const [,m] of s.blockMarkers){
+      try{s.map?.removeLayer(m)}catch(_){}
+    }
+    s.blockMarkers.clear();
+  }
+
   function markers(){
-    if(!s.map)initMap();if(!s.map)return;
-    const rows=filtered(),ids=new Set(rows.map(r=>String(r.animal_id||r.device?.device_key||r.animal_code)));
-    for(const [id,m] of s.markers)if(!ids.has(id)){s.map.removeLayer(m);s.markers.delete(id)}
-    rows.forEach((r,i)=>{
-      const id=String(r.animal_id||r.device?.device_key||r.animal_code),lat=num(r.tracking?.lat),lon=num(r.tracking?.lon);
+    if(!s.map)initMap();
+    if(!s.map)return;
+
+    const rows=filtered().filter(r=>num(r.tracking?.lat)!==null&&num(r.tracking?.lon)!==null);
+    const clusterMode=rows.length>500&&s.map.getZoom()<17;
+
+    if(clusterMode){
+      clearIndividualMarkers();
+
+      const groups=new Map();
+      rows.forEach((r,i)=>{
+        const name=String(r.herd?.name||'Sin grupo');
+        if(!groups.has(name))groups.set(name,{name,rows:[],sumLat:0,sumLon:0,index:i,outside:0});
+        const g=groups.get(name);
+        const lat=num(r.tracking?.lat),lon=num(r.tracking?.lon);
+        g.rows.push(r);g.sumLat+=lat;g.sumLon+=lon;
+        if(outsideInfo(r))g.outside++;
+      });
+
+      const wanted=new Set(groups.keys());
+      for(const [key,m] of s.blockMarkers){
+        if(!wanted.has(key)){s.map.removeLayer(m);s.blockMarkers.delete(key)}
+      }
+
+      for(const [name,g] of groups){
+        const lat=g.sumLat/g.rows.length,lon=g.sumLon/g.rows.length;
+        let m=s.blockMarkers.get(name);
+        if(!m){
+          m=L.marker([lat,lon],{icon:blockIcon(name,g.rows.length,g.index,g.outside)}).addTo(s.map);
+          m.on('click',()=>s.map.setView([lat,lon],17,{animate:true}));
+          s.blockMarkers.set(name,m);
+        }else{
+          m.setLatLng([lat,lon]);
+          m.setIcon(blockIcon(name,g.rows.length,g.index,g.outside));
+        }
+      }
+
+      if(!s.fitted&&s.blockMarkers.size){
+        const g=L.featureGroup([...s.blockMarkers.values()]);
+        s.map.fitBounds(g.getBounds().pad(.22),{maxZoom:16});
+        s.fitted=true;
+      }
+
+      setTimeout(()=>s.map?.invalidateSize(),80);
+      return;
+    }
+
+    clearBlockMarkers();
+
+    let visibleRows=rows;
+    if(rows.length>600&&s.map.getZoom()>=17){
+      const bounds=s.map.getBounds()?.pad(.2);
+      if(bounds){
+        visibleRows=rows.filter(r=>bounds.contains([Number(r.tracking.lat),Number(r.tracking.lon)]));
+      }
+      if(visibleRows.length>600){
+        const selected=rows.find(r=>String(r.animal_id||r.device?.device_key||r.animal_code)===String(s.selected));
+        visibleRows=visibleRows.slice(0,599);
+        if(selected&&!visibleRows.includes(selected))visibleRows.push(selected);
+      }
+    }
+
+    const ids=new Set(visibleRows.map(r=>String(r.animal_id||r.device?.device_key||r.animal_code)));
+    for(const [id,m] of s.markers){
+      if(!ids.has(id)){s.map.removeLayer(m);s.markers.delete(id)}
+    }
+
+    visibleRows.forEach((r,i)=>{
+      const id=String(r.animal_id||r.device?.device_key||r.animal_code);
+      const lat=num(r.tracking?.lat),lon=num(r.tracking?.lon);
       if(lat===null||lon===null)return;
       let m=s.markers.get(id);
-      if(!m){m=L.marker([lat,lon],{icon:icon(r,i)}).addTo(s.map).bindPopup(popup(r),{className:'lc-leaflet-popup',maxWidth:390,autoPan:true,autoPanPadding:[30,30]});m.on('click',()=>select(id,false));s.markers.set(id,m)}
-      else{m.setLatLng([lat,lon]);m.setIcon(icon(r,i));m.setPopupContent(popup(r))}
+      if(!m){
+        m=L.marker([lat,lon],{icon:icon(r,i)})
+          .addTo(s.map)
+          .bindPopup(popup(r),{className:'lc-leaflet-popup',maxWidth:390,autoPan:true,autoPanPadding:[30,30]});
+        m.on('click',()=>select(id,false));
+        s.markers.set(id,m);
+      }else{
+        m.setLatLng([lat,lon]);
+        m.setIcon(icon(r,i));
+        m.setPopupContent(popup(r));
+      }
     });
-    if(!s.fitted&&s.markers.size){const g=L.featureGroup([...s.markers.values()]);s.map.fitBounds(g.getBounds().pad(.28),{maxZoom:18});s.fitted=true}
+
+    if(!s.fitted&&s.markers.size){
+      const g=L.featureGroup([...s.markers.values()]);
+      s.map.fitBounds(g.getBounds().pad(.28),{maxZoom:16});
+      s.fitted=true;
+    }
     setTimeout(()=>s.map?.invalidateSize(),80);
   }
 
   function list(){
     const el=document.getElementById('lcAnimalList');if(!el)return;
     const rows=filtered();
-    el.innerHTML=rows.length?rows.map((r,i)=>{
+    const shown=rows.slice(0,200);
+
+    el.innerHTML=shown.length?shown.map((r,i)=>{
       const id=String(r.animal_id||r.device?.device_key||r.animal_code),active=id===s.selected,outside=outsideInfo(r),c=outside?'#ef4444':color(r.herd?.name,i);
       return `<button class="lc-row ${active?'active':''} ${outside?'outside':''}" data-cow="${esc(id)}"><span><b><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin-right:7px"></i>${outside?'🚨 ':''}${esc(r.name||r.animal_code)}</b><small>${esc(r.animal_code||'')} · ${esc(r.herd?.name||'Sin grupo')}${outside?' · FUERA DEL PERÍMETRO':''}</small></span><span class="lc-right"><b>${r.tracking?.battery_pct??'—'}% 🔋</b><br><small>${r.tracking?.speed_kmh??'—'} km/h</small></span></button>`;
-    }).join(''):'<p class="hint">No hay animales que coincidan con los filtros.</p>';
+    }).join('')+
+      (rows.length>shown.length?`<p class="hint" style="padding:8px 4px">Mostrando ${shown.length} de ${rows.length}. Usa Grupo/hato o Buscar animal para reducir la lista.</p>`:'')
+      :'<p class="hint">No hay animales que coincidan con los filtros.</p>';
+
     el.querySelectorAll('[data-cow]').forEach(b=>b.addEventListener('click',()=>select(b.dataset.cow,true)));
   }
 
@@ -492,7 +604,7 @@
   function centerRow(r,popupOpen=false){
     const lat=num(r.tracking?.lat),lon=num(r.tracking?.lon);if(lat===null||lon===null||!s.map)return;
     s.map.setView([lat,lon],18,{animate:true});
-    const id=String(r.animal_id||r.device?.device_key||r.animal_code);if(popupOpen)s.markers.get(id)?.openPopup();
+    const id=String(r.animal_id||r.device?.device_key||r.animal_code);if(popupOpen){markers();setTimeout(()=>s.markers.get(id)?.openPopup(),120)}
   }
 
   async function history(r){
