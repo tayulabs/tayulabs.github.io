@@ -19,7 +19,7 @@
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 
-const VERSION='20261006-ganaderia-fix1';
+const VERSION='20261020-livestock2300-fix1';
 const keycloak=new Keycloak({url:'https://auth.tayulabs.com',realm:'tayu-platform',clientId:'tayu-dashboard'});
 window.__tayuEntryKeycloak=keycloak;
 const status=document.getElementById('status');
@@ -138,11 +138,37 @@ window.addSatelliteLayer=addSatelliteLayer;
   appCode=appCode.replace(secondInit,"Promise.resolve(Boolean(keycloak && keycloak.authenticated)).then(async authenticated => {");
 
   const bootRevealNeedle=`    applyRolePermissions();
-    try{await window.loadDashboardCloud?.();}catch(error){console.error('Dashboard VPS:',error)}`;
-  const bootRevealReplacement=`    applyRolePermissions();
+    try{await window.loadDashboardCloud?.();}catch(error){console.error('Dashboard VPS:',error)}
+    startPlatform();
+    await refreshRealData();
+    startRealtimeRefresh();
+    startMetadataRefresh();
+
+    // El Dashboard ya está listo: recién ahora quitamos la puerta visual.
     window.hideAuthBootScreen?.();
-    try{await window.loadDashboardCloud?.();}catch(error){console.error('Dashboard VPS:',error)}`;
-  if(appCode.includes(bootRevealNeedle))appCode=appCode.replace(bootRevealNeedle,bootRevealReplacement);
+    showIntegrationStatus();`;
+
+  const bootRevealReplacement=`    applyRolePermissions();
+
+    // Con flotas grandes no bloqueamos la interfaz esperando miles de dispositivos.
+    const bootGate=document.getElementById('authBootScreen');
+    if(bootGate)bootGate.hidden=true;
+    document.documentElement.classList.remove('tayu-auth-pending');
+    if(appRoot)appRoot.style.display='block';
+
+    startPlatform();
+    showIntegrationStatus();
+
+    // Dashboard/configuración y datos reales se cargan después de mostrar la UI.
+    Promise.resolve().then(async()=>{
+      try{await window.loadDashboardCloud?.();}catch(error){console.error('Dashboard VPS:',error)}
+      try{await refreshRealData();}catch(error){console.error('Carga inicial de datos:',error)}
+      try{startRealtimeRefresh();}catch(error){console.error('Realtime:',error)}
+      try{startMetadataRefresh();}catch(error){console.error('Metadata:',error)}
+    });`;
+
+  if(!appCode.includes(bootRevealNeedle))throw new Error('No se encontró secuencia de arranque segura');
+  appCode=appCode.replace(bootRevealNeedle,bootRevealReplacement);
 
   appCode=appCode.replace(
     "return keycloak.logout({ redirectUri: window.location.href });",
