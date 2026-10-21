@@ -247,6 +247,7 @@
       @keyframes lcDanger{50%{transform:scale(1.14);box-shadow:0 0 0 9px rgba(239,68,68,.10),0 8px 18px rgba(0,0,0,.32)}}
       .lc-cow.offline{filter:grayscale(.7);opacity:.7}
       .lc-cow.moving{animation:lcPulse 1.5s infinite}
+       .lc-many-cows .lc-cow.moving,.lc-many-cows .lc-cow.outside{animation:none}
       @keyframes lcPulse{50%{transform:scale(1.12)}}
       @media(max-width:1100px){#ganaderia .lc-kpis{grid-template-columns:repeat(3,1fr)}#ganaderia .lc-layout{grid-template-columns:1fr;align-items:start}#ganaderia .lc-map-card{min-height:560px;height:560px;align-self:start}#ganaderia #cattleSatelliteMap{min-height:560px;height:100%}#ganaderia .lc-list{max-height:360px}}
       @media(max-width:700px){#ganaderia .lc-kpis{grid-template-columns:1fr 1fr}#ganaderia .lc-map-card{min-height:500px;height:500px}#ganaderia #cattleSatelliteMap{min-height:500px;height:100%}.lc-leaflet-popup .leaflet-popup-content{width:285px!important}.lc-popup{max-height:390px}.lc-popup-grid{grid-template-columns:1fr 1fr}}
@@ -492,179 +493,65 @@
       </div>`;
   }
 
-  function blockIcon(name,count,index,outsideCount=0){
-    const c=outsideCount>0?'#ef4444':color(name,index);
-    return L.divIcon({
-      className:'lc-herd-icon',
-      html:`<div class="lc-herd-cluster" style="--herd:${c}"><b>${outsideCount?'🚨 ':''}${count}</b><small>${esc(name||'Bloque')}</small></div>`,
-      iconSize:[92,54],
-      iconAnchor:[46,27]
-    });
-  }
-
-  function clearIndividualMarkers(){
-    for(const [,m] of s.markers){
-      try{s.map?.removeLayer(m)}catch(_){}
-    }
-    s.markers.clear();
-  }
-
-  function clearBlockMarkers(){
-    for(const [,m] of s.blockMarkers){
-      try{s.map?.removeLayer(m)}catch(_){}
-    }
-    s.blockMarkers.clear();
-  }
-
+  // Todas las vacas se representan por separado con el icono original 🐄.
+  // Solo se retiran del DOM los marcadores que quedan fuera de la vista.
   function markers(){
     if(!s.map)initMap();
     if(!s.map)return;
-
     const rows=filtered().filter(r=>num(r.tracking?.lat)!==null&&num(r.tracking?.lon)!==null);
-    const clusterMode=rows.length>75&&s.map.getZoom()<18;
-
-    if(clusterMode){
-      clearIndividualMarkers();
-
-      const groups=new Map();
-      rows.forEach((r,i)=>{
-        const name=String(r.herd?.name||'Sin grupo');
-        if(!groups.has(name))groups.set(name,{name,rows:[],sumLat:0,sumLon:0,index:i,outside:0});
-        const g=groups.get(name);
-        const lat=num(r.tracking?.lat),lon=num(r.tracking?.lon);
-        g.rows.push(r);g.sumLat+=lat;g.sumLon+=lon;
-        if(outsideInfo(r))g.outside++;
-      });
-
-
-      // Resumir bloques que quedan demasiado próximos en la pantalla.
-      const herdList=[...groups.values()];
-      const parent=herdList.map((_,i)=>i);
-      const root=i=>{while(parent[i]!==i){parent[i]=parent[parent[i]];i=parent[i]}return i};
-      const coords=herdList.map(g=>s.map.project([g.sumLat/g.rows.length,g.sumLon/g.rows.length],s.map.getZoom()));
-      for(let i=0;i<herdList.length;i++){
-        for(let j=i+1;j<herdList.length;j++){
-          if(coords[i].distanceTo(coords[j])<110){
-            const a=root(i),b=root(j);if(a!==b)parent[b]=a;
-          }
-        }
-      }
-      const merged=new Map();
-      herdList.forEach((g,i)=>{
-        const id=root(i);
-        if(!merged.has(id))merged.set(id,{names:[],rows:[],sumLat:0,sumLon:0,outside:0,index:g.index});
-        const m=merged.get(id);
-        m.names.push(g.name);m.rows.push(...g.rows);
-        m.sumLat+=g.sumLat;m.sumLon+=g.sumLon;m.outside+=g.outside;
-      });
-      const displayGroups=new Map();
-      for(const g of merged.values()){
-        const key=g.names.slice().sort().join('|');
-        const title=g.names.length===1?g.names[0]:g.names.length+' bloques';
-        displayGroups.set(key,{...g,name:title});
-      }
-      const wanted=new Set(displayGroups.keys());
-      for(const [key,m] of s.blockMarkers){
-        if(!wanted.has(key)){s.map.removeLayer(m);s.blockMarkers.delete(key)}
-      }
-
-      for(const [name,g] of displayGroups){
-        const lat=g.sumLat/g.rows.length,lon=g.sumLon/g.rows.length;
-        let m=s.blockMarkers.get(name);
-        if(!m){
-          m=L.marker([lat,lon],{icon:blockIcon(g.name,g.rows.length,g.index,g.outside)}).addTo(s.map);
-          m.on('click',()=>s.map.setView(m.getLatLng(),Math.min(18,s.map.getZoom()+1),{animate:true}));
-          s.blockMarkers.set(name,m);
-        }else{
-          m.setLatLng([lat,lon]);
-          m.setIcon(blockIcon(g.name,g.rows.length,g.index,g.outside));
-        }
-        m.bindTooltip(g.names.join(', '));
-      }
-
-      if(!s.fitted&&s.blockMarkers.size){
-        const g=L.featureGroup([...s.blockMarkers.values()]);
-        s.map.fitBounds(g.getBounds().pad(.22),{maxZoom:16});
-        s.fitted=true;
-      }
-
-      setTimeout(()=>s.map?.invalidateSize(),80);
-      return;
+    if(!s.fitted&&rows.length){
+      s.fitted=true;
+      s.map.fitBounds(L.latLngBounds(rows.map(r=>[
+        Number(r.tracking.lat),Number(r.tracking.lon)
+      ])).pad(.18),{maxZoom:16});
     }
 
-    clearBlockMarkers();
+    const sz=s.map.getSize();
+    const bounds=sz.x>50&&sz.y>50?s.map.getBounds().pad(.12):null;
+    const visible=bounds?rows.filter(r=>bounds.contains([
+      Number(r.tracking.lat),Number(r.tracking.lon)
+    ])):rows;
 
-    let visibleRows=rows;
-    if(s.map.getZoom()>=17){
-      const bounds=s.map.getBounds()?.pad(.15);
-      if(bounds)visibleRows=rows.filter(r=>bounds.contains([Number(r.tracking.lat),Number(r.tracking.lon)]));
-    }
-
-    if(s.map.getZoom()>=18&&visibleRows.length>20){
-      const cells=new Map(),size=42;
-      for(const r of visibleRows){
-        const p=s.map.project([Number(r.tracking.lat),Number(r.tracking.lon)],18);
-        const key=Math.floor(p.x/size)+':'+Math.floor(p.y/size);
-        if(!cells.has(key))cells.set(key,[]);
-        cells.get(key).push(r);
-      }
-      visibleRows=[];
-      for(const [key,items] of cells){
-        if(items.length===1){visibleRows.push(items[0]);continue}
-        let lat=0,lon=0,outside=0;
-        for(const r of items){
-          lat+=Number(r.tracking.lat);lon+=Number(r.tracking.lon);
-          if(outsideInfo(r))outside++;
-        }
-        const clusterIcon=L.divIcon({
-          className:'lc-near-icon',
-          html:'<span class="lc-near-dot '+(outside?'outside':'')+'">'+(outside?'! ':'')+items.length+'</span>',
-          iconSize:[34,34],iconAnchor:[17,17]
-        });
-        const marker=L.marker([lat/items.length,lon/items.length],{icon:clusterIcon}).addTo(s.map);
-        const names=items.slice(0,10).map(r=>esc(r.name||r.animal_code||'Animal')).join(', ');
-        marker.bindPopup('<div class="lc-popup"><b>🐄 '+items.length+' animales cercanos</b>'+
-          '<p>Agrupados visualmente por proximidad GPS.</p><p>'+names+
-          (items.length>10?' y '+(items.length-10)+' más':'')+
-          '</p><small>Busca un animal por nombre o código para ver su ficha.</small></div>',
-          {className:'lc-leaflet-popup',maxWidth:320});
-        s.blockMarkers.set('near:'+key,marker);
-      }
-    }else if(visibleRows.length>600){
-      const selected=visibleRows.find(r=>String(r.animal_id||r.device?.device_key||r.animal_code)===String(s.selected));
-      visibleRows=visibleRows.slice(0,599);
-      if(selected&&!visibleRows.includes(selected))visibleRows.push(selected);
-    }
-
-    const ids=new Set(visibleRows.map(r=>String(r.animal_id||r.device?.device_key||r.animal_code)));
+    s.map.getContainer().classList.toggle('lc-many-cows',rows.length>100);
+    const wanted=new Set(visible.map(r=>String(r.animal_id||r.device?.device_key||r.animal_code)));
     for(const [id,m] of s.markers){
-      if(!ids.has(id)){s.map.removeLayer(m);s.markers.delete(id)}
+      if(!wanted.has(id)){s.map.removeLayer(m);s.markers.delete(id)}
     }
 
-    visibleRows.forEach((r,i)=>{
+    visible.forEach((r,i)=>{
       const id=String(r.animal_id||r.device?.device_key||r.animal_code);
-      const lat=num(r.tracking?.lat),lon=num(r.tracking?.lon);
-      if(lat===null||lon===null)return;
+      const lat=Number(r.tracking.lat),lon=Number(r.tracking.lon);
+      const outside=Boolean(outsideInfo(r));
+      const c=outside?'#ef4444':color(r.herd?.name,i);
+      const online=String(r.device?.status||'').toLowerCase()==='online';
+      const moving=r.tracking?.motion===true;
+      const signature=[c,online,moving,outside].join(':');
       let m=s.markers.get(id);
+
       if(!m){
-        m=L.marker([lat,lon],{icon:icon(r,i)})
-          .addTo(s.map)
-          .bindPopup(popup(r),{className:'lc-leaflet-popup',maxWidth:390,autoPan:true,autoPanPadding:[30,30]});
+        m=L.marker([lat,lon],{icon:icon(r,i),riseOnHover:true}).addTo(s.map);
+        m._lcRow=r;
+        m._lcIconSignature=signature;
+        // Abrir la ficha individual solo cuando se pulsa la vaca.
+        m.bindPopup(layer=>popup(layer._lcRow),{
+          className:'lc-leaflet-popup',maxWidth:390,autoPan:true,
+          autoPanPadding:[30,30]
+        });
         m.on('click',()=>select(id,false));
         s.markers.set(id,m);
       }else{
-        m.setLatLng([lat,lon]);
-        m.setIcon(icon(r,i));
-        m.setPopupContent(popup(r));
+        m._lcRow=r;
+        const prev=m.getLatLng();
+        if(Math.abs(prev.lat-lat)>0.00000005||Math.abs(prev.lng-lon)>0.00000005){
+          m.setLatLng([lat,lon]);
+        }
+        if(m._lcIconSignature!==signature){
+          m.setIcon(icon(r,i));
+          m._lcIconSignature=signature;
+        }
+        if(m.isPopupOpen())m.setPopupContent(popup(r));
       }
     });
-
-    if(!s.fitted&&s.markers.size){
-      const g=L.featureGroup([...s.markers.values()]);
-      s.map.fitBounds(g.getBounds().pad(.28),{maxZoom:16});
-      s.fitted=true;
-    }
-    setTimeout(()=>s.map?.invalidateSize(),80);
   }
 
   function list(){
