@@ -1324,10 +1324,31 @@ function toggleMenu(){sidebar.classList.toggle("open")}
 function applyRolePermissions(){
   const allowedOperatorViews=["dashboard","fincas","camaroneras","bananeras","ganaderia","alarmas","sensores"];
   const isOperator=currentUser && String(currentUser.role||"").toLowerCase()==="operador";
+
   document.querySelectorAll(".nav button[data-view]").forEach(btn=>{
-    const allowed=!isOperator || allowedOperatorViews.includes(btn.dataset.view);
-    btn.style.display=allowed?"flex":"none";
+    const view=String(btn.dataset.view||"").toLowerCase();
+    const roleAllowed=!isOperator || allowedOperatorViews.includes(view);
+
+    // Esta función controla únicamente el rol. Nunca debe volver a mostrar
+    // módulos que la política de la organización ya ocultó.
+    if(!roleAllowed){
+      btn.hidden=true;
+      btn.style.setProperty("display","none","important");
+      return;
+    }
+
+    const moduleKnown=typeof window.__tayuModuleEnabled==="function";
+    const moduleAllowed=!moduleKnown || view==="dashboard" || window.__tayuModuleEnabled(view);
+
+    if(!moduleAllowed){
+      btn.hidden=true;
+      btn.style.setProperty("display","none","important");
+    }else{
+      btn.hidden=false;
+      btn.style.removeProperty("display");
+    }
   });
+
   if(isOperator){
     document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
     document.getElementById("dashboard").classList.add("active");
