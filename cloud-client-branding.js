@@ -135,10 +135,7 @@
       }
     }
 
-    if (
-      (branding?.has_custom_logo_dark || branding?.has_custom_logo) &&
-      branding?.logo_dark_url
-    ) {
+    if (branding?.has_custom_logo_dark && branding?.logo_dark_url) {
       try {
         logoDarkObjectUrl = await fetchLogoObjectUrl(
           branding.logo_dark_url,
@@ -150,9 +147,9 @@
         if (logoObjectUrl) darkSrc = logoObjectUrl;
       }
     } else if (branding?.has_custom_logo && logoObjectUrl) {
-      // Compatibilidad con respuestas antiguas del backend:
-      // si existe logo principal pero aún no se anuncia logo_dark_url,
-      // reutilizamos el principal también en modo oscuro.
+      // Si la empresa solo cargó un logo personalizado, reutilizamos ese mismo
+      // archivo en el rail oscuro en vez de aceptar una URL oscura por defecto
+      // que pueda volver a mostrar el logo genérico de Amelia Cloud.
       darkSrc = logoObjectUrl;
     }
 
