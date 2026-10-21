@@ -106,10 +106,18 @@
 
   function setElementModuleVisibility(element, enabled) {
     if (!element) return;
-    const display = enabled ? '' : 'none';
-    if (element.hidden === enabled) element.hidden = !enabled;
-    if (element.style.display !== display) element.style.display = display;
+
     element.dataset.tayuModuleAllowed = enabled ? '1' : '0';
+    element.hidden = !enabled;
+
+    // La capa visual premium usa display:flex!important en la navegación.
+    // Para que la política real de módulos siempre tenga prioridad, las
+    // vistas/botones bloqueados deben ocultarse también con prioridad inline.
+    if (enabled) {
+      element.style.removeProperty('display');
+    } else {
+      element.style.setProperty('display', 'none', 'important');
+    }
   }
 
   function firstEnabledModuleButton() {
