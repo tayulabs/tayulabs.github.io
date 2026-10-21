@@ -362,6 +362,44 @@
     window.openCreateOrganization = wrapped;
   }
 
+  function wrapCreateOrganizationSubmit() {
+    const original = window.createOrganization;
+    if (typeof original !== 'function' || original.__tayuSectorServicesWrapped) return;
+
+    const wrapped = async function (event, ...args) {
+      const form = event?.currentTarget || document.getElementById('createOrgForm');
+      const enabledKeys = new Set(
+        [...(form?.querySelectorAll('input[name="initial_module"]:checked') || [])]
+          .map((input) => String(input.value || '').trim())
+          .filter(Boolean)
+      );
+
+      const result = await original.call(this, event, ...args);
+
+      // El endpoint histórico de creación puede ignorar módulos nuevos que
+      // todavía no conoce. Una vez creada la empresa, persistimos la política
+      // completa mediante el endpoint administrativo canónico de módulos.
+      if (state.organizationId) {
+        await post('/admin/organization/modules', {
+          organization_id: state.organizationId,
+          modules: [...KNOWN_KEYS].map((module) => ({
+            module,
+            enabled: enabledKeys.has(module),
+          })),
+        });
+
+        await loadOrganizationModules().catch((error) =>
+          console.warn('TAYULABS módulos iniciales:', error)
+        );
+      }
+
+      return result;
+    };
+
+    wrapped.__tayuSectorServicesWrapped = true;
+    window.createOrganization = wrapped;
+  }
+
   function installObserver() {
     const host = document.getElementById('tab-modules');
     if (!host || host.__tayuSectorObserver) return;
@@ -381,6 +419,7 @@
     wrapOpenOrganization();
     wrapCloseOrganization();
     wrapCreateOrganization();
+    wrapCreateOrganizationSubmit();
 
     let attempts = 0;
     const timer = setInterval(() => {
@@ -390,9 +429,11 @@
       wrapOpenOrganization();
       wrapCloseOrganization();
       wrapCreateOrganization();
+      wrapCreateOrganizationSubmit();
       if (attempts >= 120 || (
         window.openOrganization?.__tayuSectorServicesWrapped &&
-        window.openCreateOrganization?.__tayuSectorServicesWrapped
+        window.openCreateOrganization?.__tayuSectorServicesWrapped &&
+        window.createOrganization?.__tayuSectorServicesWrapped
       )) clearInterval(timer);
     }, 100);
   }
