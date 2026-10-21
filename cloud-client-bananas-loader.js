@@ -31,7 +31,7 @@
     }
 
     try{
-      await loadScript('cloud-client-livestock-tracking.js?v=2.6-cows');
+      await loadScript('cloud-client-livestock-tracking.js?v=2.7-canvas');
       await loadScript('cloud-client-livestock-geofence.js?v=2.2');
     }catch(error){
       console.error('Ganadería tracking loader:',error);
