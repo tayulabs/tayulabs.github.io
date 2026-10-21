@@ -1,4 +1,4 @@
-/* TAYULABS Cloud · Ganadería · tracking TAURO GPS v2.8 animated */
+/* TAYULABS Cloud · Ganadería · tracking TAURO GPS v2.9 popup layering */
 (function(){
   'use strict';
 
@@ -345,6 +345,9 @@
     try{s.map?.remove?.()}catch(_){}
     s.cowCanvas=null;s.cowContext=null;s.cowPane=null;s.cowHitGrid=new Map();s.cowIconCache=new Map();s.cowMotion=new Map();s.cowAnimationUntil=0;
     s.map=L.map(el,{minZoom:13,maxZoom:18}).setView([-0.470341,-80.081111],16);
+    // Mantener la ficha del animal por delante de todos los iconos Canvas.
+    const popupPane=s.map.getPane('popupPane');
+    if(popupPane)popupPane.style.zIndex='850';
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,attribution:'Tiles © Esri'}).addTo(s.map);
     L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,opacity:.7}).addTo(s.map);
     s.map.on('zoomend moveend resize',()=>{
@@ -530,7 +533,8 @@
     if(!s.map)return null;
     if(s.cowCanvas&&s.cowCanvas.isConnected)return s.cowCanvas;
     const pane=s.map.getPane('tauroCows')||s.map.createPane('tauroCows');
-    pane.style.zIndex='650';
+    // Debajo de los popups Leaflet (pane=850) y por encima de los polígonos (400).
+    pane.style.zIndex='440';
     pane.style.pointerEvents='none';
     const canvas=document.createElement('canvas');
     canvas.className='lc-cows-canvas';
