@@ -191,15 +191,28 @@
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || `API ${response.status}`);
 
-    const branding = data.branding || {
-      display_name: 'TAYULABS',
-      primary_color: DEFAULT_COLOR,
-      has_custom_logo: false,
-      has_custom_logo_dark: false,
-      logo_url: null,
-      logo_dark_url: null,
-      updated_at: null,
-    };
+    const branding =
+      data?.branding ||
+      data?.organization?.branding ||
+      data?.organization_branding ||
+      (
+        data && (
+          data.display_name ||
+          data.primary_color ||
+          data.has_custom_logo ||
+          data.logo_url
+        )
+          ? data
+          : null
+      ) || {
+        display_name: 'TAYULABS',
+        primary_color: DEFAULT_COLOR,
+        has_custom_logo: false,
+        has_custom_logo_dark: false,
+        logo_url: null,
+        logo_dark_url: null,
+        updated_at: null,
+      };
 
     applyColorAndName(branding);
     await applyLogo(branding);
