@@ -67,14 +67,22 @@
     moduleMap = new Map();
 
     rows.forEach((row) => {
+      // /me puede entregar objetos {module,enabled}, mientras /modules
+      // históricamente entrega una lista de strings con solo los habilitados.
+      if (typeof row === 'string') {
+        const key = row.trim().toLowerCase();
+        if (key) moduleMap.set(key, true);
+        return;
+      }
+
       const key = String(row?.module || '').trim().toLowerCase();
       if (!key) return;
-      moduleMap.set(key, Boolean(row?.enabled));
+      moduleMap.set(key, row?.enabled !== false);
     });
 
-    // Compatibilidad: organizaciones antiguas sin filas de módulos
-    // conservan la experiencia completa hasta que Super Admin las configure.
-    hasModulePolicy = moduleMap.size > 0;
+    // Si el backend entrega una lista explícita (aunque sea de strings),
+    // esa lista es la política de módulos de la organización.
+    hasModulePolicy = rows.length > 0 || moduleMap.size > 0;
   }
 
   function isModuleEnabled(key) {
