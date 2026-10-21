@@ -4,7 +4,7 @@
 
   const REFRESH_MS=20000;
   const COLORS=['#22c55e','#0ea5e9','#f59e0b','#a855f7','#ef4444'];
-  const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null,deviceLoadPromise:null,siteCatalog:[],siteLoadPromise:null,refreshPromise:null,cowCanvas:null,cowContext:null,cowPane:null,cowPaintPending:false,cowHitGrid:new Map(),cowIconCache:new Map(),lastListPaint:0,lastAlarmFetch:0,geofenceAlarmIndex:new Map()};
+  const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null,deviceLoadPromise:null,siteCatalog:[],siteLoadPromise:null,refreshPromise:null,cowCanvas:null,cowContext:null,cowPane:null,cowPaintPending:false,cowHitGrid:new Map(),cowIconCache:new Map(),lastListPaint:0,lastAlarmFetch:0,lastTrackingFetch:0,geofenceAlarmIndex:new Map()};
 
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
   const num=v=>Number.isFinite(Number(v))?Number(v):null;
@@ -780,6 +780,7 @@
 
   async function refresh(fit=false){
     if(s.refreshPromise)return s.refreshPromise;
+    if(!fit&&s.lastTrackingFetch&&Date.now()-s.lastTrackingFetch<REFRESH_MS)return;
 
     s.refreshPromise=(async()=>{
       if(!shell())return;
@@ -805,6 +806,7 @@
       try{
         const [rows]=await Promise.all([load(s.siteId),refreshAlarmState()]);
         s.rows=Array.isArray(rows)?rows:[];
+        s.lastTrackingFetch=Date.now();
         herdSelect();
         render();
         if(status){
