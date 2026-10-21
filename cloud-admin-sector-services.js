@@ -12,6 +12,7 @@
     ['modbus', 'Equipos Modbus', 'Variables y equipos RS485 / Modbus'],
     ['configuracion', 'Configuración', 'Ajustes de la plataforma'],
     ['flotas', 'Flotas', 'Seguimiento y operación vehicular'],
+    ['satellite', 'Monitoreo Satelital', 'Análisis NDVI, NDMI y evolución de cultivos'],
   ];
 
   const SECTORS = [
