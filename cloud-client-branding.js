@@ -57,7 +57,10 @@
     const kc = await getKeycloak();
     await kc.updateToken(30);
 
-    return fetch(API_URL + path, {
+    const raw = String(path || '').trim();
+    const target = /^https?:\/\//i.test(raw) ? raw : API_URL + raw;
+
+    return fetch(target, {
       ...options,
       headers: {
         Authorization: `Bearer ${kc.token}`,
