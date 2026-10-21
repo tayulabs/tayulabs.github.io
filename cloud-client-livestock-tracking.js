@@ -236,7 +236,7 @@
       .lc-near-dot{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:2px solid #22c55e;border-radius:50%;background:#fff;color:#166534;box-shadow:0 4px 13px rgba(0,0,0,.22);font-size:12px;font-weight:900}
       .lc-near-dot.outside{border-color:#ef4444;color:#b91c1c}
       .lc-cow-icon{background:transparent!important;border:0!important}
-      .lc-cow{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#fff;border:3px solid var(--cow);font-size:19px;box-shadow:0 8px 18px rgba(0,0,0,.28);transition:transform .8s ease}
+      .lc-cow{width:var(--cow-size,34px);height:var(--cow-size,34px);border-radius:50%;display:grid;place-items:center;background:#fff;border:2px solid var(--cow);font-size:var(--cow-font,19px);box-shadow:0 4px 10px rgba(0,0,0,.24)}
       .lc-cow.online:after{content:"";position:absolute;width:8px;height:8px;border-radius:50%;right:0;bottom:0;background:#22c55e;border:2px solid #fff}
       .lc-cow.outside{--cow:#ef4444!important;border-color:#ef4444!important;box-shadow:0 0 0 5px rgba(239,68,68,.18),0 8px 18px rgba(0,0,0,.32);animation:lcDanger 1.15s infinite}
       .lc-cow.outside:before{content:"🚨";position:absolute;left:-9px;top:-13px;font-size:15px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
@@ -430,10 +430,16 @@
     }
   }
 
-  function icon(r,i){
+  function icon(r,i,size=34){
     const outside=Boolean(outsideInfo(r));
-    const c=outside?'#ef4444':color(r.herd?.name,i),online=String(r.device?.status).toLowerCase()==='online',moving=r.tracking?.motion===true;
-    return L.divIcon({className:'lc-cow-icon',html:`<div class="lc-cow ${online?'online':'offline'} ${moving?'moving':''} ${outside?'outside':''}" style="--cow:${c}">🐄</div>`,iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-18]});
+    const c=outside?'#ef4444':color(r.herd?.name,i);
+    const online=String(r.device?.status||'').toLowerCase()==='online';
+    const moving=r.tracking?.motion===true;
+    const html=`<div class="lc-cow ${online?'online':'offline'} ${moving?'moving':''} ${outside?'outside':''}" style="--cow:${c};--cow-size:${size}px;--cow-font:${Math.round(size*.54)}px">🐄</div>`;
+    return L.divIcon({
+      className:'lc-cow-icon',html,
+      iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-size/2]
+    });
   }
 
   function popup(r){
@@ -506,6 +512,10 @@
       ])).pad(.18),{maxZoom:16});
     }
 
+    const zoom=s.map.getZoom();
+    // Mismo ícono 🐄, más compacto al representar un hato grande.
+    const cowSize=rows.length>100?(zoom>=18?24:zoom>=17?22:zoom>=16?20:18):34;
+
     const sz=s.map.getSize();
     const bounds=sz.x>50&&sz.y>50?s.map.getBounds().pad(.12):null;
     const visible=bounds?rows.filter(r=>bounds.contains([
@@ -525,11 +535,11 @@
       const c=outside?'#ef4444':color(r.herd?.name,i);
       const online=String(r.device?.status||'').toLowerCase()==='online';
       const moving=r.tracking?.motion===true;
-      const signature=[c,online,moving,outside].join(':');
+      const signature=[c,online,moving,outside,cowSize].join(':');
       let m=s.markers.get(id);
 
       if(!m){
-        m=L.marker([lat,lon],{icon:icon(r,i),riseOnHover:true}).addTo(s.map);
+        m=L.marker([lat,lon],{icon:icon(r,i,cowSize),riseOnHover:true}).addTo(s.map);
         m._lcRow=r;
         m._lcIconSignature=signature;
         // Abrir la ficha individual solo cuando se pulsa la vaca.
@@ -546,7 +556,7 @@
           m.setLatLng([lat,lon]);
         }
         if(m._lcIconSignature!==signature){
-          m.setIcon(icon(r,i));
+          m.setIcon(icon(r,i,cowSize));
           m._lcIconSignature=signature;
         }
         if(m.isPopupOpen())m.setPopupContent(popup(r));
