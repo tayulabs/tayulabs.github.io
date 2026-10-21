@@ -40,6 +40,17 @@
       body[data-tayu-role="viewer"] #assetModal {
         display: none !important;
       }
+
+      /* El frontend premium parte de una navegación completa. Hasta que la
+         política segura de módulos esté lista, solo Dashboard puede mostrarse. */
+      html:not([data-tayu-module-policy="1"]) .sidebar .nav button[data-view]:not([data-view="dashboard"]) {
+        display: none !important;
+      }
+
+      html[data-tayu-module-policy="1"] .sidebar .nav button[data-tayu-module-allowed="0"],
+      html[data-tayu-module-policy="1"] .view[data-tayu-module-allowed="0"] {
+        display: none !important;
+      }
     `;
     document.head.appendChild(style);
   }
