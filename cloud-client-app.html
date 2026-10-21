@@ -3297,20 +3297,35 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   window.__tayuApiPost=apiPost;
 
   function applyModulePermissions(modules) {
-    const allowed = new Set(Array.isArray(modules) ? modules : []);
+    const allowed = new Set(
+      (Array.isArray(modules) ? modules : [])
+        .map(row => typeof row === 'string' ? row : row?.module)
+        .filter(Boolean)
+        .map(value => String(value).trim().toLowerCase())
+    );
 
     // Dashboard is the safe landing page. Every other module is shown
     // only when the authenticated organization has it enabled in PostgreSQL.
     document.querySelectorAll('.nav button[data-view]').forEach(button => {
-      const view = button.dataset.view;
+      const view = String(button.dataset.view || '').trim().toLowerCase();
       const canView = view === 'dashboard' || allowed.has(view);
-      button.style.display = canView ? '' : 'none';
+
+      if (canView) {
+        button.hidden = false;
+        button.style.removeProperty('display');
+      } else {
+        button.hidden = true;
+        button.classList.remove('active');
+        button.style.setProperty('display', 'none', 'important');
+      }
 
       const section = document.getElementById(view);
       if (section && !canView) {
         section.classList.remove('active');
-        section.style.display = 'none';
+        section.hidden = true;
+        section.style.setProperty('display', 'none', 'important');
       } else if (section && canView) {
+        section.hidden = false;
         section.style.removeProperty('display');
       }
     });
