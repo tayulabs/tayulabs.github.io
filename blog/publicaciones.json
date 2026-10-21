@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updated_at": "2026-10-13",
+  "updated_at": "2026-10-21",
   "posts": [
     {
       "slug": "robotica-industrial",
@@ -108,7 +108,7 @@
       "categoria": "Noticias",
       "fecha": "2026-10-04",
       "resumen": "TAYULABS DENTRO DE LOS MEJORES 24 EMPRENDIMIENTOS DEL ECUADOR",
-      "destacado": true,
+      "destacado": false,
       "cover": "blog/media/programa-mision-emprende-593/portada.jpeg",
       "coverAlt": "PROGRAMA MISIÓN EMPRENDE 593"
     },
@@ -131,6 +131,26 @@
       "destacado": false,
       "cover": "blog/media/monitoreo-automatizacion-camaroneras/portada.jpeg",
       "coverAlt": "Camaroneras inteligentes: monitorea, controla y automatiza con TAYULABS"
+    },
+    {
+      "slug": "tayulabs-top-10-mision-emprende-593",
+      "titulo": "TAYULABS alcanza el TOP 10 de Misión Emprende 593",
+      "categoria": "Noticias",
+      "fecha": "2026-10-18",
+      "resumen": "TAYULABS se posiciona entre los 10 emprendimientos seleccionados de Misión Emprende 593, llevando la innovación tecnológica ecuatoriana a una nueva etapa.",
+      "destacado": false,
+      "cover": "blog/media/tayulabs-top-10-mision-emprende-593/portada.png",
+      "coverAlt": "TAYULABS alcanza el TOP 10 de Misión Emprende 593"
+    },
+    {
+      "slug": "monitoreo-nivel-combustible-lorawan",
+      "titulo": "Monitoreo inteligente de combustible: controla tus tanques desde cualquier lugar con TAYULABS",
+      "categoria": "Agroindustria",
+      "fecha": "2026-10-21",
+      "resumen": "Monitorea el nivel de combustible de tus tanques a kilómetros de distancia con sensores hidrostáticos, NOVA EDGE Lite, LoRaWAN y Amelia Cloud.",
+      "destacado": true,
+      "cover": "blog/media/monitoreo-nivel-combustible-lorawan/portada.png",
+      "coverAlt": "Monitoreo inteligente de combustible: controla tus tanques desde cualquier lugar con TAYULABS"
     }
   ]
 }
