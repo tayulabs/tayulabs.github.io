@@ -3318,18 +3318,35 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   window.__tayuApiPost=apiPost;
 
   function applyModulePermissions(modules) {
+    const rows = Array.isArray(modules) ? modules : [];
     const allowed = new Set(
-      (Array.isArray(modules) ? modules : [])
+      rows
+        .filter(row => typeof row === 'string' || row?.enabled !== false)
         .map(row => typeof row === 'string' ? row : row?.module)
         .filter(Boolean)
         .map(value => String(value).trim().toLowerCase())
     );
+
+    // /modules es la fuente operativa autoritativa para el frontend premium.
+    // Publicamos la misma política para todos los addons (incluido Satélite).
+    window.__tayuOrganizationModules = rows;
+    window.__tayuHasModulePolicy = true;
+    window.__tayuModuleEnabled = key => {
+      const normalized = String(key || '').trim().toLowerCase();
+      if (!normalized) return false;
+      if (normalized === 'dashboard') return true;
+      return allowed.has(normalized);
+    };
+    document.documentElement.dataset.tayuModulePolicy = '1';
+    if (document.body) document.body.dataset.tayuModulePolicy = '1';
 
     // Dashboard is the safe landing page. Every other module is shown
     // only when the authenticated organization has it enabled in PostgreSQL.
     document.querySelectorAll('.nav button[data-view]').forEach(button => {
       const view = String(button.dataset.view || '').trim().toLowerCase();
       const canView = view === 'dashboard' || allowed.has(view);
+
+      button.dataset.tayuModuleAllowed = canView ? '1' : '0';
 
       if (canView) {
         button.hidden = false;
@@ -3341,6 +3358,8 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
       }
 
       const section = document.getElementById(view);
+      if (section) section.dataset.tayuModuleAllowed = canView ? '1' : '0';
+
       if (section && !canView) {
         section.classList.remove('active');
         section.hidden = true;
@@ -3350,6 +3369,13 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
         section.style.removeProperty('display');
       }
     });
+
+    window.dispatchEvent(new CustomEvent('tayu:modules-applied', {
+      detail: {
+        has_policy: true,
+        modules: Object.fromEntries([...allowed].map(key => [key, true]))
+      }
+    }));
 
     const activeView = document.querySelector('.view.active');
     const systemViews = new Set(['notifications']);
