@@ -4180,36 +4180,81 @@ import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keyclo
   async function refreshRealData(silent = false) {
     if (refreshBusy) return;
     refreshBusy = true;
+
     try {
       if (!silent) setStatus('Actualizando datos reales…');
 
-      const [realDevices, realTelemetry, organizationModules, alarmEvents] = await Promise.all([
-        api('/devices'),
-        api('/telemetry/latest'),
-        api('/modules'),
-        api('/alarms/events')
+      // 1) Cargar primero la política de módulos. Una organización con módulos
+      // mínimos no debe depender de endpoints de funciones que no contrató.
+      let organizationModules = [];
+      try {
+        const rows = await api('/modules');
+        organizationModules = Array.isArray(rows) ? rows : [];
+      } catch (error) {
+        console.error('Módulos de organización:', error);
+      }
+
+      window.__tayuOrganizationModules = organizationModules;
+      applyModulePermissions(organizationModules);
+
+      const moduleEnabled = key =>
+        typeof window.__tayuModuleEnabled === 'function'
+          ? window.__tayuModuleEnabled(key)
+          : false;
+
+      // 2) El resto se carga de forma independiente. Un 403 de Alarmas,
+      // Dispositivos u otro módulo no debe abortar Dashboard/Satélite.
+      const jobs = {
+        devices: (moduleEnabled('dispositivos') || moduleEnabled('sensores') || moduleEnabled('modbus') || moduleEnabled('dashboard'))
+          ? api('/devices')
+          : Promise.resolve([]),
+        telemetry: (moduleEnabled('sensores') || moduleEnabled('modbus') || moduleEnabled('dashboard'))
+          ? api('/telemetry/latest')
+          : Promise.resolve([]),
+        alarms: moduleEnabled('alarmas')
+          ? api('/alarms/events')
+          : Promise.resolve([]),
+      };
+
+      const [devicesResult, telemetryResult, alarmsResult] = await Promise.allSettled([
+        jobs.devices,
+        jobs.telemetry,
+        jobs.alarms,
       ]);
-      window.__tayuRealDevices=Array.isArray(realDevices)?realDevices:[];
-      window.__tayuOrganizationModules=Array.isArray(organizationModules)?organizationModules:[];
-      window.__tayuLastTelemetry=Array.isArray(realTelemetry)?realTelemetry:[];
-      platformAlarms=Array.isArray(alarmEvents)?alarmEvents:[];
-      window.__tayuAlarmEvents=platformAlarms;
+
+      const realDevices = devicesResult.status === 'fulfilled' && Array.isArray(devicesResult.value)
+        ? devicesResult.value
+        : [];
+      const realTelemetry = telemetryResult.status === 'fulfilled' && Array.isArray(telemetryResult.value)
+        ? telemetryResult.value
+        : [];
+      const alarmEvents = alarmsResult.status === 'fulfilled' && Array.isArray(alarmsResult.value)
+        ? alarmsResult.value
+        : [];
+
+      if (devicesResult.status === 'rejected') console.warn('Dispositivos no disponibles:', devicesResult.reason);
+      if (telemetryResult.status === 'rejected') console.warn('Telemetría no disponible:', telemetryResult.reason);
+      if (alarmsResult.status === 'rejected') console.warn('Alarmas no disponibles:', alarmsResult.reason);
+
+      window.__tayuRealDevices = realDevices;
+      window.__tayuLastTelemetry = realTelemetry;
+      platformAlarms = alarmEvents;
+      window.__tayuAlarmEvents = platformAlarms;
 
       await Promise.all(window.__tayuRealDevices
         .filter(r=>(r.capabilities?.protocols||[]).some(p=>p.type==='modbus_rtu'))
         .map(r=>loadRemoteModbusConfig(r.device_key).catch(()=>null)));
 
-      applyModulePermissions(window.__tayuOrganizationModules);
       renderAlarms();
       updateAlarmBadge();
       applyRealData(window.__tayuRealDevices, window.__tayuLastTelemetry);
       telemetryToFrames(window.__tayuLastTelemetry);
-      await syncIncrementalModbusHistory(window.__tayuRealDevices);
-      await syncDashboardChartHistoriesReliable(true);
+      await syncIncrementalModbusHistory(window.__tayuRealDevices).catch(error=>console.warn('Histórico incremental:',error));
+      await syncDashboardChartHistoriesReliable(true).catch(error=>console.warn('Histórico Dashboard:',error));
       refreshDashboardWidgetsInPlace();
       forceVisibleDashboardModbusRedraw();
 
-      if (!silent) setStatus('Conectado a la API: datos reales cargados.');
+      if (!silent) setStatus('Conectado a la API.');
     } finally {
       refreshBusy = false;
     }
