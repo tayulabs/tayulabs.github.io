@@ -1,10 +1,10 @@
-/* TAYULABS Cloud · Ganadería · tracking TAURO GPS v1.0 */
+/* TAYULABS Cloud · Ganadería · tracking TAURO GPS v2.8 animated */
 (function(){
   'use strict';
 
   const REFRESH_MS=20000;
   const COLORS=['#22c55e','#0ea5e9','#f59e0b','#a855f7','#ef4444'];
-  const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null,deviceLoadPromise:null,siteCatalog:[],siteLoadPromise:null,refreshPromise:null,cowCanvas:null,cowContext:null,cowPane:null,cowPaintPending:false,cowHitGrid:new Map(),cowIconCache:new Map(),lastListPaint:0,lastAlarmFetch:0,lastTrackingFetch:0,geofenceAlarmIndex:new Map()};
+  const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null,deviceLoadPromise:null,siteCatalog:[],siteLoadPromise:null,refreshPromise:null,cowCanvas:null,cowContext:null,cowPane:null,cowPaintPending:false,cowHitGrid:new Map(),cowIconCache:new Map(),lastListPaint:0,lastAlarmFetch:0,lastTrackingFetch:0,geofenceAlarmIndex:new Map(),cowMotion:new Map(),cowAnimationUntil:0,cowAnimationTimer:null};
 
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
   const num=v=>Number.isFinite(Number(v))?Number(v):null;
@@ -343,7 +343,7 @@
     const el=document.getElementById('cattleSatelliteMap');if(!el||!window.L)return;
     if(s.map&&s.map.getContainer()===el){setTimeout(()=>s.map.invalidateSize(),50);return}
     try{s.map?.remove?.()}catch(_){}
-    s.cowCanvas=null;s.cowContext=null;s.cowPane=null;s.cowHitGrid=new Map();s.cowIconCache=new Map();
+    s.cowCanvas=null;s.cowContext=null;s.cowPane=null;s.cowHitGrid=new Map();s.cowIconCache=new Map();s.cowMotion=new Map();s.cowAnimationUntil=0;
     s.map=L.map(el,{minZoom:13,maxZoom:18}).setView([-0.470341,-80.081111],16);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,attribution:'Tiles © Esri'}).addTo(s.map);
     L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,opacity:.7}).addTo(s.map);
@@ -593,6 +593,49 @@
     return image;
   }
 
+
+  // Canvas v2.8: interpolacion visual entre posiciones GPS efectivamente recibidas.
+  function cowMotionId(row){
+    return String(row.animal_id||row.device?.device_key||row.animal_code||'');
+  }
+  function rawCowPoint(row){
+    const lat=Number(row?.tracking?.lat),lon=Number(row?.tracking?.lon);
+    return Number.isFinite(lat)&&Number.isFinite(lon)?{lat,lon}:null;
+  }
+  function interpolateCow(motion,now){
+    if(!motion)return null;
+    const progress=Math.min(1,Math.max(0,(now-motion.start)/(motion.end-motion.start)));
+    return {lat:motion.from.lat+(motion.to.lat-motion.from.lat)*progress,
+      lon:motion.from.lon+(motion.to.lon-motion.from.lon)*progress};
+  }
+  function visibleCowPoint(row,now){
+    const motion=s.cowMotion.get(cowMotionId(row));
+    return motion?interpolateCow(motion,now):rawCowPoint(row);
+  }
+  function stageCowMovement(nextRows){
+    const now=performance.now();
+    const previous=new Map(s.rows.map(row=>[cowMotionId(row),row]));
+    const motion=new Map();
+    let moving=0;
+    for(const row of nextRows){
+      const key=cowMotionId(row),target=rawCowPoint(row);
+      if(!key||!target)continue;
+      const older=previous.get(key);
+      const from=interpolateCow(s.cowMotion.get(key),now)||rawCowPoint(older);
+      if(!from)continue;
+      const north=(target.lat-from.lat)*111100;
+      const east=(target.lon-from.lon)*111100*Math.cos(target.lat*Math.PI/180);
+      const metres=Math.hypot(north,east);
+      // Un reinicio de la simulacion puede redistribuir el hato;
+      // esos saltos grandes no se muestran como caminata.
+      if(metres<0.25||metres>100)continue;
+      motion.set(key,{from,to:target,start:now,end:now+17800});
+      moving++;
+    }
+    s.cowMotion=motion;
+    s.cowAnimationUntil=moving?now+17800:0;
+  }
+
   function markers(){
     if(!s.map||!ensureCowCanvas())return;
     if(s.cowPaintPending)return;
@@ -622,6 +665,7 @@
     ctx.clearRect(0,0,dimensions.x,dimensions.y);
 
     const rows=filtered();
+    const frameNow=performance.now();
     if(!s.fitted&&rows.length){
       const positions=rows.filter(r=>num(r.tracking?.lat)!==null&&num(r.tracking?.lon)!==null)
         .map(r=>[Number(r.tracking.lat),Number(r.tracking.lon)]);
@@ -641,8 +685,9 @@
     const indexes=s.geofenceAlarmIndex;
     const useAlarms=indexes.size>0;
     for(const row of rows){
-      const lat=Number(row.tracking?.lat),lon=Number(row.tracking?.lon);
-      if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+      const position=visibleCowPoint(row,frameNow);
+      if(!position)continue;
+      const lat=position.lat,lon=position.lon;
       const point=map.latLngToContainerPoint([lat,lon]);
       if(point.x< -iconSize||point.y< -iconSize||
          point.x>dimensions.x+iconSize||point.y>dimensions.y+iconSize)continue;
@@ -805,7 +850,9 @@
 
       try{
         const [rows]=await Promise.all([load(s.siteId),refreshAlarmState()]);
-        s.rows=Array.isArray(rows)?rows:[];
+        const nextRows=Array.isArray(rows)?rows:[];
+        stageCowMovement(nextRows);
+        s.rows=nextRows;
         s.lastTrackingFetch=Date.now();
         herdSelect();
         render();
@@ -839,6 +886,11 @@
     refresh(!s.fitted).catch(console.error);
     if(s.timer)clearInterval(s.timer);
     s.timer=setInterval(()=>{if(!document.hidden&&document.getElementById('ganaderia')?.classList.contains('active'))refresh(false).catch(console.error)},REFRESH_MS);
+    if(s.cowAnimationTimer)clearInterval(s.cowAnimationTimer);
+    s.cowAnimationTimer=setInterval(()=>{
+      if(document.hidden||!document.getElementById('ganaderia')?.classList.contains('active'))return;
+      if(s.cowAnimationUntil>performance.now())markers();
+    },125);
   }
 
   document.addEventListener('click',e=>{if(e.target?.closest?.('.nav button[data-view="ganaderia"]'))setTimeout(activate,80)});
