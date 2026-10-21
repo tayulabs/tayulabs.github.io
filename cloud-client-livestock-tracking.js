@@ -2,9 +2,9 @@
 (function(){
   'use strict';
 
-  const REFRESH_MS=8000;
+  const REFRESH_MS=20000;
   const COLORS=['#22c55e','#0ea5e9','#f59e0b','#a855f7','#ef4444'];
-  const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null,deviceLoadPromise:null,siteCatalog:[],siteLoadPromise:null,refreshPromise:null};
+  const s={map:null,markers:new Map(),blockMarkers:new Map(),rows:[],siteId:'',selected:'',timer:null,fitted:false,history:null,deviceLoadPromise:null,siteCatalog:[],siteLoadPromise:null,refreshPromise:null,cowCanvas:null,cowContext:null,cowPane:null,cowPaintPending:false,cowHitGrid:new Map(),cowIconCache:new Map(),lastListPaint:0,lastAlarmFetch:0,geofenceAlarmIndex:new Map()};
 
   const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
   const num=v=>Number.isFinite(Number(v))?Number(v):null;
@@ -307,9 +307,13 @@
     compactIotPanel();
     view.querySelector('#lcRefresh')?.addEventListener('click',()=>refresh(true));
     view.querySelector('#lcSite')?.addEventListener('change',e=>{s.siteId=e.target.value;s.fitted=false;s.selected='';refresh(true)});
-    view.querySelector('#lcHerd')?.addEventListener('change',render);
-    view.querySelector('#lcStatus')?.addEventListener('change',render);
-    view.querySelector('#lcSearch')?.addEventListener('input',render);
+    view.querySelector('#lcHerd')?.addEventListener('change',()=>render(true));
+    view.querySelector('#lcStatus')?.addEventListener('change',()=>render(true));
+    view.querySelector('#lcSearch')?.addEventListener('input',()=>render(true));
+    view.querySelector('#lcAnimalList')?.addEventListener('click',event=>{
+      const button=event.target.closest('[data-cow]');
+      if(button)select(button.dataset.cow,true);
+    });
     initMap();
     return view;
   }
@@ -320,7 +324,7 @@
     const host=view.querySelector('[data-tayu-sector-iot="ganaderia"]');
     if(box&&host&&host.parentElement!==box)box.appendChild(host);
 
-    const count=devices().filter(d=>!s.siteId||String(d.site_id)===String(s.siteId)).length;
+    const count=s.rows.length||devices().filter(d=>!s.siteId||String(d.site_id)===String(s.siteId)).length;
     const summary=view.querySelector('#lcIotSummary');
     if(summary)summary.textContent=count
       ? count+' collares TAURO GPS asociados. Abre esta sección solo si necesitas revisar los dispositivos.'
@@ -339,10 +343,15 @@
     const el=document.getElementById('cattleSatelliteMap');if(!el||!window.L)return;
     if(s.map&&s.map.getContainer()===el){setTimeout(()=>s.map.invalidateSize(),50);return}
     try{s.map?.remove?.()}catch(_){}
+    s.cowCanvas=null;s.cowContext=null;s.cowPane=null;s.cowHitGrid=new Map();s.cowIconCache=new Map();
     s.map=L.map(el,{minZoom:13,maxZoom:18}).setView([-0.470341,-80.081111],16);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,attribution:'Tiles © Esri'}).addTo(s.map);
     L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:18,maxZoom:18,opacity:.7}).addTo(s.map);
-    s.map.on('zoomend moveend',()=>{if(s.map.getZoom()>18)s.map.setZoom(18);markers();});
+    s.map.on('zoomend moveend resize',()=>{
+      if(s.map.getZoom()>18)s.map.setZoom(18);
+      markers();
+    });
+    s.map.on('click',onCowMapClick);
     window.cattleSatelliteMap=s.map;
   }
 
@@ -380,7 +389,11 @@
     const moving=rows.filter(r=>r.tracking?.motion===true).length,resting=rows.filter(r=>r.tracking?.motion===false).length;
     const bs=rows.map(r=>num(r.tracking?.battery_pct)).filter(v=>v!==null);
     const groups=[...new Set(rows.map(r=>r.herd?.name).filter(Boolean))];
-    const latest=rows.map(r=>new Date(r.telemetry_time||r.device?.last_seen_at||0).getTime()).filter(Number.isFinite).sort((a,b)=>b-a)[0];
+    let latest=0;
+    for(const r of rows){
+      const t=new Date(r.telemetry_time||r.device?.last_seen_at||0).getTime();
+      if(Number.isFinite(t)&&t>latest)latest=t;
+    }
 
     text('lcTotal',rows.length);text('lcOnline',online);text('lcMoving',moving);text('lcResting',resting);
     text('lcBattery',bs.length?(bs.reduce((a,b)=>a+b,0)/bs.length).toFixed(1)+'%':'—');
@@ -390,24 +403,30 @@
     text('lcMapUpdated',(outsideCount?'🚨 '+outsideCount+' fuera · ':'')+(latest?'🛰 '+ago(new Date(latest).toISOString()):'🛰 Esperando datos'));
   }
 
-  function geofenceAlarm(r){
-    const events=Array.isArray(window.__tayuAlarmEvents)?window.__tayuAlarmEvents:[];
-    const deviceKey=String(r.device?.device_key||'');
-    const deviceId=String(r.device?.id||'');
-    return events.find(a=>{
-      if(!['active','acknowledged'].includes(String(a.state||'').toLowerCase()))return false;
+  // Índice por dispositivo: evita buscar en todas las alarmas por cada vaca.
+  function indexGeofenceAlarms(events){
+    const index=new Map();
+    for(const a of events){
+      if(!['active','acknowledged'].includes(String(a.state||'').toLowerCase()))continue;
       const systemKey=String(a.system_key||a.rule_system_key||'');
       const ruleName=String(a.rule_name||a.name||'');
       const message=String(a.message||'');
-      const isGeofence=
-        systemKey.startsWith('livestock_geofence:') ||
-        /salida de perímetro/i.test(ruleName) ||
-        /salió del perímetro/i.test(message);
-      if(!isGeofence)return false;
-      const alarmDeviceKey=String(a.device_key||'');
-      const alarmDeviceId=String(a.device_id||'');
-      return (deviceKey&&alarmDeviceKey===deviceKey)||(deviceId&&alarmDeviceId===deviceId);
-    })||null;
+      if(!(
+        systemKey.startsWith('livestock_geofence:')||
+        /salida de perímetro/i.test(ruleName)||
+        /salió del perímetro/i.test(message)
+      ))continue;
+      if(a.device_key)index.set('key:'+a.device_key,a);
+      if(a.device_id)index.set('id:'+a.device_id,a);
+    }
+    s.geofenceAlarmIndex=index;
+  }
+
+  function geofenceAlarm(r){
+    const deviceKey=String(r.device?.device_key||'');
+    const deviceId=String(r.device?.id||'');
+    return (deviceKey&&s.geofenceAlarmIndex.get('key:'+deviceKey))||
+      (deviceId&&s.geofenceAlarmIndex.get('id:'+deviceId))||null;
   }
 
   function outsideInfo(r){
@@ -422,10 +441,16 @@
 
   async function refreshAlarmState(){
     if(typeof window.__tayuApi!=='function')return;
+    if(s.lastAlarmFetch&&Date.now()-s.lastAlarmFetch<30000)return;
+    s.lastAlarmFetch=Date.now();
     try{
       const events=await window.__tayuApi('/alarms/events');
-      if(Array.isArray(events))window.__tayuAlarmEvents=events;
+      if(Array.isArray(events)){
+        window.__tayuAlarmEvents=events;
+        indexGeofenceAlarms(events);
+      }
     }catch(error){
+      s.lastAlarmFetch=0;
       console.warn('Ganadería: no se pudieron actualizar alarmas de geocerca.',error);
     }
   }
@@ -499,69 +524,173 @@
       </div>`;
   }
 
-  // Todas las vacas se representan por separado con el icono original 🐄.
-  // Solo se retiran del DOM los marcadores que quedan fuera de la vista.
+  // El mapa usa un único canvas. Cada vaca conserva su posición y
+  // su icono original; no hay agrupación, muestreo ni marcadores HTML.
+  function ensureCowCanvas(){
+    if(!s.map)return null;
+    if(s.cowCanvas&&s.cowCanvas.isConnected)return s.cowCanvas;
+    const pane=s.map.getPane('tauroCows')||s.map.createPane('tauroCows');
+    pane.style.zIndex='650';
+    pane.style.pointerEvents='none';
+    const canvas=document.createElement('canvas');
+    canvas.className='lc-cows-canvas';
+    canvas.style.position='absolute';
+    canvas.style.pointerEvents='none';
+    pane.appendChild(canvas);
+    s.cowCanvas=canvas;
+    s.cowContext=canvas.getContext('2d',{alpha:true});
+    s.cowHitGrid=new Map();
+    s.cowIconCache=new Map();
+    return canvas;
+  }
+
+  function cowCanvasIcon(size,c,online,outside){
+    const key=[size,c,online,outside].join('|');
+    if(s.cowIconCache.has(key))return s.cowIconCache.get(key);
+    const scale=2;
+    const image=document.createElement('canvas');
+    image.width=(size+6)*scale;
+    image.height=(size+6)*scale;
+    const ctx=image.getContext('2d');
+    if(!ctx)return null;
+    ctx.scale(scale,scale);
+    const center=(size+6)/2;
+    const radius=(size/2)-1;
+    ctx.shadowColor='rgba(0,0,0,.25)';
+    ctx.shadowBlur=3;
+    ctx.shadowOffsetY=2;
+    ctx.beginPath();
+    ctx.arc(center,center,radius,0,Math.PI*2);
+    ctx.fillStyle='#fff';
+    ctx.fill();
+    ctx.shadowColor='transparent';
+    ctx.lineWidth=2;
+    ctx.strokeStyle=c;
+    ctx.stroke();
+    ctx.font=Math.round(size*.54)+'px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText('🐄',center,center+1);
+    if(online){
+      ctx.beginPath();
+      ctx.arc(center+radius-1,center+radius-1,Math.max(2,size*.11),0,Math.PI*2);
+      ctx.fillStyle='#22c55e';
+      ctx.fill();
+      ctx.lineWidth=1.5;
+      ctx.strokeStyle='#fff';
+      ctx.stroke();
+    }
+    if(outside){
+      ctx.beginPath();
+      ctx.arc(center-radius+2,center-radius+2,Math.max(3,size*.13),0,Math.PI*2);
+      ctx.fillStyle='#ef4444';
+      ctx.fill();
+      ctx.lineWidth=1.5;
+      ctx.strokeStyle='#fff';
+      ctx.stroke();
+    }
+    s.cowIconCache.set(key,image);
+    return image;
+  }
+
   function markers(){
-    if(!s.map)initMap();
-    if(!s.map)return;
-    const rows=filtered().filter(r=>num(r.tracking?.lat)!==null&&num(r.tracking?.lon)!==null);
-    if(!s.fitted&&rows.length){
-      s.fitted=true;
-      s.map.fitBounds(L.latLngBounds(rows.map(r=>[
-        Number(r.tracking.lat),Number(r.tracking.lon)
-      ])).pad(.18),{maxZoom:16});
-    }
-
-    const zoom=s.map.getZoom();
-    // Mismo ícono 🐄, más compacto al representar un hato grande.
-    const cowSize=rows.length>100?(zoom>=18?24:zoom>=17?22:zoom>=16?20:18):34;
-
-    const sz=s.map.getSize();
-    const bounds=sz.x>50&&sz.y>50?s.map.getBounds().pad(.12):null;
-    const visible=bounds?rows.filter(r=>bounds.contains([
-      Number(r.tracking.lat),Number(r.tracking.lon)
-    ])):rows;
-
-    s.map.getContainer().classList.toggle('lc-many-cows',rows.length>100);
-    const wanted=new Set(visible.map(r=>String(r.animal_id||r.device?.device_key||r.animal_code)));
-    for(const [id,m] of s.markers){
-      if(!wanted.has(id)){s.map.removeLayer(m);s.markers.delete(id)}
-    }
-
-    visible.forEach((r,i)=>{
-      const id=String(r.animal_id||r.device?.device_key||r.animal_code);
-      const lat=Number(r.tracking.lat),lon=Number(r.tracking.lon);
-      const outside=Boolean(outsideInfo(r));
-      const c=outside?'#ef4444':color(r.herd?.name,i);
-      const online=String(r.device?.status||'').toLowerCase()==='online';
-      const moving=r.tracking?.motion===true;
-      const signature=[c,online,moving,outside,cowSize].join(':');
-      let m=s.markers.get(id);
-
-      if(!m){
-        m=L.marker([lat,lon],{icon:icon(r,i,cowSize),riseOnHover:true}).addTo(s.map);
-        m._lcRow=r;
-        m._lcIconSignature=signature;
-        // Abrir la ficha individual solo cuando se pulsa la vaca.
-        m.bindPopup(layer=>popup(layer._lcRow),{
-          className:'lc-leaflet-popup',maxWidth:390,autoPan:true,
-          autoPanPadding:[30,30]
-        });
-        m.on('click',()=>select(id,false));
-        s.markers.set(id,m);
-      }else{
-        m._lcRow=r;
-        const prev=m.getLatLng();
-        if(Math.abs(prev.lat-lat)>0.00000005||Math.abs(prev.lng-lon)>0.00000005){
-          m.setLatLng([lat,lon]);
-        }
-        if(m._lcIconSignature!==signature){
-          m.setIcon(icon(r,i,cowSize));
-          m._lcIconSignature=signature;
-        }
-        if(m.isPopupOpen())m.setPopupContent(popup(r));
-      }
+    if(!s.map||!ensureCowCanvas())return;
+    if(s.cowPaintPending)return;
+    s.cowPaintPending=true;
+    requestAnimationFrame(()=>{
+      s.cowPaintPending=false;
+      if(s.map&&s.cowCanvas?.isConnected)paintCows();
     });
+  }
+
+  function paintCows(){
+    const map=s.map,canvas=s.cowCanvas,ctx=s.cowContext;
+    if(!map||!canvas||!ctx)return;
+    const dimensions=map.getSize();
+    if(dimensions.x<1||dimensions.y<1)return;
+    const dpr=Math.min(2,window.devicePixelRatio||1);
+    const width=Math.ceil(dimensions.x*dpr);
+    const height=Math.ceil(dimensions.y*dpr);
+    if(canvas.width!==width||canvas.height!==height){
+      canvas.width=width;
+      canvas.height=height;
+      canvas.style.width=dimensions.x+'px';
+      canvas.style.height=dimensions.y+'px';
+    }
+    L.DomUtil.setPosition(canvas,map.containerPointToLayerPoint([0,0]));
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,dimensions.x,dimensions.y);
+
+    const rows=filtered();
+    if(!s.fitted&&rows.length){
+      const positions=rows.filter(r=>num(r.tracking?.lat)!==null&&num(r.tracking?.lon)!==null)
+        .map(r=>[Number(r.tracking.lat),Number(r.tracking.lon)]);
+      if(positions.length){
+        s.fitted=true;
+        map.fitBounds(L.latLngBounds(positions).pad(.18),{maxZoom:16});
+        // fitBounds dispara moveend; pintar después de recalcular zoom.
+        return;
+      }
+    }
+
+    const z=map.getZoom();
+    const iconSize=rows.length>100?(z>=18?24:z>=17?22:z>=16?20:18):34;
+    const half=iconSize/2;
+    const grid=new Map();
+    const cellSize=36;
+    const indexes=s.geofenceAlarmIndex;
+    const useAlarms=indexes.size>0;
+    for(const row of rows){
+      const lat=Number(row.tracking?.lat),lon=Number(row.tracking?.lon);
+      if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+      const point=map.latLngToContainerPoint([lat,lon]);
+      if(point.x< -iconSize||point.y< -iconSize||
+         point.x>dimensions.x+iconSize||point.y>dimensions.y+iconSize)continue;
+
+      const keyId=String(row.animal_id||row.device?.device_key||row.animal_code);
+      const outside=useAlarms&&Boolean(geofenceAlarm(row));
+      const tint=outside?'#ef4444':color(row.herd?.name);
+      const online=String(row.device?.status||'').toLowerCase()==='online';
+      const iconImage=cowCanvasIcon(iconSize,tint,online,outside);
+      if(iconImage)ctx.drawImage(iconImage,point.x-half-3,point.y-half-3,
+        iconSize+6,iconSize+6);
+
+      const gridKey=Math.floor(point.x/cellSize)+':'+Math.floor(point.y/cellSize);
+      if(!grid.has(gridKey))grid.set(gridKey,[]);
+      grid.get(gridKey).push({row,x:point.x,y:point.y,id:keyId});
+    }
+    s.cowHitGrid=grid;
+  }
+
+  function showCowPopup(row){
+    if(!s.map||!row)return;
+    const lat=Number(row.tracking?.lat),lon=Number(row.tracking?.lon);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
+    L.popup({
+      className:'lc-leaflet-popup',
+      maxWidth:390,autoPan:true,autoPanPadding:[30,30]
+    }).setLatLng([lat,lon]).setContent(popup(row)).openOn(s.map);
+  }
+
+  function onCowMapClick(e){
+    if(!s.map||!s.cowHitGrid?.size)return;
+    const pos=s.map.latLngToContainerPoint(e.latlng);
+    const cellSize=36;
+    const gx=Math.floor(pos.x/cellSize),gy=Math.floor(pos.y/cellSize);
+    let nearest=null,shortest=Infinity;
+    for(let dx=-1;dx<=1;dx++){
+      for(let dy=-1;dy<=1;dy++){
+        const nearby=s.cowHitGrid.get((gx+dx)+':'+(gy+dy))||[];
+        for(const item of nearby){
+          const d=(pos.x-item.x)**2+(pos.y-item.y)**2;
+          if(d<shortest){shortest=d;nearest=item}
+        }
+      }
+    }
+    if(!nearest||shortest>18**2)return;
+    s.selected=nearest.id;
+    list();
+    showCowPopup(nearest.row);
   }
 
   function list(){
@@ -576,7 +705,7 @@
       (rows.length>shown.length?`<p class="hint" style="padding:8px 4px">Mostrando ${shown.length} de ${rows.length}. Usa Grupo/hato o Buscar animal para reducir la lista.</p>`:'')
       :'<p class="hint">No hay animales que coincidan con los filtros.</p>';
 
-    el.querySelectorAll('[data-cow]').forEach(b=>b.addEventListener('click',()=>select(b.dataset.cow,true)));
+    s.lastListPaint=Date.now();
   }
 
   function ago(v){
@@ -626,7 +755,9 @@
   function centerRow(r,popupOpen=false){
     const lat=num(r.tracking?.lat),lon=num(r.tracking?.lon);if(lat===null||lon===null||!s.map)return;
     s.map.setView([lat,lon],18,{animate:true});
-    const id=String(r.animal_id||r.device?.device_key||r.animal_code);if(popupOpen){markers();setTimeout(()=>s.markers.get(id)?.openPopup(),120)}
+    if(popupOpen){
+      setTimeout(()=>{markers();showCowPopup(r)},270);
+    }
   }
 
   async function history(r){
@@ -641,7 +772,11 @@
     }catch(error){console.error(error);alert('No se pudo cargar el recorrido histórico.')}
   }
 
-  function render(){kpis();list();markers();compactIotPanel();requestAnimationFrame(()=>{s.map?.invalidateSize({animate:false});setTimeout(()=>s.map?.invalidateSize({animate:false}),120)})}
+  function render(forceList=false){
+    kpis();
+    if(forceList||Date.now()-s.lastListPaint>30000)list();
+    markers();
+  }
 
   async function refresh(fit=false){
     if(s.refreshPromise)return s.refreshPromise;
