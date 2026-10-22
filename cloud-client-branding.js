@@ -57,10 +57,7 @@
     const kc = await getKeycloak();
     await kc.updateToken(30);
 
-    const raw = String(path || '').trim();
-    const target = /^https?:\/\//i.test(raw) ? raw : API_URL + raw;
-
-    return fetch(target, {
+    return fetch(API_URL + path, {
       ...options,
       headers: {
         Authorization: `Bearer ${kc.token}`,
@@ -138,7 +135,10 @@
       }
     }
 
-    if (branding?.has_custom_logo_dark && branding?.logo_dark_url) {
+    if (
+      (branding?.has_custom_logo_dark || branding?.has_custom_logo) &&
+      branding?.logo_dark_url
+    ) {
       try {
         logoDarkObjectUrl = await fetchLogoObjectUrl(
           branding.logo_dark_url,
@@ -150,9 +150,9 @@
         if (logoObjectUrl) darkSrc = logoObjectUrl;
       }
     } else if (branding?.has_custom_logo && logoObjectUrl) {
-      // Si la empresa solo cargó un logo personalizado, reutilizamos ese mismo
-      // archivo en el rail oscuro en vez de aceptar una URL oscura por defecto
-      // que pueda volver a mostrar el logo genérico de Amelia Cloud.
+      // Compatibilidad con respuestas antiguas del backend:
+      // si existe logo principal pero aún no se anuncia logo_dark_url,
+      // reutilizamos el principal también en modo oscuro.
       darkSrc = logoObjectUrl;
     }
 
@@ -184,93 +184,6 @@
     };
   }
 
-  function normalizeBranding(source) {
-    if (!source || typeof source !== 'object') return null;
-
-    const logoUrl =
-      source.logo_url ||
-      source.brand_logo_url ||
-      source.logo ||
-      source.logo_path ||
-      null;
-
-    const logoDarkUrl =
-      source.logo_dark_url ||
-      source.brand_logo_dark_url ||
-      source.dark_logo_url ||
-      source.logo_dark ||
-      null;
-
-    const hasSignal = Boolean(
-      source.display_name ||
-      source.organization_name ||
-      source.name ||
-      source.primary_color ||
-      source.brand_color ||
-      source.brand_primary_color ||
-      source.has_custom_logo ||
-      source.has_custom_logo_dark ||
-      logoUrl ||
-      logoDarkUrl
-    );
-
-    if (!hasSignal) return null;
-
-    return {
-      ...source,
-      display_name:
-        source.display_name ||
-        source.brand_display_name ||
-        source.organization_name ||
-        source.name ||
-        'Organización',
-      primary_color:
-        source.primary_color ||
-        source.brand_color ||
-        source.brand_primary_color ||
-        DEFAULT_COLOR,
-      has_custom_logo:
-        source.has_custom_logo !== undefined
-          ? Boolean(source.has_custom_logo)
-          : Boolean(logoUrl),
-      has_custom_logo_dark:
-        source.has_custom_logo_dark !== undefined
-          ? Boolean(source.has_custom_logo_dark)
-          : Boolean(logoDarkUrl),
-      logo_url: logoUrl,
-      logo_dark_url: logoDarkUrl,
-      updated_at: source.updated_at || source.brand_updated_at || null,
-    };
-  }
-
-  function extractBranding(data) {
-    const candidates = [
-      data?.branding,
-      data?.organization?.branding,
-      data?.organization_branding,
-      data?.organization,
-      data,
-    ];
-
-    for (const candidate of candidates) {
-      const normalized = normalizeBranding(candidate);
-      if (normalized) return normalized;
-    }
-
-    return null;
-  }
-
-  async function tryBrandingEndpoint(path) {
-    try {
-      const response = await authFetch(path);
-      if (!response.ok) return null;
-      const data = await response.json().catch(() => ({}));
-      return extractBranding(data);
-    } catch (_) {
-      return null;
-    }
-  }
-
   async function loadBranding() {
     injectDynamicBrandStyles();
 
@@ -278,15 +191,7 @@
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || `API ${response.status}`);
 
-    let branding = extractBranding(data);
-
-    // Compatibilidad con distintas generaciones del backend. Si /me no trae
-    // la marca embebida, probamos endpoints de lectura sin modificar nada.
-    if (!branding) branding = await tryBrandingEndpoint('/branding');
-    if (!branding) branding = await tryBrandingEndpoint('/organization/branding');
-    if (!branding) branding = await tryBrandingEndpoint('/me/branding');
-
-    branding ||= {
+    const branding = data.branding || {
       display_name: 'TAYULABS',
       primary_color: DEFAULT_COLOR,
       has_custom_logo: false,
@@ -308,34 +213,19 @@
 
   window.__tayuReloadBranding = loadBranding;
 
-  let brandingRetryTimer = null;
-  let brandingRetryCount = 0;
-
-  function scheduleBrandingRetry(delay = 0) {
-    if (brandingRetryTimer) clearTimeout(brandingRetryTimer);
-    brandingRetryTimer = setTimeout(async () => {
-      try {
-        await loadBranding();
-        brandingRetryCount = 0;
-      } catch (error) {
-        brandingRetryCount += 1;
-        console.warn('TAYULABS organization branding:', error);
-        if (brandingRetryCount < 12) {
-          scheduleBrandingRetry(Math.min(3000, 300 + brandingRetryCount * 250));
-        }
-      }
-    }, delay);
-  }
-
-  // El loader premium reconstruye partes del DOM después de cargar los addons.
-  // Reaplicamos la marca cuando la sesión/permisos terminan de resolverse.
-  window.addEventListener('tayu:client-access-ready', () => scheduleBrandingRetry(0));
-  window.addEventListener('tayu:modules-applied', () => scheduleBrandingRetry(0));
-  window.addEventListener('load', () => scheduleBrandingRetry(0), { once: true });
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => scheduleBrandingRetry(0), { once: true });
-  } else {
-    scheduleBrandingRetry(0);
-  }
+  loadBranding().catch((error) => {
+    console.warn('TAYULABS organization branding:', error);
+    revokeLogoObjectUrls();
+    applyColorAndName({
+      display_name: 'TAYULABS',
+      primary_color: DEFAULT_COLOR,
+      has_custom_logo: false,
+      has_custom_logo_dark: false,
+      logo_url: null,
+      logo_dark_url: null,
+      updated_at: null,
+    });
+    applyLightLogoSrc(DEFAULT_LOGO_LIGHT, 'TAYULABS');
+    applyDarkLogoSrc(DEFAULT_LOGO_DARK);
+  });
 })();
