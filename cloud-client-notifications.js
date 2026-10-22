@@ -62,7 +62,16 @@
   }
 
   function allowed() {
-    return ALLOWED_ROLES.has(role());
+    const roleAllowed = ALLOWED_ROLES.has(role());
+    if (!roleAllowed) return false;
+
+    // Notificaciones es un módulo comercial independiente. Además de tener
+    // rol owner/admin, la organización debe tenerlo habilitado.
+    if (typeof window.__tayuModuleEnabled === 'function') {
+      return window.__tayuModuleEnabled('notifications') === true;
+    }
+
+    return false;
   }
 
   function unwrapObject(data) {

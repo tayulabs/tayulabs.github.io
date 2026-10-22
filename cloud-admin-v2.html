@@ -43,7 +43,7 @@ body.dark{--bg:#090b0a;--panel:#111411;--panel2:#181d18;--text:#f6f7f5;--muted:#
 <script type="module">
 import Keycloak from 'https://cdn.jsdelivr.net/npm/keycloak-js@26.2.4/lib/keycloak.js';
 const AUTH_URL='https://auth.tayulabs.com';const API_URL='https://api.tayulabs.com';
-const MODULE_CATALOG=[['dashboard','Dashboard'],['fincas','Fincas'],['camaroneras','Camaroneras'],['bananeras','Bananeras'],['ganaderia','Ganadería'],['satellite','Monitoreo Satelital'],['alarmas','Alarmas'],['sensores','Sensores'],['dispositivos','Dispositivos'],['tramas','Tramas'],['modbus','Equipos Modbus'],['configuracion','Configuración']];
+const MODULE_CATALOG=[['dashboard','Dashboard'],['fincas','Fincas'],['camaroneras','Camaroneras'],['bananeras','Bananeras'],['ganaderia','Ganadería'],['satellite','Monitoreo Satelital'],['notifications','Notificaciones'],['alarmas','Alarmas'],['sensores','Sensores'],['dispositivos','Dispositivos'],['tramas','Tramas'],['modbus','Equipos Modbus'],['configuracion','Configuración']];
 const keycloak=new Keycloak({url:AUTH_URL,realm:'tayu-platform',clientId:'tayu-dashboard'});window.__tayuKeycloak=keycloak;
 let organizations=[],dashboard={},currentOrgId=null,currentBundle=null,currentSiteId=null;
 const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
