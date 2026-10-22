@@ -308,19 +308,34 @@
 
   window.__tayuReloadBranding = loadBranding;
 
-  loadBranding().catch((error) => {
-    console.warn('TAYULABS organization branding:', error);
-    revokeLogoObjectUrls();
-    applyColorAndName({
-      display_name: 'TAYULABS',
-      primary_color: DEFAULT_COLOR,
-      has_custom_logo: false,
-      has_custom_logo_dark: false,
-      logo_url: null,
-      logo_dark_url: null,
-      updated_at: null,
-    });
-    applyLightLogoSrc(DEFAULT_LOGO_LIGHT, 'TAYULABS');
-    applyDarkLogoSrc(DEFAULT_LOGO_DARK);
-  });
+  let brandingRetryTimer = null;
+  let brandingRetryCount = 0;
+
+  function scheduleBrandingRetry(delay = 0) {
+    if (brandingRetryTimer) clearTimeout(brandingRetryTimer);
+    brandingRetryTimer = setTimeout(async () => {
+      try {
+        await loadBranding();
+        brandingRetryCount = 0;
+      } catch (error) {
+        brandingRetryCount += 1;
+        console.warn('TAYULABS organization branding:', error);
+        if (brandingRetryCount < 12) {
+          scheduleBrandingRetry(Math.min(3000, 300 + brandingRetryCount * 250));
+        }
+      }
+    }, delay);
+  }
+
+  // El loader premium reconstruye partes del DOM después de cargar los addons.
+  // Reaplicamos la marca cuando la sesión/permisos terminan de resolverse.
+  window.addEventListener('tayu:client-access-ready', () => scheduleBrandingRetry(0));
+  window.addEventListener('tayu:modules-applied', () => scheduleBrandingRetry(0));
+  window.addEventListener('load', () => scheduleBrandingRetry(0), { once: true });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => scheduleBrandingRetry(0), { once: true });
+  } else {
+    scheduleBrandingRetry(0);
+  }
 })();
