@@ -40,17 +40,6 @@
       body[data-tayu-role="viewer"] #assetModal {
         display: none !important;
       }
-
-      /* El frontend premium parte de una navegación completa. Hasta que la
-         política segura de módulos esté lista, solo Dashboard puede mostrarse. */
-      html:not([data-tayu-module-policy="1"]) .sidebar .nav button[data-view]:not([data-view="dashboard"]) {
-        display: none !important;
-      }
-
-      html[data-tayu-module-policy="1"] .sidebar .nav button[data-tayu-module-allowed="0"],
-      html[data-tayu-module-policy="1"] .view[data-tayu-module-allowed="0"] {
-        display: none !important;
-      }
     `;
     document.head.appendChild(style);
   }
@@ -78,22 +67,14 @@
     moduleMap = new Map();
 
     rows.forEach((row) => {
-      // /me puede entregar objetos {module,enabled}, mientras /modules
-      // históricamente entrega una lista de strings con solo los habilitados.
-      if (typeof row === 'string') {
-        const key = row.trim().toLowerCase();
-        if (key) moduleMap.set(key, true);
-        return;
-      }
-
       const key = String(row?.module || '').trim().toLowerCase();
       if (!key) return;
-      moduleMap.set(key, row?.enabled !== false);
+      moduleMap.set(key, Boolean(row?.enabled));
     });
 
-    // Si el backend entrega una lista explícita (aunque sea de strings),
-    // esa lista es la política de módulos de la organización.
-    hasModulePolicy = rows.length > 0 || moduleMap.size > 0;
+    // Compatibilidad: organizaciones antiguas sin filas de módulos
+    // conservan la experiencia completa hasta que Super Admin las configure.
+    hasModulePolicy = moduleMap.size > 0;
   }
 
   function isModuleEnabled(key) {
@@ -125,18 +106,10 @@
 
   function setElementModuleVisibility(element, enabled) {
     if (!element) return;
-
+    const display = enabled ? '' : 'none';
+    if (element.hidden === enabled) element.hidden = !enabled;
+    if (element.style.display !== display) element.style.display = display;
     element.dataset.tayuModuleAllowed = enabled ? '1' : '0';
-    element.hidden = !enabled;
-
-    // La capa visual premium usa display:flex!important en la navegación.
-    // Para que la política real de módulos siempre tenga prioridad, las
-    // vistas/botones bloqueados deben ocultarse también con prioridad inline.
-    if (enabled) {
-      element.style.removeProperty('display');
-    } else {
-      element.style.setProperty('display', 'none', 'important');
-    }
   }
 
   function firstEnabledModuleButton() {
