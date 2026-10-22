@@ -13,6 +13,7 @@
     ['configuracion', 'Configuración', 'Ajustes de la plataforma'],
     ['flotas', 'Flotas', 'Seguimiento y operación vehicular'],
     ['satellite', 'Monitoreo Satelital', 'Análisis NDVI, NDMI y evolución de cultivos'],
+    ['notifications', 'Notificaciones', 'Alertas multicanal, destinatarios, reglas e historial'],
   ];
 
   const SECTORS = [
