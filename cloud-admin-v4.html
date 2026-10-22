@@ -16,7 +16,7 @@
 <div class="boot"><div class="inner"><img class="logo" src="imagenes/AmeliaCloud-color.png" alt="Amelia Cloud"><div class="spinner"></div><div id="status" class="text">Cargando administración…</div></div></div>
 <script>
 (async()=>{
-  const VERSION='20261021-admin-modules2';
+  const VERSION='20261022-admin-notifications1';
   try{
     const response=await fetch(`cloud-admin-v2.html?v=${VERSION}`,{cache:'no-store'});
     if(!response.ok)throw new Error(`No se pudo cargar la consola (${response.status})`);
