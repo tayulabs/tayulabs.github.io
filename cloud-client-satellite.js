@@ -259,16 +259,27 @@
             '<div class="card" id="satelliteHistoryCard" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
-            '<div class="card"><h3 style="margin-top:0">Gestión de lotes</h3><div class="sat-form">' +
-              '<div class="full"><label>Finca / sitio</label><select id="satSiteSelect"><option value="">Cargando...</option></select></div>' +
-              '<div><label>Código</label><input id="satFieldCode" placeholder="SAT-001"></div>' +
-              '<div><label>Cultivo</label><input id="satCropType" placeholder="banano, cacao..."></div>' +
-              '<div class="full"><label>Nombre</label><input id="satFieldName" placeholder="Lote Norte"></div>' +
-              '<div><label>Área estimada (ha)</label><input id="satArea" type="number" readonly></div>' +
-              '<div><label>Frecuencia de análisis</label><select id="satInterval" title="Ventana usada al solicitar nuevos análisis satelitales"><option value="P5D">Cada 5 días</option><option value="P10D">Cada 10 días</option></select></div>' +
-              '<div class="full"><button class="btn" id="satSaveField" disabled>Guardar lote</button></div>' +
-            '</div><div id="satelliteStatus" class="sat-status">Esperando datos.</div></div>' +
-            '<div class="card" style="margin-top:18px"><h3 style="margin-top:0">Lotes de la finca</h3><div class="sat-list-tabs"><button class="btn ghost active" id="satActiveFieldsTab">Activos</button><button class="btn ghost" id="satArchivedFieldsTab">Archivados</button></div><div class="sat-batch-actions" id="satBatchActions"><button class="btn ghost" id="satSelectAllFields" disabled>Seleccionar todos</button><button class="btn" id="satBatchSync" disabled>Analizar seleccionados</button><button class="btn ghost" id="satFarmNdviShow" disabled>Ver NDVI seleccionados</button><button class="btn ghost" id="satFarmNdviHide" disabled>Ocultar NDVI finca</button></div><div id="satelliteFieldList" class="sat-list"><div class="hint">Sin lotes.</div></div></div>' +
+            '<div class="card sat-lot-card">' +
+              '<div class="sat-panel-head"><div><h3>Lote seleccionado</h3><p>Datos y acciones del lote con el que estás trabajando.</p></div></div>' +
+              '<div class="sat-form">' +
+                '<div class="full"><label>Finca / sitio</label><select id="satSiteSelect"><option value="">Cargando...</option></select></div>' +
+                '<div><label>Código</label><input id="satFieldCode" placeholder="SAT-001"></div>' +
+                '<div><label>Cultivo</label><input id="satCropType" placeholder="banano, cacao..."></div>' +
+                '<div class="full"><label>Nombre</label><input id="satFieldName" placeholder="Lote Norte"></div>' +
+                '<div><label>Área estimada (ha)</label><input id="satArea" type="number" readonly></div>' +
+                '<div><label>Frecuencia de análisis</label><select id="satInterval" title="Ventana usada al solicitar nuevos análisis satelitales"><option value="P5D">Cada 5 días</option><option value="P10D">Cada 10 días</option></select></div>' +
+                '<div class="full"><button class="btn ghost" id="satSaveField" disabled>Guardar cambios del lote</button></div>' +
+              '</div>' +
+              '<div class="sat-action-section"><div class="sat-action-label"><b>Acciones del lote</b><small>Datos y procesamiento</small></div><div class="sat-lot-actions"><button class="btn ghost" id="satRefresh">Actualizar datos</button><button class="btn" id="satSync" disabled>Analizar este lote</button></div></div>' +
+              '<div id="satelliteStatus" class="sat-status">Esperando datos.</div>' +
+            '</div>' +
+            '<div class="card sat-farm-fields-card" style="margin-top:18px">' +
+              '<div class="sat-panel-head"><div><h3>Lotes de la finca</h3><p>Selecciona uno para trabajar o varios para ejecutar acciones en grupo.</p></div></div>' +
+              '<div class="sat-list-tabs"><button class="btn ghost active" id="satActiveFieldsTab">Activos</button><button class="btn ghost" id="satArchivedFieldsTab">Archivados</button></div>' +
+              '<div class="sat-batch-shell" id="satBatchActions"><div class="sat-batch-head"><b>Acciones en grupo</b><span class="sat-batch-count" id="satBatchCount">0 seleccionados</span></div><div class="sat-batch-actions"><button class="btn ghost" id="satSelectAllFields" disabled>Seleccionar todos</button><button class="btn ghost" id="satFarmNdviShow" disabled>Ver NDVI</button><button class="btn" id="satBatchSync" disabled>Analizar seleccionados</button><button class="btn ghost" id="satFarmNdviHide" disabled>Ocultar NDVI</button></div></div>' +
+              '<div class="sat-field-list-label"><b>Listado de lotes</b><small>Toca un lote para abrirlo</small></div>' +
+              '<div id="satelliteFieldList" class="sat-list"><div class="hint">Sin lotes.</div></div>' +
+            '</div>' +
           '</div>' +
         '</div>';
 
@@ -1205,6 +1216,14 @@
     const selectAll = document.getElementById('satSelectAllFields');
     const batch = document.getElementById('satBatchSync');
     const farmMap = document.getElementById('satFarmNdviShow');
+    const count = document.getElementById('satBatchCount');
+
+    if (count) {
+      count.textContent =
+        checked.length === 1
+          ? '1 seleccionado'
+          : checked.length + ' seleccionados';
+    }
 
     if (selectAll) {
       selectAll.disabled = checks.length === 0;
@@ -1218,7 +1237,7 @@
       batch.disabled = checked.length === 0;
       batch.textContent =
         checked.length > 0
-          ? 'Analizar seleccionados (' + checked.length + ')'
+          ? 'Analizar ' + checked.length + ' lote' + (checked.length === 1 ? '' : 's')
           : 'Analizar seleccionados';
     }
 
@@ -1229,8 +1248,8 @@
 
       farmMap.textContent =
         checked.length > 0
-          ? 'Ver NDVI seleccionados (' + checked.length + ')'
-          : 'Ver NDVI seleccionados';
+          ? 'Ver NDVI (' + checked.length + ')'
+          : 'Ver NDVI';
     }
   }
 
