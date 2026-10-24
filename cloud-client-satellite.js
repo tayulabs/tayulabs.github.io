@@ -40,6 +40,9 @@
   let sceneRasterLayer = '';
   let sceneRasterBusy = false;
   let sceneRasterError = '';
+  let sceneContrastMode = 'fixed';
+  let sceneRasterColorRange = null;
+  let sceneRasterLocalMask = null;
 
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
@@ -249,6 +252,8 @@
       '#satellite .sat-scene-raster-gradient{height:12px;border-radius:5px;background:linear-gradient(to right,#c62828,#ef6c00,#fdd835,#7cb342,#1b5e20)}' +
       '#satellite .sat-scene-raster-gradient.radar{background:linear-gradient(to right,#22245a,#3171b5,#47c1db,#f1da68,#de5c2e)}' +
       '#satellite .sat-scene-raster-ticks{display:flex;justify-content:space-between;gap:3px;font-size:10px;color:var(--muted);margin-top:5px}' +
+      '#satellite .sat-scene-raster-guide{margin-top:7px;font-size:11px;line-height:1.45;color:var(--muted)}' +
+      '#satellite .sat-scene-raster-detail{font-size:11px;color:var(--muted);line-height:1.5;flex-basis:100%}' +
       '#satellite .sat-scenes-list{display:flex;gap:7px;overflow-x:auto;padding:3px 1px 9px}' +
       '#satellite .sat-scene-item{white-space:nowrap;border:1px solid var(--border);border-radius:10px;background:var(--panel2);color:var(--text);font-size:11px;font-weight:800;padding:8px 10px;cursor:pointer}' +
       '#satellite .sat-scene-item.active{outline:2px solid var(--brand);background:var(--panel)}' +
@@ -317,7 +322,7 @@
         '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
-            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satDateNavigator" class="sat-date-nav"><button class="sat-date-step" id="satDatePrev" type="button" disabled aria-label="Periodo satelital anterior">‹</button><button class="sat-date-current" id="satDateCurrent" type="button" disabled aria-haspopup="dialog" aria-expanded="false"><span>Periodo satelital</span><b id="satDateCurrentText">Selecciona un lote</b><small id="satDateRangeText">Sin periodo disponible</small></button><button class="sat-date-step" id="satDateNext" type="button" disabled aria-label="Periodo satelital siguiente">›</button><div id="satDateQuality" class="sat-date-quality">Sin análisis</div><div id="satCalendarPopover" class="sat-calendar-popover" role="dialog" aria-label="Fechas satelitales disponibles"><div class="sat-calendar-head"><button id="satCalendarPrevMonth" type="button" aria-label="Mes anterior">‹</button><b id="satCalendarMonth">—</b><button id="satCalendarNextMonth" type="button" aria-label="Mes siguiente">›</button></div><div class="sat-calendar-weekdays"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div><div id="satCalendarGrid" class="sat-calendar-grid"></div><div class="sat-calendar-legend"><span><i class="sat-calendar-dot good"></i>Disponible</span><span><i class="sat-calendar-dot limited"></i>Calidad limitada</span><span><i class="sat-calendar-dot poor"></i>No recomendable</span><span>Gris: sin raster utilizable</span></div><div class="sat-calendar-legend" style="border-top:0;margin-top:5px;padding-top:4px"><span><i class="sat-calendar-dot good"></i>S2 real</span><span style="color:#2e67b0">■ S1 radar</span><span>Fechas reales: consultar abajo</span></div></div></div><div id="satScenesCard" class="sat-scenes-card" aria-live="polite"><div class="sat-scenes-header"><strong>Adquisiciones reales · Sentinel-1 y Sentinel-2</strong><div style="display:flex;gap:8px;align-items:center"><small id="satScenesCount">Selecciona un lote</small><button class="sat-scenes-reload" id="satScenesReload" type="button" disabled aria-label="Volver a consultar las adquisiciones">↻ Actualizar</button></div></div><div id="satScenesList" class="sat-scenes-list"></div><div id="satScenesDetails" class="sat-scene-details">Aún no hay lote seleccionado.</div><div id="satSceneRasterToolbar" class="sat-scene-raster-toolbar" style="display:none"><label for="satSceneRasterLayer">Visualizar en mapa</label><select id="satSceneRasterLayer" aria-label="Capa de la adquisición"></select><button type="button" id="satSceneRasterLoad">Ver colores</button><button type="button" id="satSceneRasterHistoric">Volver a periodo agregado</button><div id="satSceneRasterTitle" class="sat-scene-raster-title">Sin mapa seleccionado</div></div><div id="satSceneRasterLegend" class="sat-scene-raster-legend"><div id="satSceneRasterGradient" class="sat-scene-raster-gradient"></div><div id="satSceneRasterTicks" class="sat-scene-raster-ticks"></div></div><p class="sat-scene-notice">Datos de prueba: mosaicos por día / órbita, no escenas SAFE individuales. Las fechas S1 no generan NDVI. El mapa y la comparación siguen utilizando periodos agregados.</p></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareControl" class="sat-compare-control"><div class="sat-compare-control-head"><span>ANTES</span><span>DESPUÉS</span></div><input id="satCompareRevealRange" type="range" min="0" max="100" step="1" value="50" aria-label="Revelar Antes y Después"></div></div><div class="sat-toolbar"><div class="sat-tool-group"><span class="sat-tool-group-label">Edición</span><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><div class="sat-tool-group"><span class="sat-tool-group-label">Visualización</span><button class="btn ghost" id="satSatelliteViewButton" type="button">Satélite</button><button class="btn ghost" id="satNdviMapButton" disabled>NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Comparar fechas</button><button class="btn ghost" id="satHistoryJump" type="button">Historial</button></div></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-head"><div class="sat-compare-period"><span>Antes</span><b id="satCompareBeforeText">Sin periodo</b><small id="satCompareBeforeQuality">—</small></div><div class="sat-compare-period"><span>Después</span><b id="satCompareAfterText">Sin periodo</b><small id="satCompareAfterQuality">—</small></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><div class="sat-compare-timeline"><div class="sat-compare-track"></div><div class="sat-compare-selected" id="satCompareSelected"></div><div class="sat-compare-ticks" id="satCompareTicks"></div><input class="sat-compare-range before" id="satCompareBeforeRange" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Periodo Antes"><input class="sat-compare-range after" id="satCompareAfterRange" type="range" min="0" max="1" step="1" value="1" disabled aria-label="Periodo Después"><div class="sat-compare-axis"><span id="satCompareAxisStart">—</span><span id="satCompareAxisEnd">—</span></div></div><p class="hint" style="margin:8px 0 0">Mueve los dos puntos sobre la línea de tiempo y pulsa Comparar. El deslizador inferior recorre el raster del lote: su posición se conserva aunque muevas o acerques el mapa.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
+            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satDateNavigator" class="sat-date-nav"><button class="sat-date-step" id="satDatePrev" type="button" disabled aria-label="Periodo satelital anterior">‹</button><button class="sat-date-current" id="satDateCurrent" type="button" disabled aria-haspopup="dialog" aria-expanded="false"><span>Periodo satelital</span><b id="satDateCurrentText">Selecciona un lote</b><small id="satDateRangeText">Sin periodo disponible</small></button><button class="sat-date-step" id="satDateNext" type="button" disabled aria-label="Periodo satelital siguiente">›</button><div id="satDateQuality" class="sat-date-quality">Sin análisis</div><div id="satCalendarPopover" class="sat-calendar-popover" role="dialog" aria-label="Fechas satelitales disponibles"><div class="sat-calendar-head"><button id="satCalendarPrevMonth" type="button" aria-label="Mes anterior">‹</button><b id="satCalendarMonth">—</b><button id="satCalendarNextMonth" type="button" aria-label="Mes siguiente">›</button></div><div class="sat-calendar-weekdays"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div><div id="satCalendarGrid" class="sat-calendar-grid"></div><div class="sat-calendar-legend"><span><i class="sat-calendar-dot good"></i>Disponible</span><span><i class="sat-calendar-dot limited"></i>Calidad limitada</span><span><i class="sat-calendar-dot poor"></i>No recomendable</span><span>Gris: sin raster utilizable</span></div><div class="sat-calendar-legend" style="border-top:0;margin-top:5px;padding-top:4px"><span><i class="sat-calendar-dot good"></i>S2 real</span><span style="color:#2e67b0">■ S1 radar</span><span>Fechas reales: consultar abajo</span></div></div></div><div id="satScenesCard" class="sat-scenes-card" aria-live="polite"><div class="sat-scenes-header"><strong>Adquisiciones reales · Sentinel-1 y Sentinel-2</strong><div style="display:flex;gap:8px;align-items:center"><small id="satScenesCount">Selecciona un lote</small><button class="sat-scenes-reload" id="satScenesReload" type="button" disabled aria-label="Volver a consultar las adquisiciones">↻ Actualizar</button></div></div><div id="satScenesList" class="sat-scenes-list"></div><div id="satScenesDetails" class="sat-scene-details">Aún no hay lote seleccionado.</div><div id="satSceneRasterToolbar" class="sat-scene-raster-toolbar" style="display:none"><label for="satSceneRasterLayer">Índice / capa</label><select id="satSceneRasterLayer" aria-label="Capa de la adquisición"></select><label for="satSceneContrast">Contraste</label><select id="satSceneContrast" aria-label="Contraste del mapa"><option value="fixed">Fijo (comparar fechas)</option><option value="local">Local (detalle del lote)</option></select><button type="button" id="satSceneRasterLoad">Ver colores</button><button type="button" id="satSceneRasterHistoric">Volver a periodo agregado</button><div id="satSceneRasterTitle" class="sat-scene-raster-title">Sin mapa seleccionado</div></div><div id="satSceneRasterLegend" class="sat-scene-raster-legend"><div id="satSceneRasterGradient" class="sat-scene-raster-gradient"></div><div id="satSceneRasterTicks" class="sat-scene-raster-ticks"></div><div id="satSceneRasterGuide" class="sat-scene-raster-guide">Los colores expresan valores relativos de la capa, no un diagnóstico del cultivo.</div></div><p class="sat-scene-notice">Datos de prueba: mosaicos por día / órbita, no escenas SAFE individuales. Las fechas S1 no generan NDVI. El mapa y la comparación siguen utilizando periodos agregados.</p></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareControl" class="sat-compare-control"><div class="sat-compare-control-head"><span>ANTES</span><span>DESPUÉS</span></div><input id="satCompareRevealRange" type="range" min="0" max="100" step="1" value="50" aria-label="Revelar Antes y Después"></div></div><div class="sat-toolbar"><div class="sat-tool-group"><span class="sat-tool-group-label">Edición</span><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><div class="sat-tool-group"><span class="sat-tool-group-label">Visualización</span><button class="btn ghost" id="satSatelliteViewButton" type="button">Satélite</button><button class="btn ghost" id="satNdviMapButton" disabled>NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Comparar fechas</button><button class="btn ghost" id="satHistoryJump" type="button">Historial</button></div></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-head"><div class="sat-compare-period"><span>Antes</span><b id="satCompareBeforeText">Sin periodo</b><small id="satCompareBeforeQuality">—</small></div><div class="sat-compare-period"><span>Después</span><b id="satCompareAfterText">Sin periodo</b><small id="satCompareAfterQuality">—</small></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><div class="sat-compare-timeline"><div class="sat-compare-track"></div><div class="sat-compare-selected" id="satCompareSelected"></div><div class="sat-compare-ticks" id="satCompareTicks"></div><input class="sat-compare-range before" id="satCompareBeforeRange" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Periodo Antes"><input class="sat-compare-range after" id="satCompareAfterRange" type="range" min="0" max="1" step="1" value="1" disabled aria-label="Periodo Después"><div class="sat-compare-axis"><span id="satCompareAxisStart">—</span><span id="satCompareAxisEnd">—</span></div></div><p class="hint" style="margin:8px 0 0">Mueve los dos puntos sobre la línea de tiempo y pulsa Comparar. El deslizador inferior recorre el raster del lote: su posición se conserva aunque muevas o acerques el mapa.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
             '<div class="card" id="satelliteHistoryCard" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
@@ -681,6 +686,8 @@
     sceneRasterSeq++;
     try { sceneRasterOverlay?.remove(); } catch (_) {}
     sceneRasterOverlay = null;
+    sceneRasterColorRange = null;
+    sceneRasterLocalMask = null;
     document.getElementById('satSceneRasterLegend')?.classList.remove('open');
   }
 
@@ -697,6 +704,7 @@
   function renderSceneRasterToolbar(row) {
     const bar = document.getElementById('satSceneRasterToolbar');
     const layerSelect = document.getElementById('satSceneRasterLayer');
+    const contrastSelect = document.getElementById('satSceneContrast');
     const title = document.getElementById('satSceneRasterTitle');
     const load = document.getElementById('satSceneRasterLoad');
     const legend = document.getElementById('satSceneRasterLegend');
@@ -716,23 +724,44 @@
       (sceneRasterRanges[key]?.[0] || key.toUpperCase()) + '</option>'
     ).join('');
     layerSelect.disabled = !usable || sceneRasterBusy;
+    if (contrastSelect) {
+      contrastSelect.value = sceneContrastMode;
+      contrastSelect.disabled = !usable || sceneRasterBusy;
+    }
     load.disabled = !usable || sceneRasterBusy;
     title.textContent = row.quality === 'no_data'
       ? 'Sin píxeles ópticos utilizables: no se mostrará una imagen de vigor.'
       : sceneRasterBusy ? 'Cargando imagen de la adquisición seleccionada…'
       : sceneRasterError ? 'Mapa no disponible: ' + sceneRasterError
       : sceneRasterOverlay ? 'Mapa real: ' + (optical ? 'S2' : 'S1') +
-        ' · ' + shortDate(row.acquired_at) + ' · ' + (sceneRasterRanges[sceneRasterLayer]?.[0] || sceneRasterLayer)
+        ' · ' + shortDate(row.acquired_at) + ' · ' + (sceneRasterRanges[sceneRasterLayer]?.[0] || sceneRasterLayer) +
+        ' · Contraste ' + (sceneContrastMode === 'local' ? 'local P05–P95' : 'fijo')
       : 'Pulsa «Ver colores» para cargar la capa de esta adquisición.';
     if (!sceneRasterOverlay || !usable) {
       legend.classList.remove('open');
       return;
     }
-    const values = sceneRasterRanges[sceneRasterLayer]?.[1] || [];
+    const values = Array.isArray(sceneRasterColorRange) && sceneRasterColorRange.length === 2 &&
+      sceneRasterColorRange.every(x => Number.isFinite(Number(x)))
+      ? Array.from({length:5},(_,i) => Number(sceneRasterColorRange[0]) +
+        (Number(sceneRasterColorRange[1])-Number(sceneRasterColorRange[0]))*i/4)
+      : sceneRasterRanges[sceneRasterLayer]?.[1] || [];
     const gradient = document.getElementById('satSceneRasterGradient');
     const ticks = document.getElementById('satSceneRasterTicks');
+    const guide = document.getElementById('satSceneRasterGuide');
     gradient?.classList.toggle('radar', !optical);
     if (ticks) ticks.innerHTML = values.map(value => '<span>' + Number(value.toFixed(2)) + '</span>').join('');
+    if (guide) {
+      const direction = optical ? 'Menor índice ← Valores del índice → Mayor índice' :
+        'Menor retorno radar ← Intensidad/señal → Mayor retorno radar';
+      const note = sceneContrastMode === 'local'
+        ? optical
+          ? 'Contraste local P05–P95 del lote; se excluyen los píxeles no clasificados como vegetación (SCL ≠ 4). Una vivienda mal clasificada podría permanecer.'
+          : 'Contraste local P05–P95 radar. No excluye automáticamente construcciones: la señal no representa salud del cultivo.'
+        : 'Contraste fijo con escala constante para comparar adquisiciones de la misma capa.';
+      guide.textContent = direction + '. ' + note +
+        ' Los colores NO diagnostican enfermedades.';
+    }
     legend.classList.add('open');
   }
 
@@ -761,16 +790,20 @@
     renderSceneRasterToolbar(row);
     try {
       const result = await getApi('/satellite/fields/' + encodeURIComponent(fieldId) +
-        '/scenes/' + encodeURIComponent(row.id) + '/map?layer=' + encodeURIComponent(layer));
+        '/scenes/' + encodeURIComponent(row.id) + '/map?layer=' + encodeURIComponent(layer) +
+        '&contrast=' + encodeURIComponent(sceneContrastMode));
       if (seq !== sceneRasterSeq || fieldId !== selectedFieldId || sceneSelectedIndex !== index) return;
       const bounds = mapBounds(result);
+      sceneRasterColorRange = Array.isArray(result.color_range) ? result.color_range : null;
+      sceneRasterLocalMask = result.local_mask_method || null;
       if (!map) initMap();
       sceneRasterOverlay = L.imageOverlay(result.image_data_url,bounds,{
         opacity:0.84,interactive:false,crossOrigin:false
       }).addTo(map);
       try { polygon?.bringToFront?.(); } catch (_) {}
       try { map.fitBounds(bounds,{padding:[24,24]}); } catch (_) {}
-      setStatus('Mapa por adquisición real: ' + shortDate(row.acquired_at) + ' · ' + layer.toUpperCase(), 'ok');
+      setStatus('Mapa por adquisición: ' + shortDate(row.acquired_at) + ' · ' +
+        layer.toUpperCase() + ' · contraste ' + (sceneContrastMode === 'local' ? 'local' : 'fijo'), 'ok');
     } catch(error) {
       if (seq !== sceneRasterSeq || fieldId !== selectedFieldId || sceneSelectedIndex !== index) return;
       sceneRasterError = error?.message || 'La imagen no se pudo cargar';
@@ -3018,6 +3051,14 @@
     document.getElementById('satSceneRasterLayer')?.addEventListener('change',event=>{
       sceneRasterLayer = event.target.value;
       if (sceneRows[sceneSelectedIndex]) showSceneRaster(sceneSelectedIndex,sceneRasterLayer).catch(fail);
+    });
+    document.getElementById('satSceneContrast')?.addEventListener('change',event=>{
+      const mode = event.target.value;
+      if (mode !== 'fixed' && mode !== 'local') return;
+      sceneContrastMode = mode;
+      if (sceneRows[sceneSelectedIndex]) {
+        showSceneRaster(sceneSelectedIndex,sceneRasterLayer).catch(fail);
+      }
     });
     document.getElementById('satSceneRasterLoad')?.addEventListener('click',()=>{
       if (sceneRows[sceneSelectedIndex]) showSceneRaster(sceneSelectedIndex,sceneRasterLayer).catch(fail);
