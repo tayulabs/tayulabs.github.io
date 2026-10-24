@@ -3342,8 +3342,32 @@
     ['¡Ya conoces Amelia!','#satTutorialOpen','Ahora puedes dibujar regiones, analizar lotes, interpretar índices, ver mapas y excluir infraestructura. Usa el botón Tutorial siempre que necesites repetir la guía.']
   ];
   let satTourIndex = -1;
+  let satTourOriginalAreaOpen = null;
+  const satTourFallbacks = {
+    '#satFieldCode':'#satDrawStart',
+    '#satSaveField':'#satDrawFinish',
+    '#satSceneRasterLayer':'#satScenesCard',
+    '#satSceneContrast':'#satScenesCard',
+    '#satSceneRasterLoad':'#satScenesCard',
+    '#satSceneRasterLegend':'#satScenesCard',
+    '#satSceneRasterHistoric':'#satScenesCard',
+    '#satAreaDraw':'#satAreaPanel',
+    '#satAreaRecalc':'#satAreaPanel'
+  };
+  function satTourVisibleTarget(selector) {
+    const candidate=document.querySelector(selector);
+    if(candidate?.getBoundingClientRect().height>0 &&
+       getComputedStyle(candidate).visibility!=='hidden')return candidate;
+    const backup=document.querySelector(satTourFallbacks[selector]||'#satTutorialOpen');
+    return backup?.getBoundingClientRect().height>0?backup:null;
+  }
   function satTourClose() {
     satTourIndex = -1;
+    if(satTourOriginalAreaOpen!==null){
+      const area=document.getElementById('satAreaPanel');
+      if(area)area.open=satTourOriginalAreaOpen;
+      satTourOriginalAreaOpen=null;
+    }
     document.getElementById('satTourRoot')?.remove();
     document.removeEventListener('keydown',satTourKey,true);
     window.removeEventListener('resize',satTourPlace,true);
@@ -3359,7 +3383,7 @@
     if(satTourIndex<0)return;
     const root=document.getElementById('satTourRoot');
     const panel=root?.querySelector('.sat-tour-panel'),spot=root?.querySelector('.sat-tour-spotlight');
-    const target=document.querySelector(satTourSteps[satTourIndex]?.[1]);
+    const target=satTourVisibleTarget(satTourSteps[satTourIndex]?.[1]);
     if(!panel||!spot)return;
     const r=target?.getBoundingClientRect();
     const vis=!!r&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight;
@@ -3380,8 +3404,12 @@
     if(n>=satTourSteps.length){satTourClose();return;}
     satTourIndex=Math.max(0,n);
     const [title,selector,description]=satTourSteps[satTourIndex];
-    const target=document.querySelector(selector);
-    if(target?.getBoundingClientRect().height>0)target.scrollIntoView({behavior:'instant',block:'center'});
+    if(selector.startsWith('#satArea') && selector!=='#satAreaPanel'){
+      const zonePanel=document.getElementById('satAreaPanel');
+      if(zonePanel)zonePanel.open=true;
+    }
+    const target=satTourVisibleTarget(selector);
+    if(target)target.scrollIntoView({behavior:'instant',block:'center'});
     const panel=document.querySelector('#satTourRoot .sat-tour-panel');if(!panel)return;
     panel.innerHTML='<div class="sat-tour-progress">PASO '+(satTourIndex+1)+' / '+satTourSteps.length+'</div>'+
       '<h3>'+esc(title)+'</h3><p>'+esc(description)+'</p><div class="sat-tour-actions">'+
@@ -3391,6 +3419,7 @@
   }
   function satTourStart() {
     satTourClose();
+    satTourOriginalAreaOpen=document.getElementById('satAreaPanel')?.open ?? null;
     const root=document.createElement('div');root.id='satTourRoot';root.className='sat-tour-root';
     root.innerHTML='<div class="sat-tour-scrim"></div><div class="sat-tour-spotlight"></div><div class="sat-tour-panel" role="dialog" aria-modal="true" aria-label="Tutorial de Amelia Satellite"></div>';
     document.body.appendChild(root);
