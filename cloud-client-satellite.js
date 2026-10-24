@@ -136,32 +136,40 @@
       '#satellite .sat-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}' +
       '#satellite .sat-panel-head h3{margin:0;font-size:20px}' +
       '#satellite .sat-panel-head p{margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.4}' +
-      '#satellite .sat-action-section{margin-top:14px;padding:13px;border:1px solid var(--border);border-radius:16px;background:var(--panel2)}' +
-      '#satellite .sat-action-label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}' +
-      '#satellite .sat-action-label b{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}' +
-      '#satellite .sat-action-label small{color:var(--muted);font-size:11px}' +
-      '#satellite .sat-lot-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:8px}' +
-      '#satellite .sat-lot-actions .btn{min-height:46px;border-radius:14px;font-weight:900}' +
-      '#satellite .sat-lot-actions #satSync{box-shadow:0 8px 20px rgba(85,198,43,.18)}' +
-      '#satellite .sat-list-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0;padding:4px;border:1px solid var(--border);border-radius:14px;background:var(--panel2)}' +
-      '#satellite .sat-list-tabs .btn{border:0!important;border-radius:10px;min-height:38px;background:transparent;box-shadow:none}' +
-      '#satellite .sat-list-tabs .active{background:var(--panel);color:var(--text);box-shadow:0 2px 9px rgba(15,23,42,.08)}' +
-      '#satellite .sat-batch-shell{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:16px;background:var(--panel2)}' +
-      '#satellite .sat-batch-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}' +
-      '#satellite .sat-batch-head b{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}' +
-      '#satellite .sat-batch-count{display:inline-flex;align-items:center;justify-content:center;min-width:86px;padding:5px 9px;border-radius:999px;background:var(--panel);border:1px solid var(--border);font-size:11px;font-weight:900;color:var(--muted)}' +
-      '#satellite .sat-batch-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}' +
-      '#satellite .sat-batch-actions .btn{min-height:42px;border-radius:12px;padding:9px 10px;white-space:normal;line-height:1.2;font-size:12px}' +
-      '#satellite .sat-batch-actions #satBatchSync{grid-column:1/-1;min-height:46px}' +
-      '#satellite .sat-batch-actions #satFarmNdviHide{font-size:11px}' +
-      '#satellite .sat-field-list-label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 2px 8px}' +
+      '#satellite .sat-lot-card .sat-form{gap:10px}' +
+      '#satellite #satSaveField{justify-self:start;width:auto;min-height:36px;padding:7px 12px;border:0;background:transparent;color:var(--muted);box-shadow:none}' +
+      '#satellite #satSaveField:not(:disabled){color:var(--brand);background:rgba(85,198,43,.08)}' +
+      '#satellite .sat-action-section{margin-top:10px;padding-top:12px;border-top:1px solid var(--border)}' +
+      '#satellite .sat-action-label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}' +
+      '#satellite .sat-action-label b{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}' +
+      '#satellite .sat-action-label small{color:var(--muted);font-size:10px}' +
+      '#satellite .sat-lot-actions{display:flex;gap:8px;align-items:center}' +
+      '#satellite .sat-lot-actions .btn{min-height:40px;border-radius:11px;font-weight:900;padding:8px 13px}' +
+      '#satellite .sat-lot-actions #satRefresh{flex:0 0 auto;background:transparent}' +
+      '#satellite .sat-lot-actions #satSync{flex:1 1 auto;box-shadow:none}' +
+      '#satellite .sat-list-tabs{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:0;padding:3px;border:1px solid var(--border);border-radius:12px;background:var(--panel2)}' +
+      '#satellite .sat-list-tabs .btn{border:0!important;border-radius:9px;min-height:36px;background:transparent;box-shadow:none;padding:7px 10px}' +
+      '#satellite .sat-list-tabs .active{background:var(--panel);color:var(--text);box-shadow:0 1px 5px rgba(15,23,42,.08)}' +
+      '#satellite .sat-batch-shell{display:flex;flex-direction:column;margin-top:10px;padding:0;background:transparent}' +
+      '#satellite .sat-batch-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 8px}' +
+      '#satellite .sat-batch-head b{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}' +
+      '#satellite .sat-batch-head-right{display:flex;align-items:center;gap:8px}' +
+      '#satellite .sat-batch-count{font-size:11px;font-weight:850;color:var(--muted);white-space:nowrap}' +
+      '#satellite .sat-link-action{border:0!important;background:transparent!important;box-shadow:none!important;padding:3px 0!important;min-height:auto!important;color:var(--brand)!important;font-size:11px!important;font-weight:900!important;cursor:pointer}' +
+      '#satellite .sat-link-action:disabled{opacity:.45;cursor:not-allowed}' +
+      '#satellite .sat-batch-actions{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,.85fr);gap:8px;margin:0}' +
+      '#satellite .sat-batch-actions .btn{min-height:40px;border-radius:11px;padding:8px 10px;white-space:nowrap;line-height:1.2;font-size:12px}' +
+      '#satellite .sat-batch-actions #satBatchSync{grid-column:auto;grid-row:auto}' +
+      '#satellite .sat-batch-actions #satFarmNdviShow{background:transparent}' +
+      '#satellite .sat-batch-actions #satFarmNdviHide{grid-column:1/-1;justify-self:start;min-height:auto;border:0;background:transparent;padding:4px 0;color:var(--muted);font-size:11px;box-shadow:none}' +
+      '#satellite .sat-field-list-label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 2px 8px;padding-top:12px;border-top:1px solid var(--border)}' +
       '#satellite .sat-field-list-label b{font-size:13px}' +
       '#satellite .sat-field-list-label small{font-size:11px;color:var(--muted)}' +
-      '#satellite .sat-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:stretch}' +
-      '#satellite .sat-tool-group{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:7px;border:1px solid var(--border);border-radius:15px;background:var(--panel2)}' +
-      '#satellite .sat-tool-group-label{padding:0 4px;font-size:10px;font-weight:950;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}' +
-      '#satellite .sat-tool-group .btn{min-height:38px;border-radius:11px;padding:8px 12px}' +
-      '#satellite .sat-status{margin-top:10px;padding:9px 11px;border-radius:12px;background:var(--panel2);font-size:12px;color:var(--muted);font-weight:750;line-height:1.35}' +
+      '#satellite .sat-toolbar{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;align-items:flex-start}' +
+      '#satellite .sat-tool-group{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:0;background:transparent;border:0}' +
+      '#satellite .sat-tool-group-label{padding:0 3px 0 0;font-size:10px;font-weight:950;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}' +
+      '#satellite .sat-tool-group .btn{min-height:36px;border-radius:10px;padding:7px 12px;box-shadow:none}' +
+      '#satellite .sat-status{margin-top:9px;padding:7px 0 0;border-top:1px solid var(--border);border-radius:0;background:transparent;font-size:11px;color:var(--muted);font-weight:750;line-height:1.35}' +
       '#satellite .sat-status.ok{color:var(--brand)}#satellite .sat-status.error{color:var(--danger)}' +
       '#satellite .sat-badge{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:850}' +
       '#satellite .sat-badge.good{background:rgba(85,198,43,.14);color:var(--brand)}' +
@@ -203,7 +211,7 @@
       '#satellite .sat-calendar-dot{width:8px;height:8px;border-radius:50%;display:inline-block}' +
       '#satellite .sat-calendar-dot.good{background:#55c62b}.sat-calendar-dot.limited{background:#d97706}.sat-calendar-dot.poor{background:#b42318}' +
       '@media(max-width:1100px){#satellite .sat-grid{grid-template-columns:1fr}#satellite .sat-kpis{grid-template-columns:1fr 1fr}#satellite .sat-insights{grid-template-columns:1fr}}' +
-      '@media(max-width:700px){#satellite .sat-form,#satellite .sat-kpis{grid-template-columns:1fr}#satellite .sat-map{height:420px}#satellite .sat-compare-head{grid-template-columns:1fr}#satellite .sat-compare-timeline{margin-left:6px;margin-right:6px}#satellite .sat-date-nav{grid-template-columns:44px minmax(0,1fr) 44px}#satellite .sat-date-quality{grid-column:1/-1}#satellite .sat-calendar-popover{left:0;width:100%}#satellite .sat-lot-actions,#satellite .sat-batch-actions{grid-template-columns:1fr}#satellite .sat-batch-actions #satBatchSync{grid-column:auto}#satellite .sat-tool-group{width:100%}#satellite .sat-tool-group-label{width:100%}}';
+      '@media(max-width:700px){#satellite .sat-form,#satellite .sat-kpis{grid-template-columns:1fr}#satellite .sat-map{height:420px}#satellite .sat-compare-head{grid-template-columns:1fr}#satellite .sat-compare-timeline{margin-left:6px;margin-right:6px}#satellite .sat-date-nav{grid-template-columns:44px minmax(0,1fr) 44px}#satellite .sat-date-quality{grid-column:1/-1}#satellite .sat-calendar-popover{left:0;width:100%}#satellite .sat-lot-actions{flex-direction:column;align-items:stretch}#satellite .sat-batch-actions{grid-template-columns:1fr}#satellite .sat-batch-actions #satBatchSync{grid-column:auto}#satellite .sat-tool-group{width:100%}#satellite .sat-tool-group-label{width:100%}}';
     document.head.appendChild(el);
   }
 
@@ -268,15 +276,15 @@
                 '<div class="full"><label>Nombre</label><input id="satFieldName" placeholder="Lote Norte"></div>' +
                 '<div><label>Área estimada (ha)</label><input id="satArea" type="number" readonly></div>' +
                 '<div><label>Frecuencia de análisis</label><select id="satInterval" title="Ventana usada al solicitar nuevos análisis satelitales"><option value="P5D">Cada 5 días</option><option value="P10D">Cada 10 días</option></select></div>' +
-                '<div class="full"><button class="btn ghost" id="satSaveField" disabled>Guardar cambios del lote</button></div>' +
+                '<div class="full"><button class="btn ghost" id="satSaveField" disabled>Guardar cambios</button></div>' +
               '</div>' +
-              '<div class="sat-action-section"><div class="sat-action-label"><b>Acciones del lote</b><small>Datos y procesamiento</small></div><div class="sat-lot-actions"><button class="btn ghost" id="satRefresh">Actualizar datos</button><button class="btn" id="satSync" disabled>Analizar este lote</button></div></div>' +
+              '<div class="sat-action-section"><div class="sat-action-label"><b>Acciones del lote</b><small>Datos y procesamiento</small></div><div class="sat-lot-actions"><button class="btn ghost" id="satRefresh">↻ Actualizar</button><button class="btn" id="satSync" disabled>Analizar lote</button></div></div>' +
               '<div id="satelliteStatus" class="sat-status">Esperando datos.</div>' +
             '</div>' +
             '<div class="card sat-farm-fields-card" style="margin-top:18px">' +
               '<div class="sat-panel-head"><div><h3>Lotes de la finca</h3><p>Selecciona uno para trabajar o varios para ejecutar acciones en grupo.</p></div></div>' +
               '<div class="sat-list-tabs"><button class="btn ghost active" id="satActiveFieldsTab">Activos</button><button class="btn ghost" id="satArchivedFieldsTab">Archivados</button></div>' +
-              '<div class="sat-batch-shell" id="satBatchActions"><div class="sat-batch-head"><b>Acciones en grupo</b><span class="sat-batch-count" id="satBatchCount">0 seleccionados</span></div><div class="sat-batch-actions"><button class="btn ghost" id="satSelectAllFields" disabled>Seleccionar todos</button><button class="btn ghost" id="satFarmNdviShow" disabled>Ver NDVI</button><button class="btn" id="satBatchSync" disabled>Analizar seleccionados</button><button class="btn ghost" id="satFarmNdviHide" disabled>Ocultar NDVI</button></div></div>' +
+              '<div class="sat-batch-shell" id="satBatchActions"><div class="sat-batch-head"><b>Acciones en grupo</b><div class="sat-batch-head-right"><span class="sat-batch-count" id="satBatchCount">0 seleccionados</span><button class="sat-link-action" id="satSelectAllFields" disabled>Seleccionar todos</button></div></div><div class="sat-batch-actions"><button class="btn" id="satBatchSync" disabled>Analizar seleccionados</button><button class="btn ghost" id="satFarmNdviShow" disabled>Ver NDVI</button><button class="btn ghost" id="satFarmNdviHide" disabled>Ocultar NDVI</button></div></div>' +
               '<div class="sat-field-list-label"><b>Listado de lotes</b><small>Toca un lote para abrirlo</small></div>' +
               '<div id="satelliteFieldList" class="sat-list"><div class="hint">Sin lotes.</div></div>' +
             '</div>' +
