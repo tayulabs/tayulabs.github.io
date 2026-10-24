@@ -866,6 +866,7 @@
       sceneRasterOverlay = L.imageOverlay(result.image_data_url,bounds,{
         opacity:0.84,interactive:false,crossOrigin:false
       }).addTo(map);
+      satZoneLayers.forEach(layer=>{try{layer.bringToFront();}catch(_){}});
       try { polygon?.bringToFront?.(); } catch (_) {}
       try { map.fitBounds(bounds,{padding:[24,24]}); } catch (_) {}
       setStatus('Mapa por adquisición: ' + shortDate(row.acquired_at) + ' · ' +
@@ -981,6 +982,8 @@
     satZoneRequest++;satAreaRun++;satZoneMode=false;satZoneDraft=[];satZones=[];
     satZoneDraftLayer?.remove();satZoneDraftLayer=null;
     satZoneLayers.forEach(l=>l.remove());satZoneLayers=[];
+    const box=document.getElementById('satAreaResult');
+    if(box)box.textContent='Selecciona una adquisición real para analizar hectáreas.';
     satZoneUI();
   }
   function satZoneDrawPreview(){
@@ -3314,6 +3317,7 @@
     ['Mapa interactivo','#satelliteMap','Haz clic en una zona coloreada para consultar el valor numérico por píxel y su posición aproximada. Casas, caminos o píxeles inválidos pueden figurar sin valor.'],
     ['Leer la leyenda','#satSceneRasterLegend','La escala tiene límites numéricos. Un solo color no diagnostica problemas: puede influir el suelo, infraestructura o la cobertura.'],
     ['Volver al historial','#satSceneRasterHistoric','Regresa al mapa NDVI de periodos agregados.'],
+    ['Exclusiones y hectáreas','#satAreaPanel','Expande el panel para dibujar la casa o caminos que deseas excluir. Calcula cuántas hectáreas válidas caen en el cuartil inferior, central y superior del índice. Los colores bajos no implican enfermedades. Solo los administradores pueden guardar zonas.'],
     ['Evolución satelital','#satelliteHistoryCard','Este gráfico usa periodos históricos NDVI/NDMI, no fechas individuales. Las tendencias fiables exigen varias observaciones válidas.'],
     ['Comparar fechas','#satCompareToggle','Antes y Después usa periodos agregados. En S1 deben compararse la misma dirección y órbita para estudiar variaciones.'],
     ['Terminaste el recorrido','#satTutorialOpen','Ahora prueba S2 NDVI, cambia el contraste y pulsa varios píxeles. La interpretación debe contrastarse con observaciones en campo.']
