@@ -2226,7 +2226,8 @@
       try { map.fitBounds(polygon.getBounds(),{padding:[24,24]}); } catch (_) {}
     }
     document.getElementById('satKpiArea').textContent = Number(field?.area_hectares||0).toFixed(2);
-    await Promise.allSettled([loadObservations(id),satZonesFetch(id)]);
+    const [historicalResult] = await Promise.allSettled([loadObservations(id),satZonesFetch(id)]);
+    if (historicalResult.status === 'rejected') throw historicalResult.reason;
     if (datePeriods.length) {
       try { await loadNdviOverlay({silent:true}); }
       catch (error) { console.warn('Amelia Satellite auto NDVI:', error); }
