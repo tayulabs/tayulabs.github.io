@@ -25,6 +25,7 @@
   let compareBeforeIndex = 0;
   let compareAfterIndex = 1;
   let fieldsRequestSeq = 0;
+  let selectedFieldData = null;
   let datePeriods = [];
   let calendarObservations = [];
   let datePeriodIndex = -1;
@@ -136,6 +137,16 @@
       '#satellite .sat-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}' +
       '#satellite .sat-panel-head h3{margin:0;font-size:20px}' +
       '#satellite .sat-panel-head p{margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.4}' +
+      '#satellite .sat-lot-site{margin-bottom:12px}' +
+      '#satellite .sat-lot-summary{display:none;padding:12px 0 2px}' +
+      '#satellite .sat-lot-summary.open{display:block}' +
+      '#satellite .sat-lot-summary-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}' +
+      '#satellite .sat-lot-summary h4{margin:0;font-size:18px;line-height:1.2}' +
+      '#satellite .sat-lot-summary-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}' +
+      '#satellite .sat-lot-chip{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);font-size:11px;font-weight:850;color:var(--muted)}' +
+      '#satellite .sat-create-form{display:none;padding-top:12px;border-top:1px solid var(--border)}' +
+      '#satellite .sat-create-form.open{display:grid}' +
+      '#satellite .sat-empty-lot{padding:8px 0 2px;color:var(--muted);font-size:12px;line-height:1.45}' +
       '#satellite .sat-lot-card .sat-form{gap:10px}' +
       '#satellite #satSaveField{justify-self:start;width:auto;min-height:36px;padding:7px 12px;border:0;background:transparent;color:var(--muted);box-shadow:none}' +
       '#satellite #satSaveField:not(:disabled){color:var(--brand);background:rgba(85,198,43,.08)}' +
@@ -263,28 +274,23 @@
         '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
-            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satDateNavigator" class="sat-date-nav"><button class="sat-date-step" id="satDatePrev" type="button" disabled aria-label="Periodo satelital anterior">‹</button><button class="sat-date-current" id="satDateCurrent" type="button" disabled aria-haspopup="dialog" aria-expanded="false"><span>Fecha de análisis</span><b id="satDateCurrentText">Selecciona un lote</b><small id="satDateRangeText">Sin periodo satelital</small></button><button class="sat-date-step" id="satDateNext" type="button" disabled aria-label="Periodo satelital siguiente">›</button><div id="satDateQuality" class="sat-date-quality">Sin análisis</div><div id="satCalendarPopover" class="sat-calendar-popover" role="dialog" aria-label="Fechas satelitales disponibles"><div class="sat-calendar-head"><button id="satCalendarPrevMonth" type="button" aria-label="Mes anterior">‹</button><b id="satCalendarMonth">—</b><button id="satCalendarNextMonth" type="button" aria-label="Mes siguiente">›</button></div><div class="sat-calendar-weekdays"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div><div id="satCalendarGrid" class="sat-calendar-grid"></div><div class="sat-calendar-legend"><span><i class="sat-calendar-dot good"></i>Disponible</span><span><i class="sat-calendar-dot limited"></i>Calidad limitada</span><span><i class="sat-calendar-dot poor"></i>No recomendable</span><span>Gris: sin raster utilizable</span></div></div></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareControl" class="sat-compare-control"><div class="sat-compare-control-head"><span>ANTES</span><span>DESPUÉS</span></div><input id="satCompareRevealRange" type="range" min="0" max="100" step="1" value="50" aria-label="Revelar Antes y Después"></div></div><div class="sat-toolbar"><div class="sat-tool-group"><span class="sat-tool-group-label">Edición</span><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><div class="sat-tool-group"><span class="sat-tool-group-label">Visualización</span><button class="btn ghost" id="satSatelliteViewButton" type="button">Satélite</button><button class="btn ghost" id="satNdviMapButton" disabled>NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Comparar fechas</button><button class="btn ghost" id="satHistoryJump" type="button">Historial</button></div></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-head"><div class="sat-compare-period"><span>Antes</span><b id="satCompareBeforeText">Sin periodo</b><small id="satCompareBeforeQuality">—</small></div><div class="sat-compare-period"><span>Después</span><b id="satCompareAfterText">Sin periodo</b><small id="satCompareAfterQuality">—</small></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><div class="sat-compare-timeline"><div class="sat-compare-track"></div><div class="sat-compare-selected" id="satCompareSelected"></div><div class="sat-compare-ticks" id="satCompareTicks"></div><input class="sat-compare-range before" id="satCompareBeforeRange" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Periodo Antes"><input class="sat-compare-range after" id="satCompareAfterRange" type="range" min="0" max="1" step="1" value="1" disabled aria-label="Periodo Después"><div class="sat-compare-axis"><span id="satCompareAxisStart">—</span><span id="satCompareAxisEnd">—</span></div></div><p class="hint" style="margin:8px 0 0">Mueve los dos puntos sobre la línea de tiempo y pulsa Comparar. El deslizador inferior recorre el raster del lote: su posición se conserva aunque muevas o acerques el mapa.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
+            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satDateNavigator" class="sat-date-nav"><button class="sat-date-step" id="satDatePrev" type="button" disabled aria-label="Periodo satelital anterior">‹</button><button class="sat-date-current" id="satDateCurrent" type="button" disabled aria-haspopup="dialog" aria-expanded="false"><span>Periodo satelital</span><b id="satDateCurrentText">Selecciona un lote</b><small id="satDateRangeText">Sin periodo disponible</small></button><button class="sat-date-step" id="satDateNext" type="button" disabled aria-label="Periodo satelital siguiente">›</button><div id="satDateQuality" class="sat-date-quality">Sin análisis</div><div id="satCalendarPopover" class="sat-calendar-popover" role="dialog" aria-label="Fechas satelitales disponibles"><div class="sat-calendar-head"><button id="satCalendarPrevMonth" type="button" aria-label="Mes anterior">‹</button><b id="satCalendarMonth">—</b><button id="satCalendarNextMonth" type="button" aria-label="Mes siguiente">›</button></div><div class="sat-calendar-weekdays"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div><div id="satCalendarGrid" class="sat-calendar-grid"></div><div class="sat-calendar-legend"><span><i class="sat-calendar-dot good"></i>Disponible</span><span><i class="sat-calendar-dot limited"></i>Calidad limitada</span><span><i class="sat-calendar-dot poor"></i>No recomendable</span><span>Gris: sin raster utilizable</span></div></div></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareControl" class="sat-compare-control"><div class="sat-compare-control-head"><span>ANTES</span><span>DESPUÉS</span></div><input id="satCompareRevealRange" type="range" min="0" max="100" step="1" value="50" aria-label="Revelar Antes y Después"></div></div><div class="sat-toolbar"><div class="sat-tool-group"><span class="sat-tool-group-label">Edición</span><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><div class="sat-tool-group"><span class="sat-tool-group-label">Visualización</span><button class="btn ghost" id="satSatelliteViewButton" type="button">Satélite</button><button class="btn ghost" id="satNdviMapButton" disabled>NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Comparar fechas</button><button class="btn ghost" id="satHistoryJump" type="button">Historial</button></div></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-head"><div class="sat-compare-period"><span>Antes</span><b id="satCompareBeforeText">Sin periodo</b><small id="satCompareBeforeQuality">—</small></div><div class="sat-compare-period"><span>Después</span><b id="satCompareAfterText">Sin periodo</b><small id="satCompareAfterQuality">—</small></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><div class="sat-compare-timeline"><div class="sat-compare-track"></div><div class="sat-compare-selected" id="satCompareSelected"></div><div class="sat-compare-ticks" id="satCompareTicks"></div><input class="sat-compare-range before" id="satCompareBeforeRange" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Periodo Antes"><input class="sat-compare-range after" id="satCompareAfterRange" type="range" min="0" max="1" step="1" value="1" disabled aria-label="Periodo Después"><div class="sat-compare-axis"><span id="satCompareAxisStart">—</span><span id="satCompareAxisEnd">—</span></div></div><p class="hint" style="margin:8px 0 0">Mueve los dos puntos sobre la línea de tiempo y pulsa Comparar. El deslizador inferior recorre el raster del lote: su posición se conserva aunque muevas o acerques el mapa.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
             '<div class="card" id="satelliteHistoryCard" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
             '<div class="card sat-lot-card">' +
-              '<div class="sat-panel-head"><div><h3>Lote seleccionado</h3><p>Datos y acciones del lote con el que estás trabajando.</p></div></div>' +
-              '<div class="sat-form">' +
-                '<div class="full"><label>Finca / sitio</label><select id="satSiteSelect"><option value="">Cargando...</option></select></div>' +
-                '<div><label>Código</label><input id="satFieldCode" placeholder="SAT-001"></div>' +
-                '<div><label>Cultivo</label><input id="satCropType" placeholder="banano, cacao..."></div>' +
-                '<div class="full"><label>Nombre</label><input id="satFieldName" placeholder="Lote Norte"></div>' +
-                '<div><label>Área estimada (ha)</label><input id="satArea" type="number" readonly></div>' +
-                '<div><label>Frecuencia de análisis</label><select id="satInterval" title="Ventana usada al solicitar nuevos análisis satelitales"><option value="P5D">Cada 5 días</option><option value="P10D">Cada 10 días</option></select></div>' +
-                '<div class="full"><button class="btn ghost" id="satSaveField" disabled>Guardar cambios</button></div>' +
-              '</div>' +
+              '<div class="sat-panel-head"><div><h3>Finca y lote</h3><p>Selecciona la finca y trabaja sobre uno de sus lotes.</p></div></div>' +
+              '<div class="sat-lot-site"><label>Finca / sitio</label><select id="satSiteSelect"><option value="">Cargando...</option></select></div>' +
+              '<div id="satLotEmpty" class="sat-empty-lot">Selecciona un lote de la lista o usa <b>Dibujar lote</b> para crear uno nuevo.</div>' +
+              '<div id="satLotSummary" class="sat-lot-summary"><div class="sat-lot-summary-top"><div><h4 id="satLotSummaryName">—</h4><div class="sat-lot-summary-meta"><span class="sat-lot-chip" id="satLotSummaryCode">—</span><span class="sat-lot-chip" id="satLotSummaryCrop">—</span><span class="sat-lot-chip" id="satLotSummaryArea">— ha</span></div></div></div></div>' +
+              '<div id="satCreateForm" class="sat-form sat-create-form"><div><label>Código</label><input id="satFieldCode" placeholder="SAT-001"></div><div><label>Cultivo</label><input id="satCropType" placeholder="banano, cacao..."></div><div class="full"><label>Nombre</label><input id="satFieldName" placeholder="Lote Norte"></div><div class="full"><label>Área estimada (ha)</label><input id="satArea" type="number" readonly></div><div class="full"><button class="btn" id="satSaveField" disabled>Guardar lote</button></div></div>' +
               '<div class="sat-action-section"><div class="sat-action-label"><b>Acciones del lote</b><small>Datos y procesamiento</small></div><div class="sat-lot-actions"><button class="btn ghost" id="satRefresh">↻ Actualizar</button><button class="btn" id="satSync" disabled>Analizar lote</button></div></div>' +
               '<div id="satelliteStatus" class="sat-status">Esperando datos.</div>' +
             '</div>' +
             '<div class="card sat-farm-fields-card" style="margin-top:18px">' +
               '<div class="sat-panel-head"><div><h3>Lotes de la finca</h3><p>Selecciona uno para trabajar o varios para ejecutar acciones en grupo.</p></div></div>' +
               '<div class="sat-list-tabs"><button class="btn ghost active" id="satActiveFieldsTab">Activos</button><button class="btn ghost" id="satArchivedFieldsTab">Archivados</button></div>' +
-              '<div class="sat-batch-shell" id="satBatchActions"><div class="sat-batch-head"><b>Acciones en grupo</b><div class="sat-batch-head-right"><span class="sat-batch-count" id="satBatchCount">0 seleccionados</span><button class="sat-link-action" id="satSelectAllFields" disabled>Seleccionar todos</button></div></div><div class="sat-batch-actions"><button class="btn" id="satBatchSync" disabled>Analizar seleccionados</button><button class="btn ghost" id="satFarmNdviShow" disabled>Ver NDVI</button><button class="btn ghost" id="satFarmNdviHide" disabled>Ocultar NDVI</button></div></div>' +
+              '<div class="sat-batch-shell" id="satBatchActions"><div class="sat-batch-head"><b>Acciones en grupo</b><div class="sat-batch-head-right"><span class="sat-batch-count" id="satBatchCount">0 seleccionados</span><button class="sat-link-action" id="satSelectAllFields" disabled>Seleccionar todos</button></div></div><div class="sat-batch-actions"><button class="btn" id="satBatchSync" disabled>Analizar seleccionados</button><button class="btn ghost" id="satFarmNdviShow" disabled>Ver NDVI</button></div></div>' +
               '<div class="sat-field-list-label"><b>Listado de lotes</b><small>Toca un lote para abrirlo</small></div>' +
               '<div id="satelliteFieldList" class="sat-list"><div class="hint">Sin lotes.</div></div>' +
             '</div>' +
@@ -297,6 +303,39 @@
       bind();
     }
     return true;
+  }
+
+  function showNewLotForm(show) {
+    const form = document.getElementById('satCreateForm');
+    const empty = document.getElementById('satLotEmpty');
+    const summary = document.getElementById('satLotSummary');
+
+    form?.classList.toggle('open', Boolean(show));
+    summary?.classList.toggle('open', !show && Boolean(selectedFieldData));
+    if (empty) {
+      empty.style.display =
+        show || selectedFieldData
+          ? 'none'
+          : '';
+    }
+  }
+
+  function renderSelectedLotSummary(field) {
+    selectedFieldData = field || null;
+
+    const name = document.getElementById('satLotSummaryName');
+    const code = document.getElementById('satLotSummaryCode');
+    const crop = document.getElementById('satLotSummaryCrop');
+    const area = document.getElementById('satLotSummaryArea');
+
+    if (field) {
+      if (name) name.textContent = field.name || 'Lote';
+      if (code) code.textContent = field.code || 'Sin código';
+      if (crop) crop.textContent = field.crop_type || 'Sin cultivo';
+      if (area) area.textContent = Number(field.area_hectares || 0).toFixed(2) + ' ha';
+    }
+
+    showNewLotForm(false);
   }
 
   function openView(button) {
@@ -459,11 +498,10 @@
     });
     farmNdviOverlays.clear();
 
-    const hideButton =
-      document.getElementById('satFarmNdviHide');
-
-    if (hideButton) {
-      hideButton.disabled = true;
+    const showButton = document.getElementById('satFarmNdviShow');
+    if (showButton) {
+      const checked = document.querySelectorAll('#satelliteFieldList .sat-field-check:checked').length;
+      showButton.textContent = checked ? 'Ver NDVI (' + checked + ')' : 'Ver NDVI';
     }
   }
 
@@ -856,6 +894,8 @@
   function startDraw() {
     initMap();
     selectedFieldId = null;
+    selectedFieldData = null;
+    showNewLotForm(true);
     datePeriods = [];
     calendarObservations = [];
     datePeriodIndex = -1;
@@ -893,6 +933,10 @@
     document.getElementById('satArea').value = '';
     document.getElementById('satKpiArea').textContent = '—';
     document.getElementById('satSaveField').disabled = true;
+    if (!selectedFieldId) {
+      selectedFieldData = null;
+      renderSelectedLotSummary(null);
+    }
     redraw();
   }
 
@@ -1251,13 +1295,15 @@
 
     if (farmMap) {
       farmMap.disabled =
-        checked.length === 0 ||
+        (checked.length === 0 && farmNdviOverlays.size === 0) ||
         showArchivedFields;
 
       farmMap.textContent =
-        checked.length > 0
-          ? 'Ver NDVI (' + checked.length + ')'
-          : 'Ver NDVI';
+        farmNdviOverlays.size > 0
+          ? 'Ocultar NDVI'
+          : checked.length > 0
+            ? 'Ver NDVI (' + checked.length + ')'
+            : 'Ver NDVI';
     }
   }
 
@@ -1431,6 +1477,8 @@
       await selectField(selectedFieldId, fields);
     } else if (selectedFieldId) {
       selectedFieldId = null;
+      selectedFieldData = null;
+      renderSelectedLotSummary(null);
       refreshOverviewStyles();
     }
   }
@@ -1498,6 +1546,7 @@
     renderDateNavigator();
     let field = fields.find(f => f.id === id);
     if (!field) field = await getApi('/satellite/fields/' + encodeURIComponent(id));
+    renderSelectedLotSummary(field);
 
     const codeInput = document.getElementById('satFieldCode');
     const cropInput = document.getElementById('satCropType');
@@ -1523,6 +1572,7 @@
   }
 
   async function saveField() {
+    if (selectedFieldId) throw new Error('Este lote ya existe. No se creará un duplicado.');
     const siteId = document.getElementById('satSiteSelect')?.value;
     const code = document.getElementById('satFieldCode')?.value.trim();
     const name = document.getElementById('satFieldName')?.value.trim();
@@ -1532,6 +1582,8 @@
     if (!siteId || !code || !name || !geometry || !(area>0)) throw new Error('Completa sitio, código, nombre y polígono.');
     const result = await postApi('/satellite/fields',{site_id:siteId,code,name,crop_type:crop||null,geometry_geojson:geometry,area_hectares:area});
     selectedFieldId = result?.id || null;
+    selectedFieldData = result || null;
+    showNewLotForm(false);
     setStatus('Lote guardado.', 'ok');
     await loadFields();
   }
@@ -1601,7 +1653,7 @@
   async function syncField() {
     if (!selectedFieldId) throw new Error('Selecciona un lote.');
 
-    const interval = document.getElementById('satInterval')?.value || 'P5D';
+    const interval = 'P5D';
 
     setStatus('Procesando imágenes satelitales...');
 
@@ -1657,9 +1709,7 @@
       throw new Error('Selecciona al menos un lote.');
     }
 
-    const interval =
-      document.getElementById('satInterval')?.value ||
-      'P5D';
+    const interval = 'P5D';
 
     const button =
       document.getElementById('satBatchSync');
@@ -1755,9 +1805,6 @@
 
     const showButton =
       document.getElementById('satFarmNdviShow');
-
-    const hideButton =
-      document.getElementById('satFarmNdviHide');
 
     if (showButton) showButton.disabled = true;
 
@@ -1895,13 +1942,9 @@
       } catch (_) {}
     }
 
-    if (hideButton) {
-      hideButton.disabled =
-        loaded === 0;
-    }
-
     if (showButton) {
       showButton.disabled = false;
+      showButton.textContent = loaded > 0 ? 'Ocultar NDVI' : 'Ver NDVI';
     }
 
     setStatus(
@@ -2675,6 +2718,8 @@
     document.getElementById('satActiveFieldsTab')?.addEventListener('click',()=>{
       showArchivedFields = false;
       selectedFieldId = null;
+      selectedFieldData = null;
+      renderSelectedLotSummary(null);
       clearDraw();
       loadFields().catch(fail);
     });
@@ -2682,6 +2727,8 @@
     document.getElementById('satArchivedFieldsTab')?.addEventListener('click',()=>{
       showArchivedFields = true;
       selectedFieldId = null;
+      selectedFieldData = null;
+      renderSelectedLotSummary(null);
       clearDraw();
       loadFields().catch(fail);
     });
@@ -2694,12 +2741,15 @@
     });
 
     document.getElementById('satBatchSync')?.addEventListener('click',()=>syncSelectedFields().catch(fail));
-    document.getElementById('satFarmNdviShow')?.addEventListener('click',()=>loadFarmNdviMaps().catch(fail));
-    document.getElementById('satFarmNdviHide')?.addEventListener('click',()=>{
-      clearFarmNdviOverlays();
-      document.getElementById('satNdviLegend')?.classList.remove('open');
-      setStatus('Mapa NDVI de finca ocultado.', 'ok');
-      updateBatchButtons();
+    document.getElementById('satFarmNdviShow')?.addEventListener('click',()=>{
+      if (farmNdviOverlays.size) {
+        clearFarmNdviOverlays();
+        document.getElementById('satNdviLegend')?.classList.remove('open');
+        setStatus('Mapa NDVI de finca ocultado.', 'ok');
+        updateBatchButtons();
+      } else {
+        loadFarmNdviMaps().catch(fail);
+      }
     });
     document.getElementById('satSiteSelect')?.addEventListener('change',()=>{
       const siteId =
@@ -2737,6 +2787,8 @@
 
       try {
         selectedFieldId = null;
+        selectedFieldData = null;
+        renderSelectedLotSummary(null);
         currentFields = [];
         fieldOverviewStates = new Map();
 
