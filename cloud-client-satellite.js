@@ -579,6 +579,97 @@
     grid.innerHTML = cells.join('');
   }
 
+  function applySelectedObservationMetrics(row, index) {
+    if (!row) return;
+
+    const fmt = value =>
+      Number.isFinite(Number(value))
+        ? Number(value).toFixed(3)
+        : '—';
+
+    const ndvi = document.getElementById('satKpiNdvi');
+    const ndmi = document.getElementById('satKpiNdmi');
+    const valid = document.getElementById('satKpiValid');
+    const quality = document.getElementById('satKpiQuality');
+    const ndviHint = document.getElementById('satKpiNdviHint');
+    const ndmiHint = document.getElementById('satKpiNdmiHint');
+
+    if (ndvi) ndvi.textContent = fmt(row.ndvi_mean);
+    if (ndmi) ndmi.textContent = fmt(row.ndmi_mean);
+    if (valid) {
+      valid.textContent =
+        row.valid_pixel_percent == null
+          ? '—'
+          : Number(row.valid_pixel_percent).toFixed(1) + '%';
+    }
+    if (quality) quality.textContent = qualityLabel(row.quality);
+    if (ndviHint) ndviHint.textContent = 'Periodo seleccionado';
+    if (ndmiHint) ndmiHint.textContent = 'Periodo seleccionado';
+
+    const ndviInfo = ndviLabel(row.ndvi_mean);
+    const ndmiInfo = ndmiLabel(row.ndmi_mean);
+
+    const vigor = document.getElementById('satInsightVigor');
+    const vigorNote = document.getElementById('satInsightVigorNote');
+    const moisture = document.getElementById('satInsightMoisture');
+    const moistureNote = document.getElementById('satInsightMoistureNote');
+
+    if (vigor) vigor.textContent = ndviInfo.label;
+    if (vigorNote) vigorNote.textContent = ndviInfo.note;
+    if (moisture) moisture.textContent = ndmiInfo.label;
+    if (moistureNote) moistureNote.textContent = ndmiInfo.note;
+
+    const trendEl = document.getElementById('satInsightTrend');
+    const trendNoteEl = document.getElementById('satInsightTrendNote');
+    const previous = index > 0 ? datePeriods[index - 1] : null;
+
+    if (trendEl && trendNoteEl) {
+      if (
+        previous &&
+        Number.isFinite(Number(row.ndvi_mean)) &&
+        Number.isFinite(Number(previous.ndvi_mean))
+      ) {
+        const current = Number(row.ndvi_mean);
+        const prior = Number(previous.ndvi_mean);
+        const delta = current - prior;
+        const pct =
+          Math.abs(prior) > 0.0001
+            ? (delta / Math.abs(prior)) * 100
+            : null;
+        const arrow =
+          delta > 0.005
+            ? '▲'
+            : delta < -0.005
+              ? '▼'
+              : '→';
+
+        trendEl.textContent =
+          arrow + ' ' +
+          (
+            pct == null
+              ? Math.abs(delta).toFixed(3)
+              : Math.abs(pct).toFixed(1) + '%'
+          );
+
+        trendNoteEl.textContent =
+          'NDVI ' +
+          (
+            delta > 0.005
+              ? 'subió'
+              : delta < -0.005
+                ? 'bajó'
+                : 'se mantuvo estable'
+          ) +
+          ' ' +
+          Math.abs(delta).toFixed(3) +
+          ' puntos respecto al periodo utilizable anterior.';
+      } else {
+        trendEl.textContent = '—';
+        trendNoteEl.textContent = 'No existe un periodo utilizable anterior para comparar.';
+      }
+    }
+  }
+
   function renderDateNavigator() {
     const previous = document.getElementById('satDatePrev');
     const next = document.getElementById('satDateNext');
@@ -640,6 +731,10 @@
     if (!Number.isInteger(nextIndex) || nextIndex < 0 || nextIndex >= datePeriods.length) return;
     datePeriodIndex = nextIndex;
     renderDateNavigator();
+    applySelectedObservationMetrics(
+      datePeriods[datePeriodIndex],
+      datePeriodIndex
+    );
     closeCalendar();
     await loadNdviOverlay();
   }
@@ -720,6 +815,12 @@
     datePeriodIndex = -1;
     renderDateNavigator();
     document.querySelectorAll('#satelliteFieldList .sat-field').forEach(el => el.classList.remove('active'));
+    const syncButton = document.getElementById('satSync');
+    const ndviButton = document.getElementById('satNdviMapButton');
+    const compareButton = document.getElementById('satCompareToggle');
+    if (syncButton) syncButton.disabled = true;
+    if (ndviButton) ndviButton.disabled = true;
+    if (compareButton) compareButton.disabled = true;
     clearLayers();
     points = [];
     drawing = true;
@@ -2400,6 +2501,13 @@
     } else {
       trendEl.textContent = '—';
       trendNoteEl.textContent = 'Se necesitan al menos dos periodos utilizables.';
+    }
+
+    if (datePeriodIndex >= 0 && datePeriods[datePeriodIndex]) {
+      applySelectedObservationMetrics(
+        datePeriods[datePeriodIndex],
+        datePeriodIndex
+      );
     }
 
     const body = document.getElementById('satelliteObservationsBody');
