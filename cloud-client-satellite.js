@@ -45,6 +45,8 @@
   let sceneRasterLocalMask = null;
   let scenePixelSample = null;
   let scenePixelPopup = null;
+  let satZones = [], satZoneLayers = [], satZoneDraft = [], satZoneDraftLayer = null;
+  let satZoneMode = false, satZoneRequest = 0, satAreaRun = 0;
 
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
@@ -271,6 +273,17 @@
       '@media(max-width:620px){.sat-tour-panel{bottom:10px!important;top:auto!important;left:12px!important;width:calc(100vw - 24px)}}' +
       '#satellite .sat-scene-raster-guide{margin-top:7px;font-size:11px;line-height:1.45;color:var(--muted)}' +
       '#satellite .sat-scene-raster-detail{font-size:11px;color:var(--muted);line-height:1.5;flex-basis:100%}' +
+      '#satellite .sat-area-panel{border:1px solid var(--border);border-radius:14px;margin:12px 0;padding:13px 15px;background:var(--panel)}' +
+      '#satellite .sat-area-panel summary{cursor:pointer;font-weight:900;font-size:13px}' +
+      '#satellite .sat-area-panel p{font-size:12px;color:var(--muted);line-height:1.5;margin:9px 0}' +
+      '#satellite .sat-area-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}' +
+      '#satellite .sat-area-tools input{min-width:180px;flex:1;max-width:230px;padding:8px;border:1px solid var(--border);border-radius:9px;background:var(--panel2);color:var(--text)}' +
+      '#satellite .sat-area-tools button,#satellite #satAreaZones button{border:1px solid var(--border);border-radius:9px;padding:8px;background:var(--panel2);color:var(--text);font-weight:850;font-size:11px;cursor:pointer}' +
+      '#satellite .sat-area-tools button:disabled{opacity:.45}' +
+      '#satellite #satAreaZones{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}' +
+      '#satellite .sat-area-result{display:flex;gap:9px;flex-wrap:wrap;font-size:12px}' +
+      '#satellite .sat-area-result>div{flex:1;min-width:125px;border-radius:11px;background:var(--panel2);padding:10px}' +
+      '#satellite .sat-area-result b{display:block;font-size:16px;margin:5px 0}' +
       '#satellite .sat-scenes-list{display:flex;gap:7px;overflow-x:auto;padding:3px 1px 9px}' +
       '#satellite .sat-scene-item{white-space:nowrap;border:1px solid var(--border);border-radius:10px;background:var(--panel2);color:var(--text);font-size:11px;font-weight:800;padding:8px 10px;cursor:pointer}' +
       '#satellite .sat-scene-item.active{outline:2px solid var(--brand);background:var(--panel)}' +
@@ -339,7 +352,7 @@
         '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
-            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satDateNavigator" class="sat-date-nav"><button class="sat-date-step" id="satDatePrev" type="button" disabled aria-label="Periodo satelital anterior">‹</button><button class="sat-date-current" id="satDateCurrent" type="button" disabled aria-haspopup="dialog" aria-expanded="false"><span>Periodo satelital</span><b id="satDateCurrentText">Selecciona un lote</b><small id="satDateRangeText">Sin periodo disponible</small></button><button class="sat-date-step" id="satDateNext" type="button" disabled aria-label="Periodo satelital siguiente">›</button><div id="satDateQuality" class="sat-date-quality">Sin análisis</div><div id="satCalendarPopover" class="sat-calendar-popover" role="dialog" aria-label="Fechas satelitales disponibles"><div class="sat-calendar-head"><button id="satCalendarPrevMonth" type="button" aria-label="Mes anterior">‹</button><b id="satCalendarMonth">—</b><button id="satCalendarNextMonth" type="button" aria-label="Mes siguiente">›</button></div><div class="sat-calendar-weekdays"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div><div id="satCalendarGrid" class="sat-calendar-grid"></div><div class="sat-calendar-legend"><span><i class="sat-calendar-dot good"></i>Disponible</span><span><i class="sat-calendar-dot limited"></i>Calidad limitada</span><span><i class="sat-calendar-dot poor"></i>No recomendable</span><span>Gris: sin raster utilizable</span></div><div class="sat-calendar-legend" style="border-top:0;margin-top:5px;padding-top:4px"><span><i class="sat-calendar-dot good"></i>S2 real</span><span style="color:#2e67b0">■ S1 radar</span><span>Fechas reales: consultar abajo</span></div></div></div><div id="satScenesCard" class="sat-scenes-card" aria-live="polite"><div class="sat-scenes-header"><strong>Adquisiciones reales · Sentinel-1 y Sentinel-2</strong><div style="display:flex;gap:8px;align-items:center"><small id="satScenesCount">Selecciona un lote</small><button class="sat-scenes-reload" id="satScenesReload" type="button" disabled aria-label="Volver a consultar las adquisiciones">↻ Actualizar</button></div></div><div id="satScenesList" class="sat-scenes-list"></div><div id="satScenesDetails" class="sat-scene-details">Aún no hay lote seleccionado.</div><div id="satSceneRasterToolbar" class="sat-scene-raster-toolbar" style="display:none"><label for="satSceneRasterLayer">Índice / capa</label><select id="satSceneRasterLayer" aria-label="Capa de la adquisición"></select><label for="satSceneContrast">Contraste</label><select id="satSceneContrast" aria-label="Contraste del mapa"><option value="fixed">Fijo (comparar fechas)</option><option value="local">Local (detalle del lote)</option></select><button type="button" id="satSceneRasterLoad">Ver colores</button><button type="button" id="satSceneRasterHistoric">Volver a periodo agregado</button><div id="satSceneRasterTitle" class="sat-scene-raster-title">Sin mapa seleccionado</div></div><div id="satSceneRasterLegend" class="sat-scene-raster-legend"><div id="satSceneRasterGradient" class="sat-scene-raster-gradient"></div><div id="satSceneRasterTicks" class="sat-scene-raster-ticks"></div><div id="satSceneRasterGuide" class="sat-scene-raster-guide">Los colores expresan valores relativos de la capa, no un diagnóstico del cultivo.</div></div><p class="sat-scene-notice">Datos de prueba: mosaicos por día / órbita, no escenas SAFE individuales. Las fechas S1 no generan NDVI. El mapa y la comparación siguen utilizando periodos agregados.</p></div><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareControl" class="sat-compare-control"><div class="sat-compare-control-head"><span>ANTES</span><span>DESPUÉS</span></div><input id="satCompareRevealRange" type="range" min="0" max="100" step="1" value="50" aria-label="Revelar Antes y Después"></div></div><div class="sat-toolbar"><div class="sat-tool-group"><span class="sat-tool-group-label">Edición</span><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><div class="sat-tool-group"><span class="sat-tool-group-label">Visualización</span><button class="btn ghost" id="satSatelliteViewButton" type="button">Satélite</button><button class="btn ghost" id="satNdviMapButton" disabled>NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Comparar fechas</button><button class="btn ghost" id="satHistoryJump" type="button">Historial</button></div></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-head"><div class="sat-compare-period"><span>Antes</span><b id="satCompareBeforeText">Sin periodo</b><small id="satCompareBeforeQuality">—</small></div><div class="sat-compare-period"><span>Después</span><b id="satCompareAfterText">Sin periodo</b><small id="satCompareAfterQuality">—</small></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><div class="sat-compare-timeline"><div class="sat-compare-track"></div><div class="sat-compare-selected" id="satCompareSelected"></div><div class="sat-compare-ticks" id="satCompareTicks"></div><input class="sat-compare-range before" id="satCompareBeforeRange" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Periodo Antes"><input class="sat-compare-range after" id="satCompareAfterRange" type="range" min="0" max="1" step="1" value="1" disabled aria-label="Periodo Después"><div class="sat-compare-axis"><span id="satCompareAxisStart">—</span><span id="satCompareAxisEnd">—</span></div></div><p class="hint" style="margin:8px 0 0">Mueve los dos puntos sobre la línea de tiempo y pulsa Comparar. El deslizador inferior recorre el raster del lote: su posición se conserva aunque muevas o acerques el mapa.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
+            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satDateNavigator" class="sat-date-nav"><button class="sat-date-step" id="satDatePrev" type="button" disabled aria-label="Periodo satelital anterior">‹</button><button class="sat-date-current" id="satDateCurrent" type="button" disabled aria-haspopup="dialog" aria-expanded="false"><span>Periodo satelital</span><b id="satDateCurrentText">Selecciona un lote</b><small id="satDateRangeText">Sin periodo disponible</small></button><button class="sat-date-step" id="satDateNext" type="button" disabled aria-label="Periodo satelital siguiente">›</button><div id="satDateQuality" class="sat-date-quality">Sin análisis</div><div id="satCalendarPopover" class="sat-calendar-popover" role="dialog" aria-label="Fechas satelitales disponibles"><div class="sat-calendar-head"><button id="satCalendarPrevMonth" type="button" aria-label="Mes anterior">‹</button><b id="satCalendarMonth">—</b><button id="satCalendarNextMonth" type="button" aria-label="Mes siguiente">›</button></div><div class="sat-calendar-weekdays"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div><div id="satCalendarGrid" class="sat-calendar-grid"></div><div class="sat-calendar-legend"><span><i class="sat-calendar-dot good"></i>Disponible</span><span><i class="sat-calendar-dot limited"></i>Calidad limitada</span><span><i class="sat-calendar-dot poor"></i>No recomendable</span><span>Gris: sin raster utilizable</span></div><div class="sat-calendar-legend" style="border-top:0;margin-top:5px;padding-top:4px"><span><i class="sat-calendar-dot good"></i>S2 real</span><span style="color:#2e67b0">■ S1 radar</span><span>Fechas reales: consultar abajo</span></div></div></div><div id="satScenesCard" class="sat-scenes-card" aria-live="polite"><div class="sat-scenes-header"><strong>Adquisiciones reales · Sentinel-1 y Sentinel-2</strong><div style="display:flex;gap:8px;align-items:center"><small id="satScenesCount">Selecciona un lote</small><button class="sat-scenes-reload" id="satScenesReload" type="button" disabled aria-label="Volver a consultar las adquisiciones">↻ Actualizar</button></div></div><div id="satScenesList" class="sat-scenes-list"></div><div id="satScenesDetails" class="sat-scene-details">Aún no hay lote seleccionado.</div><div id="satSceneRasterToolbar" class="sat-scene-raster-toolbar" style="display:none"><label for="satSceneRasterLayer">Índice / capa</label><select id="satSceneRasterLayer" aria-label="Capa de la adquisición"></select><label for="satSceneContrast">Contraste</label><select id="satSceneContrast" aria-label="Contraste del mapa"><option value="fixed">Fijo (comparar fechas)</option><option value="local">Local (detalle del lote)</option></select><button type="button" id="satSceneRasterLoad">Ver colores</button><button type="button" id="satSceneRasterHistoric">Volver a periodo agregado</button><div id="satSceneRasterTitle" class="sat-scene-raster-title">Sin mapa seleccionado</div></div><div id="satSceneRasterLegend" class="sat-scene-raster-legend"><div id="satSceneRasterGradient" class="sat-scene-raster-gradient"></div><div id="satSceneRasterTicks" class="sat-scene-raster-ticks"></div><div id="satSceneRasterGuide" class="sat-scene-raster-guide">Los colores expresan valores relativos de la capa, no un diagnóstico del cultivo.</div></div><p class="sat-scene-notice">Datos de prueba: mosaicos por día / órbita, no escenas SAFE individuales. Las fechas S1 no generan NDVI. El mapa y la comparación siguen utilizando periodos agregados.</p></div><details id="satAreaPanel" class="sat-area-panel"><summary>Superficies, hectáreas y zonas a excluir</summary><p>Delimita casas, caminos u otra infraestructura para excluirla del análisis. Los polígonos se guardarán por lote para usuarios autorizados; nunca modificarán las imágenes originales.</p><div class="sat-area-tools"><input id="satAreaName" maxlength="64" placeholder="Nombre: casa, camino..." aria-label="Nombre de exclusión"><button type="button" id="satAreaDraw">Dibujar exclusión</button><button type="button" id="satAreaFinish" disabled>Guardar zona</button><button type="button" id="satAreaCancel" disabled>Cancelar</button><button type="button" id="satAreaRecalc">Calcular hectáreas</button></div><div id="satAreaZones"></div><div id="satAreaResult" class="sat-area-result">Selecciona una adquisición real y calcula sus superficies válidas.</div><p id="satRealSceneCompare">Comparación entre adquisiciones reales: pendiente de escenas compatibles.</p><p>El cuartil inferior contiene valores relativamente menores, no necesariamente cultivo enfermo. Superficies estimadas sobre píxeles válidos de vegetación (S2) o radar (S1).</p></details><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareControl" class="sat-compare-control"><div class="sat-compare-control-head"><span>ANTES</span><span>DESPUÉS</span></div><input id="satCompareRevealRange" type="range" min="0" max="100" step="1" value="50" aria-label="Revelar Antes y Después"></div></div><div class="sat-toolbar"><div class="sat-tool-group"><span class="sat-tool-group-label">Edición</span><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><div class="sat-tool-group"><span class="sat-tool-group-label">Visualización</span><button class="btn ghost" id="satSatelliteViewButton" type="button">Satélite</button><button class="btn ghost" id="satNdviMapButton" disabled>NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Comparar fechas</button><button class="btn ghost" id="satHistoryJump" type="button">Historial</button></div></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-head"><div class="sat-compare-period"><span>Antes</span><b id="satCompareBeforeText">Sin periodo</b><small id="satCompareBeforeQuality">—</small></div><div class="sat-compare-period"><span>Después</span><b id="satCompareAfterText">Sin periodo</b><small id="satCompareAfterQuality">—</small></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><div class="sat-compare-timeline"><div class="sat-compare-track"></div><div class="sat-compare-selected" id="satCompareSelected"></div><div class="sat-compare-ticks" id="satCompareTicks"></div><input class="sat-compare-range before" id="satCompareBeforeRange" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Periodo Antes"><input class="sat-compare-range after" id="satCompareAfterRange" type="range" min="0" max="1" step="1" value="1" disabled aria-label="Periodo Después"><div class="sat-compare-axis"><span id="satCompareAxisStart">—</span><span id="satCompareAxisEnd">—</span></div></div><p class="hint" style="margin:8px 0 0">Mueve los dos puntos sobre la línea de tiempo y pulsa Comparar. El deslizador inferior recorre el raster del lote: su posición se conserva aunque muevas o acerques el mapa.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
             '<div class="card" id="satelliteHistoryCard" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
@@ -429,6 +442,9 @@
     map.on('click', e => {
       if (drawing) {
         addPoint(e.latlng);
+      } else if (satZoneMode) {
+        satZoneDraft.push([e.latlng.lng,e.latlng.lat]);
+        satZoneDrawPreview();
       } else if (sceneRasterOverlay && scenePixelSample && sceneRows[sceneSelectedIndex]) {
         showScenePixel(e.latlng).catch(error => {
           console.warn('Amelia Satellite pixel:', error);
@@ -820,6 +836,9 @@
       return;
     }
     sceneRasterBusy = true;
+    satAreaRun++;
+    const areaHost=document.getElementById('satAreaResult');
+    if(areaHost)areaHost.textContent='Cargando capa numérica…';
     renderSceneRasterToolbar(row);
     try {
       const result = await getApi('/satellite/fields/' + encodeURIComponent(fieldId) +
@@ -851,6 +870,7 @@
       try { map.fitBounds(bounds,{padding:[24,24]}); } catch (_) {}
       setStatus('Mapa por adquisición: ' + shortDate(row.acquired_at) + ' · ' +
         layer.toUpperCase() + ' · contraste ' + (sceneContrastMode === 'local' ? 'local' : 'fijo'), 'ok');
+      calculateSatAreas().catch(e=>{console.warn('Amelia area:',e);});
     } catch(error) {
       if (seq !== sceneRasterSeq || fieldId !== selectedFieldId || sceneSelectedIndex !== index) return;
       sceneRasterError = error?.message || 'La imagen no se pudo cargar';
@@ -946,6 +966,170 @@
       .setLatLng(latlng).setContent(content).openOn(map);
   }
 
+
+  function satPointInside(lon,lat,points){
+    let yes=false;
+    for(let i=0,j=points.length-1;i<points.length;j=i++){
+      const a=points[i],b=points[j];
+      if((a[1]>lat)!==(b[1]>lat)){
+        if(lon<(b[0]-a[0])*(lat-a[1])/(b[1]-a[1])+a[0])yes=!yes;
+      }
+    }
+    return yes;
+  }
+  function satZoneReset(){
+    satZoneRequest++;satAreaRun++;satZoneMode=false;satZoneDraft=[];satZones=[];
+    satZoneDraftLayer?.remove();satZoneDraftLayer=null;
+    satZoneLayers.forEach(l=>l.remove());satZoneLayers=[];
+    satZoneUI();
+  }
+  function satZoneDrawPreview(){
+    satZoneDraftLayer?.remove();satZoneDraftLayer=null;
+    if(map&&satZoneDraft.length)satZoneDraftLayer=L.polyline(
+      satZoneDraft.map(p=>[p[1],p[0]]),{weight:3,color:'#a532c0',dashArray:'6 4'}
+    ).addTo(map);
+    const finish=document.getElementById('satAreaFinish');
+    if(finish)finish.disabled=satZoneDraft.length<3;
+    const out=document.getElementById('satAreaResult');
+    if(out)out.textContent='Dibujando zona: '+satZoneDraft.length+' vértice(s). Marca al menos 3 puntos; después pulsa Guardar zona.';
+  }
+  function satZoneUI(){
+    const host=document.getElementById('satAreaZones');
+    if(host)host.innerHTML=satZones.map(z=>
+      '<span>'+esc(z.name)+' <button data-exclusion-remove="'+esc(z.id)+'" aria-label="Eliminar '+esc(z.name)+'">Quitar</button></span>'
+    ).join('')||'<span style="font-size:11px;color:var(--muted)">Sin exclusiones guardadas.</span>';
+    const draw=document.getElementById('satAreaDraw');
+    const cancel=document.getElementById('satAreaCancel');
+    const finish=document.getElementById('satAreaFinish');
+    if(draw)draw.disabled=!selectedFieldId||satZoneMode;
+    if(cancel)cancel.disabled=!satZoneMode;
+    if(finish)finish.disabled=!satZoneMode||satZoneDraft.length<3;
+  }
+  function satZoneOverlay(){
+    satZoneLayers.forEach(l=>l.remove());satZoneLayers=[];
+    if(!map)return;
+    for(const z of satZones){
+      const p=z.geometry_geojson?.coordinates?.[0];
+      if(!Array.isArray(p))continue;
+      satZoneLayers.push(L.polygon(p.map(x=>[x[1],x[0]]),
+        {color:'#a532c0',weight:2,fillOpacity:.12,dashArray:'5 4',interactive:false}).addTo(map));
+    }
+  }
+  async function satZonesFetch(id){
+    const seq=++satZoneRequest;
+    satZones=[];satZoneOverlay();satZoneUI();
+    try{
+      const response=await getApi('/satellite/fields/'+encodeURIComponent(id)+'/exclusions');
+      if(seq!==satZoneRequest||id!==selectedFieldId)return;
+      satZones=Array.isArray(response?.zones)?response.zones:[];
+      satZoneOverlay();satZoneUI();
+      if(scenePixelSample)calculateSatAreas().catch(console.warn);
+    }catch(error){
+      if(seq!==satZoneRequest||id!==selectedFieldId)return;
+      document.getElementById('satAreaResult').textContent='Exclusiones no disponibles: '+(error.message||'error');
+      console.warn('Amelia exclusions:',error);
+    }
+  }
+  async function satZoneSave(){
+    if(!satZoneMode||!selectedFieldId||satZoneDraft.length<3)return;
+    const name=document.getElementById('satAreaName')?.value.trim();
+    if(!name||name.length<2||name.length>64)throw Error('Escribe nombre de 2 a 64 caracteres');
+    if(satZoneDraft.length>64)throw Error('Máximo 64 vértices');
+    const id=selectedFieldId;
+    const ring=[...satZoneDraft,satZoneDraft[0]];
+    await postApi('/satellite/fields/'+encodeURIComponent(id)+'/exclusions',{
+      action:'add',name,geometry_geojson:{type:'Polygon',coordinates:[ring]}
+    });
+    if(id!==selectedFieldId)return;
+    satZoneMode=false;satZoneDraft=[];
+    satZoneDraftLayer?.remove();satZoneDraftLayer=null;
+    document.getElementById('satAreaName').value='';
+    await satZonesFetch(id);
+    setStatus('Exclusión guardada en el lote.', 'ok');
+  }
+  async function satZoneRemove(id){
+    const item=satZones.find(z=>z.id===id);
+    if(!item||!selectedFieldId||!window.confirm('¿Quitar zona "'+item.name+'"?'))return;
+    const field=selectedFieldId;
+    await postApi('/satellite/fields/'+encodeURIComponent(field)+'/exclusions',{action:'remove',zone_id:id});
+    if(field===selectedFieldId)await satZonesFetch(field);
+  }
+  function satAreaQuantile(a,p){
+    const i=(a.length-1)*p,k=Math.floor(i);
+    return a[k]+(a[Math.ceil(i)]-a[k])*(i-k);
+  }
+  async function calculateSatAreas(){
+    const seq=++satAreaRun,sample=scenePixelSample;
+    const output=document.getElementById('satAreaResult');
+    if(!output)return;
+    if(!sample||!sceneRasterOverlay){output.textContent='Selecciona una imagen real con datos numéricos RG16.';return;}
+    output.textContent='Calculando áreas sobre el raster…';
+    if(!sample.context){
+      if(!sample.loading)sample.loading=new Promise((resolve,reject)=>{
+        const img=new Image();
+        img.onload=()=>{
+          if(img.width!==sample.width||img.height!==sample.height)return reject(new Error('Dimensiones no coinciden'));
+          const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+          const ctx=c.getContext('2d',{willReadFrequently:true});
+          if(!ctx)return reject(new Error('Canvas no disponible'));
+          ctx.drawImage(img,0,0);sample.context=ctx;resolve();
+        };
+        img.onerror=()=>reject(new Error('RG16 no disponible'));img.src=sample.imageUrl;
+      });
+      await sample.loading;
+    }
+    if(seq!==satAreaRun||sample!==scenePixelSample)return;
+    const w=sample.width,h=sample.height,[west,south,east,north]=sample.bbox,
+      channels=sample.context.getImageData(0,0,w,h).data;
+    const radius=6371008.8,rad=Math.PI/180,
+      dlon=(east-west)/w*rad,
+      zoneRings=satZones.map(z=>z.geometry_geojson?.coordinates?.[0]).filter(Array.isArray);
+    let excludedHa=0;const points=[];
+    for(let y=0;y<h;y++){
+      const a=(north-(north-south)*y/h)*rad,b=(north-(north-south)*(y+1)/h)*rad;
+      const ha=radius*radius*dlon*Math.abs(Math.sin(a)-Math.sin(b))/10000;
+      const lat=(a+b)/2/rad;
+      for(let x=0;x<w;x++){
+        const offset=(y*w+x)*4;
+        if(channels[offset+3]<250)continue;
+        const lon=west+(x+.5)*(east-west)/w;
+        if(zoneRings.some(r=>satPointInside(lon,lat,r))){excludedHa+=ha;continue;}
+        const encoded=channels[offset]*256+channels[offset+1];
+        const value=sample.range[0]+encoded/65535*(sample.range[1]-sample.range[0]);
+        if(Number.isFinite(value))points.push([value,ha]);
+      }
+    }
+    if(seq!==satAreaRun||sample!==scenePixelSample)return;
+    if(!points.length){output.textContent='Sin píxeles válidos tras excluir zonas.';return;}
+    const a=points.map(p=>p[0]).sort((x,y)=>x-y);
+    const q1=satAreaQuantile(a,.25),q3=satAreaQuantile(a,.75);
+    let low=0,mid=0,high=0,total=0;
+    for(const [v,ha] of points){
+      total+=ha;
+      if(v<q1)low+=ha;else if(v>q3)high+=ha;else mid+=ha;
+    }
+    const items=[
+      ['Superficie válida',total.toFixed(2)+' ha'],
+      ['Cuartil inferior',low.toFixed(2)+' ha · '+(100*low/total).toFixed(1)+'%'],
+      ['Zona central',mid.toFixed(2)+' ha · '+(100*mid/total).toFixed(1)+'%'],
+      ['Cuartil superior',high.toFixed(2)+' ha · '+(100*high/total).toFixed(1)+'%']
+    ];
+    output.innerHTML=items.map(([label,value])=>'<div><span>'+esc(label)+'</span><b>'+esc(value)+'</b></div>').join('')+
+      '<small style="flex-basis:100%;color:var(--muted)">P25='+esc(q1.toFixed(3))+
+      ' · P75='+esc(q3.toFixed(3))+' · '+points.length.toLocaleString('es-EC')+
+      ' píxeles válidos · Excluidos por polígonos: '+excludedHa.toFixed(2)+
+      ' ha. Áreas aproximadas, no diagnósticos. La superficie válida no equivale a toda el área física del lote.</small>';
+  }
+  function satRealCompareInfo(){
+    const host=document.getElementById('satRealSceneCompare');
+    const row=sceneRows[sceneSelectedIndex];
+    if(!host||!row)return;
+    const valid=sceneRows.filter(r=>r.id!==row.id&&r.quality!=='no_data'&&r.collection===row.collection&&
+      (row.collection==='sentinel-2-l2a'||(r.relative_orbit===row.relative_orbit&&r.orbit_direction===row.orbit_direction)));
+    host.textContent=valid.length
+      ? 'Hay '+valid.length+' adquisición(es) comparable(s) de la misma fuente. Para comparar, utiliza la misma capa y escala fija.'
+      : 'Comparación real todavía no disponible: se necesitan dos S2 utilizables, o dos S1 de la misma órbita y dirección.';
+  }
   function renderScenes() {
     const count = document.getElementById('satScenesCount');
     const list = document.getElementById('satScenesList');
@@ -1005,6 +1189,7 @@
          ['Píxeles válidos',row.valid_pixel_percent == null ? '—' : sceneNum(row.valid_pixel_percent,1) + '%']];
     const type = radar ? 'Sentinel-1 · radar VV/VH' : 'Sentinel-2 · óptico';
     renderSceneRasterToolbar(row);
+    satRealCompareInfo();
     details.innerHTML =
       '<strong>' + esc(type) + ' · ' + esc(shortDate(row.acquired_at)) + '</strong>' +
       ' <span>· Calidad: ' + esc(qualityLabel(row.quality)) + '</span>' +
@@ -2014,6 +2199,7 @@
     sceneRasterBusy = false;
     sceneRasterError = '';
     clearSceneRaster();
+    satZoneReset();
     sceneRequestSeq++;
     renderScenes();
     renderDateNavigator();
@@ -2037,7 +2223,7 @@
       try { map.fitBounds(polygon.getBounds(),{padding:[24,24]}); } catch (_) {}
     }
     document.getElementById('satKpiArea').textContent = Number(field?.area_hectares||0).toFixed(2);
-    await loadObservations(id);
+    await Promise.allSettled([loadObservations(id),satZonesFetch(id)]);
     if (datePeriods.length) {
       try { await loadNdviOverlay({silent:true}); }
       catch (error) { console.warn('Amelia Satellite auto NDVI:', error); }
@@ -3252,6 +3438,23 @@
         selectDatePeriod(periodIndex).catch(fail);
       }
     });
+    document.getElementById('satAreaDraw')?.addEventListener('click',()=>{
+      if(!selectedFieldId)return;
+      satZoneMode=true;satZoneDraft=[];
+      const panel=document.getElementById('satAreaPanel');if(panel)panel.open=true;
+      satZoneUI();satZoneDrawPreview();
+      setStatus('Marca puntos sobre el mapa para delimitar la exclusión. No se leerán píxeles hasta terminar.', 'ok');
+    });
+    document.getElementById('satAreaFinish')?.addEventListener('click',()=>satZoneSave().catch(fail));
+    document.getElementById('satAreaCancel')?.addEventListener('click',()=>{
+      satZoneMode=false;satZoneDraft=[];satZoneDraftLayer?.remove();satZoneDraftLayer=null;
+      satZoneUI();const out=document.getElementById('satAreaResult');if(out)out.textContent='Dibujo cancelado.';
+    });
+    document.getElementById('satAreaRecalc')?.addEventListener('click',()=>calculateSatAreas().catch(fail));
+    document.getElementById('satAreaZones')?.addEventListener('click',e=>{
+      const button=e.target.closest('[data-exclusion-remove]');
+      if(button)satZoneRemove(button.dataset.exclusionRemove).catch(fail);
+    });
     document.getElementById('satSceneRasterLayer')?.addEventListener('change',event=>{
       sceneRasterLayer = event.target.value;
       if (sceneRows[sceneSelectedIndex]) showSceneRaster(sceneSelectedIndex,sceneRasterLayer).catch(fail);
@@ -3425,6 +3628,7 @@
         sceneRasterBusy = false;
         sceneRasterError = '';
         clearSceneRaster();
+        satZoneReset();
         sceneRequestSeq++;
         renderScenes();
 
