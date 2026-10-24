@@ -34,6 +34,8 @@
   let sceneSelectedIndex = -1;
   let scenesError = '';
   let scenesLoading = false;
+  let sceneAutoStatus = null;
+  let sceneAutoRefreshTimer = null;
   let sceneRequestSeq = 0;
   let sceneRasterOverlay = null;
   let sceneRasterSeq = 0;
@@ -1165,7 +1167,14 @@
     if (!sceneRows.length) {
       renderSceneRasterToolbar(null);
       list.innerHTML = '';
-      details.textContent = 'No hay adquisiciones reales procesadas para este lote. El historial por periodos continúa disponible.';
+      const state=sceneAutoStatus?.status;
+      details.textContent = state === 'running'
+        ? 'Preparando automáticamente los mapas de este lote. No necesitas solicitarlo; pulsa Actualizar más adelante.'
+        : state === 'pending' || state === 'retry'
+          ? 'Este lote está en la cola automática de procesamiento. El historial NDVI ya disponible puede consultarse mientras tanto.'
+          : state === 'idle'
+            ? 'La última búsqueda automática terminó sin adquisiciones válidas nuevas. Se revisará periódicamente.'
+            : 'No hay adquisiciones reales procesadas para este lote. El historial por periodos continúa disponible.';
       return;
     }
     if (sceneSelectedIndex < 0 || !sceneRows[sceneSelectedIndex]) sceneSelectedIndex = 0;
@@ -1205,6 +1214,7 @@
     sceneRows = [];
     sceneSelectedIndex = -1;
     scenesError = '';
+    sceneAutoStatus = null;
     scenesLoading = true;
     renderScenes();
     try {
@@ -1216,6 +1226,16 @@
       }
       sceneRows = response.scenes;
       sceneSelectedIndex = sceneRows.length ? 0 : -1;
+      if (!sceneRows.length) {
+        try {
+          const job = await getApi('/satellite/fields/' + encodeURIComponent(id) + '/automation-status');
+          if (selectedFieldId !== id || requestSeq !== sceneRequestSeq) return;
+          sceneAutoStatus = job;
+        } catch(error) {
+          // Accounts with an older API continue seeing the original empty state.
+          console.warn('Amelia satellite automatic status:',error?.message||error);
+        }
+      }
     } catch (error) {
       if (selectedFieldId !== id || requestSeq !== sceneRequestSeq) return;
       scenesError = error?.message || 'Error de consulta';
@@ -2202,6 +2222,7 @@
     scenesLoading = false;
     sceneRasterBusy = false;
     sceneRasterError = '';
+    sceneAutoStatus = null;
     clearSceneRaster();
     satZoneReset();
     sceneRequestSeq++;
@@ -3679,6 +3700,7 @@
         scenesLoading = false;
         sceneRasterBusy = false;
         sceneRasterError = '';
+        sceneAutoStatus = null;
         clearSceneRaster();
         satZoneReset();
         sceneRequestSeq++;
@@ -3702,7 +3724,16 @@
 
   }
 
-  function boot() { ensureUi(); }
+  function boot() {
+    ensureUi();
+    if (!sceneAutoRefreshTimer) {
+      sceneAutoRefreshTimer=setInterval(()=>{
+        if(!enabled() || !selectedFieldId || scenesLoading || sceneRows.length) return;
+        if(document.visibilityState !== 'visible')return;
+        loadScenes(selectedFieldId).catch(error=>console.warn('Amelia scene refresh:',error));
+      },120000);
+    }
+  }
 
   window.addEventListener('tayu:modules-applied',()=>setTimeout(boot,0));
   window.addEventListener('tayu:client-access-ready',()=>setTimeout(boot,0));
