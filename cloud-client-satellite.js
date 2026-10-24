@@ -43,6 +43,8 @@
   let sceneContrastMode = 'fixed';
   let sceneRasterColorRange = null;
   let sceneRasterLocalMask = null;
+  let scenePixelSample = null;
+  let scenePixelPopup = null;
 
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({
@@ -250,6 +252,7 @@
       '#satellite .sat-scene-raster-legend{display:none;padding:8px 10px;margin:8px 0 0;border-radius:10px;background:var(--panel2);border:1px solid var(--border)}' +
       '#satellite .sat-scene-raster-legend.open{display:block}' +
       '#satellite .sat-scene-raster-gradient{height:12px;border-radius:5px;background:linear-gradient(to right,#c62828,#ef6c00,#fdd835,#7cb342,#1b5e20)}' +
+      '#satellite .sat-scene-raster-gradient.local{background:linear-gradient(to right,#2b5cb4,#40a2c9,#9ed6b7,#5aa973,#196345)}' +
       '#satellite .sat-scene-raster-gradient.radar{background:linear-gradient(to right,#22245a,#3171b5,#47c1db,#f1da68,#de5c2e)}' +
       '#satellite .sat-scene-raster-ticks{display:flex;justify-content:space-between;gap:3px;font-size:10px;color:var(--muted);margin-top:5px}' +
       '#satellite .sat-scene-raster-guide{margin-top:7px;font-size:11px;line-height:1.45;color:var(--muted)}' +
@@ -409,7 +412,16 @@
     const imagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19,attribution:'Imágenes © Esri'});
     imagery.addTo(map);
     L.control.layers({'Satélite':imagery,'Mapa':streets}).addTo(map);
-    map.on('click', e => { if (drawing) addPoint(e.latlng); });
+    map.on('click', e => {
+      if (drawing) {
+        addPoint(e.latlng);
+      } else if (sceneRasterOverlay && scenePixelSample && sceneRows[sceneSelectedIndex]) {
+        showScenePixel(e.latlng).catch(error => {
+          console.warn('Amelia Satellite pixel:', error);
+          setStatus('No se pudo leer el píxel: ' + (error?.message || 'error'), 'error');
+        });
+      }
+    });
     map.on('move zoom resize', () => {
       if (!compareAfterOverlay) return;
       requestAnimationFrame(() => setComparePosition(comparePositionPct));
@@ -688,6 +700,9 @@
     sceneRasterOverlay = null;
     sceneRasterColorRange = null;
     sceneRasterLocalMask = null;
+    scenePixelSample = null;
+    try { scenePixelPopup?.remove(); } catch (_) {}
+    scenePixelPopup = null;
     document.getElementById('satSceneRasterLegend')?.classList.remove('open');
   }
 
@@ -750,6 +765,7 @@
     const ticks = document.getElementById('satSceneRasterTicks');
     const guide = document.getElementById('satSceneRasterGuide');
     gradient?.classList.toggle('radar', !optical);
+    gradient?.classList.toggle('local', sceneContrastMode === 'local');
     if (ticks) ticks.innerHTML = values.map(value => '<span>' + Number(value.toFixed(2)) + '</span>').join('');
     if (guide) {
       const direction = optical ? 'Menor índice ← Valores del índice → Mayor índice' :
@@ -760,7 +776,10 @@
           : 'Contraste local P05–P95 radar. No excluye automáticamente construcciones: la señal no representa salud del cultivo.'
         : 'Contraste fijo con escala constante para comparar adquisiciones de la misma capa.';
       guide.textContent = direction + '. ' + note +
-        ' Los colores NO diagnostican enfermedades.';
+        ' Los colores NO diagnostican enfermedades. ' +
+        (scenePixelSample
+          ? 'Haz clic dentro del mapa coloreado para consultar el valor numérico del píxel.'
+          : 'Lectura por punto no disponible todavía para esta capa.');
     }
     legend.classList.add('open');
   }
@@ -796,6 +815,20 @@
       const bounds = mapBounds(result);
       sceneRasterColorRange = Array.isArray(result.color_range) ? result.color_range : null;
       sceneRasterLocalMask = result.local_mask_method || null;
+      const pixelRange = Array.isArray(result.sample_value_range) ? result.sample_value_range.map(Number) : [];
+      if (result.sample_encoding === 'RG16_UNORM_ALPHA_V1' &&
+          typeof result.sample_data_url === 'string' &&
+          result.sample_data_url.startsWith('data:image/png;base64,') &&
+          pixelRange.length === 2 && pixelRange.every(Number.isFinite)) {
+        scenePixelSample = {
+          imageUrl: result.sample_data_url, range: pixelRange,
+          bbox: result.bbox.map(Number),
+          width: Number(result.width),height:Number(result.height),
+          sceneId:row.id,layer,context:null,loading:null
+        };
+      } else {
+        scenePixelSample = null;
+      }
       if (!map) initMap();
       sceneRasterOverlay = L.imageOverlay(result.image_data_url,bounds,{
         opacity:0.84,interactive:false,crossOrigin:false
@@ -815,6 +848,88 @@
         renderSceneRasterToolbar(row);
       }
     }
+  }
+
+
+  function sceneMetricAverage(row, layer) {
+    const fields = {
+      ndvi:'ndvi_mean',ndmi:'ndmi_mean',ndre:'ndre_mean',evi:'evi_mean',
+      vv:'s1_vv_db_mean',vh:'s1_vh_db_mean'
+    };
+    const field = fields[layer];
+    const raw = field ? row?.[field] : null;
+    return raw == null || !Number.isFinite(Number(raw)) ? null : Number(raw);
+  }
+
+  async function showScenePixel(latlng) {
+    const sample = scenePixelSample;
+    const row = sceneRows[sceneSelectedIndex];
+    if (!sample || !row || row.id !== sample.sceneId ||
+        sample.layer !== sceneRasterLayer || !sceneRasterOverlay || !map) return;
+    const [west,south,east,north] = sample.bbox;
+    if (![west,south,east,north,sample.width,sample.height].every(Number.isFinite) ||
+        east <= west || north <= south || sample.width < 2 || sample.height < 2) {
+      throw new Error('Coordenadas del raster inválidas');
+    }
+    const x = Math.floor((latlng.lng-west)/(east-west)*sample.width);
+    const y = Math.floor((north-latlng.lat)/(north-south)*sample.height);
+    if (x < 0 || x >= sample.width || y < 0 || y >= sample.height) return;
+    if (!sample.context) {
+      if (!sample.loading) {
+        sample.loading = new Promise((resolve,reject) => {
+          const img = new Image();
+          img.onload = () => {
+            if (img.width !== sample.width || img.height !== sample.height) {
+              reject(new Error('La imagen numérica no coincide con el mapa'));
+              return;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d', {willReadFrequently:true});
+            if (!ctx) {
+              reject(new Error('No se pudo crear el lector de píxeles'));
+              return;
+            }
+            ctx.drawImage(img,0,0);
+            sample.context = ctx;
+            resolve();
+          };
+          img.onerror = () => reject(new Error('No se pudo decodificar la muestra numérica'));
+          img.src = sample.imageUrl;
+        });
+      }
+      await sample.loading;
+    }
+    if (sample !== scenePixelSample || row.id !== sceneRows[sceneSelectedIndex]?.id) return;
+    const rgba = sample.context.getImageData(x,y,1,1).data;
+    const label = sceneRasterRanges[sample.layer]?.[0] || sample.layer.toUpperCase();
+    const location = latlng.lat.toFixed(6) + ', ' + latlng.lng.toFixed(6);
+    const valid = rgba[3] >= 250;
+    let content = '<div style="min-width:215px;line-height:1.6;color:#172617">' +
+      '<strong>' + esc(label) + ' · ' + esc(shortDate(row.acquired_at)) + '</strong>' +
+      '<div style="font-size:11px;color:#52616b">Ubicación: ' + esc(location) + '</div>';
+    if (!valid) {
+      content += '<div style="margin-top:6px"><b>Sin valor válido para este píxel.</b></div>' +
+        '<div style="font-size:11px">Puede ser una construcción, suelo no clasificado como vegetación o un píxel sin datos.</div>';
+    } else {
+      const encoded = rgba[0]*256 + rgba[1];
+      const v = sample.range[0] + (encoded/65535)*(sample.range[1]-sample.range[0]);
+      const average = sceneMetricAverage(row,sample.layer);
+      const digits = ['vv','vh'].includes(sample.layer) ? 2 : 3;
+      content += '<div style="font-size:23px;font-weight:900;margin:4px 0">' + esc(v.toFixed(digits)) + '</div>' +
+        '<div style="font-size:11px">Valor del píxel procesado por Copernicus (cuantización 16 bits).</div>';
+      if (average != null) {
+        const delta = v-average;
+        content += '<div style="font-size:11px;margin-top:4px">Promedio registrado del lote: <b>' +
+          esc(average.toFixed(digits)) + '</b><br>Diferencia: <b>' +
+          esc((delta>=0?'+':'')+delta.toFixed(digits)) + '</b></div>';
+      }
+    }
+    content += '<div style="font-size:10px;color:#61717c;margin-top:4px">Ubicación aproximada según resolución raster; no es una medición en campo.</div></div>';
+    try { scenePixelPopup?.remove(); } catch (_) {}
+    scenePixelPopup = L.popup({maxWidth:320,closeButton:true})
+      .setLatLng(latlng).setContent(content).openOn(map);
   }
 
   function renderScenes() {
