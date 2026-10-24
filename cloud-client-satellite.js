@@ -256,6 +256,19 @@
       '#satellite .sat-scene-raster-gradient.radar{background:linear-gradient(to right,#22245a,#3171b5,#47c1db,#f1da68,#de5c2e)}' +
       '#satellite .sat-scene-raster-gradient.local.radar{background:linear-gradient(to right,#2b5cb4,#40a2c9,#9ed6b7,#5aa973,#196345)}' +
       '#satellite .sat-scene-raster-ticks{display:flex;justify-content:space-between;gap:3px;font-size:10px;color:var(--muted);margin-top:5px}' +
+      '#satellite .sat-tour-launch{border:1px solid var(--border);background:var(--panel2);color:var(--text);border-radius:10px;padding:8px 15px;font-size:12px;font-weight:900;cursor:pointer}' +
+      '.sat-tour-root{position:fixed;inset:0;z-index:999998;pointer-events:none;font-family:inherit}' +
+      '.sat-tour-scrim{position:fixed;inset:0;pointer-events:auto;background:transparent}' +
+      '.sat-tour-spotlight{position:fixed;border:3px solid #c7f36b;border-radius:13px;box-shadow:0 0 0 9999px rgba(7,16,23,.71);pointer-events:none}' +
+      '.sat-tour-panel{position:fixed;box-sizing:border-box;width:min(390px,calc(100vw - 24px));padding:20px;border:1px solid #d0e8d0;background:#fff;color:#172919;border-radius:18px;box-shadow:0 16px 55px rgba(0,0,0,.35);pointer-events:auto;z-index:1}' +
+      '.sat-tour-panel h3{font-size:18px;line-height:1.3;margin:7px 0 9px;color:#172919}' +
+      '.sat-tour-panel p{font-size:13px;line-height:1.6;margin:0 0 14px;color:#384a41}' +
+      '.sat-tour-progress{font-size:11px;font-weight:900;letter-spacing:.05em;color:#2c714b}' +
+      '.sat-tour-actions{display:flex;align-items:center;gap:7px;justify-content:flex-end;flex-wrap:wrap}' +
+      '.sat-tour-actions button{font-size:12px;border-radius:9px;padding:9px 12px;border:1px solid #cbd5cd;background:#f5f8f4;color:#182b1b;cursor:pointer;font-weight:800}' +
+      '.sat-tour-actions button.primary{background:#5bc12f;border-color:#5bc12f;color:#102010}' +
+      '.sat-tour-actions button:disabled{opacity:.4;cursor:default}' +
+      '@media(max-width:620px){.sat-tour-panel{bottom:10px!important;top:auto!important;left:12px!important;width:calc(100vw - 24px)}}' +
       '#satellite .sat-scene-raster-guide{margin-top:7px;font-size:11px;line-height:1.45;color:var(--muted)}' +
       '#satellite .sat-scene-raster-detail{font-size:11px;color:var(--muted);line-height:1.5;flex-basis:100%}' +
       '#satellite .sat-scenes-list{display:flex;gap:7px;overflow-x:auto;padding:3px 1px 9px}' +
@@ -311,7 +324,7 @@
       section.id = 'satellite';
       section.className = 'view';
       section.innerHTML =
-        '<div class="card sat-module-title"><div class="module-header"><div><h3 style="margin:0">🛰️ Amelia Satellite</h3><p class="hint" style="margin:6px 0 0">Selecciona un lote, revisa una fecha y analiza su evolución satelital.</p></div></div></div>' +
+        '<div class="card sat-module-title"><div class="module-header"><div><h3 style="margin:0">🛰️ Amelia Satellite</h3><p class="hint" style="margin:6px 0 0">Selecciona un lote, revisa una fecha y analiza su evolución satelital.</p></div><button type="button" id="satTutorialOpen" class="sat-tour-launch" aria-label="Iniciar tutorial interactivo de Amelia Satellite">? Tutorial</button></div></div>' +
         '<div class="sat-kpis">' +
           '<div class="sat-kpi"><span>NDVI actual</span><b id="satKpiNdvi">—</b><small id="satKpiNdviHint">Sin datos</small></div>' +
           '<div class="sat-kpi"><span>NDMI actual</span><b id="satKpiNdmi">—</b><small id="satKpiNdmiHint">Sin datos</small></div>' +
@@ -3103,7 +3116,82 @@
     window.applyTayuChartTheme?.();
   }
 
+
+  const satTourSteps = [
+    ['Bienvenido a Amelia Satellite','#satTutorialOpen','Recorrido paso a paso como un juego. Siguiente o flechas: avanzar; Salir o Esc: cerrar. No se modifican datos automáticamente.'],
+    ['Selecciona una finca','#satSiteSelect','Elige la finca para filtrar sus lotes.'],
+    ['Selecciona el lote','#satelliteFieldList','Elige el lote y verifica su código SAT y superficie. Puede haber nombres repetidos.'],
+    ['Periodo agregado P5D','#satDateNavigator','La fecha superior muestra un periodo histórico, no necesariamente el día de adquisición real.'],
+    ['Adquisiciones reales','#satScenesCard','Sentinel-2 (S2) utiliza luz para NDVI, NDMI, NDRE y EVI. Sentinel-1 (S1) utiliza radar incluso con nubes. S1 NO es NDVI.'],
+    ['Elegir un índice','#satSceneRasterLayer','NDVI indica respuesta de vegetación; NDMI está relacionado con agua de la vegetación; NDRE usa red-edge; EVI es otro índice de vegetación. VV, VH y relación corresponden a radar.'],
+    ['Contraste fijo o local','#satSceneContrast','Fijo conserva colores para comparar fechas. Local expande percentiles P05–P95: un tono azul significa menor valor dentro del lote, NO una enfermedad.'],
+    ['Mapa interactivo','#satelliteMap','Haz clic en una zona coloreada para consultar el valor numérico por píxel y su posición aproximada. Casas, caminos o píxeles inválidos pueden figurar sin valor.'],
+    ['Leer la leyenda','#satSceneRasterLegend','La escala tiene límites numéricos. Un solo color no diagnostica problemas: puede influir el suelo, infraestructura o la cobertura.'],
+    ['Volver al historial','#satSceneRasterHistoric','Regresa al mapa NDVI de periodos agregados.'],
+    ['Evolución satelital','#satelliteHistoryCard','Este gráfico usa periodos históricos NDVI/NDMI, no fechas individuales. Las tendencias fiables exigen varias observaciones válidas.'],
+    ['Comparar fechas','#satCompareToggle','Antes y Después usa periodos agregados. En S1 deben compararse la misma dirección y órbita para estudiar variaciones.'],
+    ['Terminaste el recorrido','#satTutorialOpen','Ahora prueba S2 NDVI, cambia el contraste y pulsa varios píxeles. La interpretación debe contrastarse con observaciones en campo.']
+  ];
+  let satTourIndex = -1;
+  function satTourClose() {
+    satTourIndex = -1;
+    document.getElementById('satTourRoot')?.remove();
+    document.removeEventListener('keydown',satTourKey,true);
+    window.removeEventListener('resize',satTourPlace,true);
+    window.removeEventListener('scroll',satTourPlace,true);
+  }
+  function satTourKey(e) {
+    if(satTourIndex<0)return;
+    if(e.key==='Escape'){e.preventDefault();satTourClose();}
+    else if(e.key==='ArrowRight'){e.preventDefault();satTourMove(1);}
+    else if(e.key==='ArrowLeft'){e.preventDefault();satTourMove(-1);}
+  }
+  function satTourPlace() {
+    if(satTourIndex<0)return;
+    const root=document.getElementById('satTourRoot');
+    const panel=root?.querySelector('.sat-tour-panel'),spot=root?.querySelector('.sat-tour-spotlight');
+    const target=document.querySelector(satTourSteps[satTourIndex]?.[1]);
+    if(!panel||!spot)return;
+    const r=target?.getBoundingClientRect();
+    const vis=!!r&&r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight;
+    spot.style.display=vis?'block':'none';
+    if(vis){
+      spot.style.left=Math.max(3,r.left-5)+'px';
+      spot.style.top=Math.max(3,r.top-5)+'px';
+      spot.style.width=Math.min(innerWidth-6,r.width+10)+'px';
+      spot.style.height=Math.min(innerHeight-6,r.height+10)+'px';
+    }
+    const w=Math.min(390,innerWidth-24),h=panel.offsetHeight||230;
+    panel.style.left=Math.min(innerWidth-w-12,Math.max(12,vis?r.left:(innerWidth-w)/2))+'px';
+    panel.style.top=(vis&&r.bottom+h+18<innerHeight-10?r.bottom+12:vis&&r.top-h-18>10?r.top-h-12:Math.max(10,(innerHeight-h)/2))+'px';
+  }
+  function satTourMove(delta) {
+    if(satTourIndex<0)return;
+    const n=satTourIndex+delta;
+    if(n>=satTourSteps.length){satTourClose();return;}
+    satTourIndex=Math.max(0,n);
+    const [title,selector,description]=satTourSteps[satTourIndex];
+    const target=document.querySelector(selector);
+    if(target?.getBoundingClientRect().height>0)target.scrollIntoView({behavior:'instant',block:'center'});
+    const panel=document.querySelector('#satTourRoot .sat-tour-panel');if(!panel)return;
+    panel.innerHTML='<div class="sat-tour-progress">PASO '+(satTourIndex+1)+' / '+satTourSteps.length+'</div>'+
+      '<h3>'+esc(title)+'</h3><p>'+esc(description)+'</p><div class="sat-tour-actions">'+
+      '<button data-tour="close">Salir</button><button data-tour="prev" '+(satTourIndex===0?'disabled':'')+'>Anterior</button>'+
+      '<button class="primary" data-tour="next">'+(satTourIndex===satTourSteps.length-1?'Finalizar':'Siguiente →')+'</button></div>';
+    satTourPlace();requestAnimationFrame(satTourPlace);
+  }
+  function satTourStart() {
+    satTourClose();
+    const root=document.createElement('div');root.id='satTourRoot';root.className='sat-tour-root';
+    root.innerHTML='<div class="sat-tour-scrim"></div><div class="sat-tour-spotlight"></div><div class="sat-tour-panel" role="dialog" aria-modal="true" aria-label="Tutorial de Amelia Satellite"></div>';
+    document.body.appendChild(root);
+    root.addEventListener('click',e=>{const a=e.target.closest('[data-tour]')?.dataset.tour;if(a==='next')satTourMove(1);if(a==='prev')satTourMove(-1);if(a==='close')satTourClose();});
+    satTourIndex=0;document.addEventListener('keydown',satTourKey,true);
+    window.addEventListener('resize',satTourPlace,true);window.addEventListener('scroll',satTourPlace,true);
+    satTourMove(0);
+  }
   function bind() {
+    document.getElementById('satTutorialOpen')?.addEventListener('click',satTourStart);
     document.getElementById('satRefresh')?.addEventListener('click',()=>loadSites().catch(fail));
     document.getElementById('satLocationSearchButton')?.addEventListener('click',()=>searchLocation().catch(fail));
     document.getElementById('satLocationSearch')?.addEventListener('keydown',event=>{
