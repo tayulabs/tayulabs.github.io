@@ -352,7 +352,7 @@
         '<p class="hint" style="margin:8px 2px 0">Interpretación orientativa: los umbrales de NDVI/NDMI pueden variar según cultivo, etapa fenológica, suelo, clima y manejo.</p>' +
         '<div class="sat-grid">' +
           '<div>' +
-            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satDateNavigator" class="sat-date-nav"><button class="sat-date-step" id="satDatePrev" type="button" disabled aria-label="Periodo satelital anterior">‹</button><button class="sat-date-current" id="satDateCurrent" type="button" disabled aria-haspopup="dialog" aria-expanded="false"><span>Periodo satelital</span><b id="satDateCurrentText">Selecciona un lote</b><small id="satDateRangeText">Sin periodo disponible</small></button><button class="sat-date-step" id="satDateNext" type="button" disabled aria-label="Periodo satelital siguiente">›</button><div id="satDateQuality" class="sat-date-quality">Sin análisis</div><div id="satCalendarPopover" class="sat-calendar-popover" role="dialog" aria-label="Fechas satelitales disponibles"><div class="sat-calendar-head"><button id="satCalendarPrevMonth" type="button" aria-label="Mes anterior">‹</button><b id="satCalendarMonth">—</b><button id="satCalendarNextMonth" type="button" aria-label="Mes siguiente">›</button></div><div class="sat-calendar-weekdays"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div><div id="satCalendarGrid" class="sat-calendar-grid"></div><div class="sat-calendar-legend"><span><i class="sat-calendar-dot good"></i>Disponible</span><span><i class="sat-calendar-dot limited"></i>Calidad limitada</span><span><i class="sat-calendar-dot poor"></i>No recomendable</span><span>Gris: sin raster utilizable</span></div><div class="sat-calendar-legend" style="border-top:0;margin-top:5px;padding-top:4px"><span><i class="sat-calendar-dot good"></i>S2 real</span><span style="color:#2e67b0">■ S1 radar</span><span>Fechas reales: consultar abajo</span></div></div></div><div id="satScenesCard" class="sat-scenes-card" aria-live="polite"><div class="sat-scenes-header"><strong>Adquisiciones reales · Sentinel-1 y Sentinel-2</strong><div style="display:flex;gap:8px;align-items:center"><small id="satScenesCount">Selecciona un lote</small><button class="sat-scenes-reload" id="satScenesReload" type="button" disabled aria-label="Volver a consultar las adquisiciones">↻ Actualizar</button></div></div><div id="satScenesList" class="sat-scenes-list"></div><div id="satScenesDetails" class="sat-scene-details">Aún no hay lote seleccionado.</div><div id="satSceneRasterToolbar" class="sat-scene-raster-toolbar" style="display:none"><label for="satSceneRasterLayer">Índice / capa</label><select id="satSceneRasterLayer" aria-label="Capa de la adquisición"></select><label for="satSceneContrast">Contraste</label><select id="satSceneContrast" aria-label="Contraste del mapa"><option value="fixed">Fijo (comparar fechas)</option><option value="local">Local (detalle del lote)</option></select><button type="button" id="satSceneRasterLoad">Ver colores</button><button type="button" id="satSceneRasterHistoric">Volver a periodo agregado</button><div id="satSceneRasterTitle" class="sat-scene-raster-title">Sin mapa seleccionado</div></div><div id="satSceneRasterLegend" class="sat-scene-raster-legend"><div id="satSceneRasterGradient" class="sat-scene-raster-gradient"></div><div id="satSceneRasterTicks" class="sat-scene-raster-ticks"></div><div id="satSceneRasterGuide" class="sat-scene-raster-guide">Los colores expresan valores relativos de la capa, no un diagnóstico del cultivo.</div></div><p class="sat-scene-notice">Datos de prueba: mosaicos por día / órbita, no escenas SAFE individuales. Las fechas S1 no generan NDVI. El mapa y la comparación siguen utilizando periodos agregados.</p></div><details id="satAreaPanel" class="sat-area-panel"><summary>Superficies, hectáreas y zonas a excluir</summary><p>Delimita casas, caminos u otra infraestructura para excluirla del análisis. Los polígonos se guardarán por lote para usuarios autorizados; nunca modificarán las imágenes originales.</p><div class="sat-area-tools"><input id="satAreaName" maxlength="64" placeholder="Nombre: casa, camino..." aria-label="Nombre de exclusión"><button type="button" id="satAreaDraw">Dibujar exclusión</button><button type="button" id="satAreaFinish" disabled>Guardar zona</button><button type="button" id="satAreaCancel" disabled>Cancelar</button><button type="button" id="satAreaRecalc">Calcular hectáreas</button></div><div id="satAreaZones"></div><div id="satAreaResult" class="sat-area-result">Selecciona una adquisición real y calcula sus superficies válidas.</div><p id="satRealSceneCompare">Comparación entre adquisiciones reales: pendiente de escenas compatibles.</p><p>El cuartil inferior contiene valores relativamente menores, no necesariamente cultivo enfermo. Superficies estimadas sobre píxeles válidos de vegetación (S2) o radar (S1).</p></details><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareControl" class="sat-compare-control"><div class="sat-compare-control-head"><span>ANTES</span><span>DESPUÉS</span></div><input id="satCompareRevealRange" type="range" min="0" max="100" step="1" value="50" aria-label="Revelar Antes y Después"></div></div><div class="sat-toolbar"><div class="sat-tool-group"><span class="sat-tool-group-label">Edición</span><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><div class="sat-tool-group"><span class="sat-tool-group-label">Visualización</span><button class="btn ghost" id="satSatelliteViewButton" type="button">Satélite</button><button class="btn ghost" id="satNdviMapButton" disabled>NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Comparar fechas</button><button class="btn ghost" id="satHistoryJump" type="button">Historial</button></div></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-head"><div class="sat-compare-period"><span>Antes</span><b id="satCompareBeforeText">Sin periodo</b><small id="satCompareBeforeQuality">—</small></div><div class="sat-compare-period"><span>Después</span><b id="satCompareAfterText">Sin periodo</b><small id="satCompareAfterQuality">—</small></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><div class="sat-compare-timeline"><div class="sat-compare-track"></div><div class="sat-compare-selected" id="satCompareSelected"></div><div class="sat-compare-ticks" id="satCompareTicks"></div><input class="sat-compare-range before" id="satCompareBeforeRange" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Periodo Antes"><input class="sat-compare-range after" id="satCompareAfterRange" type="range" min="0" max="1" step="1" value="1" disabled aria-label="Periodo Después"><div class="sat-compare-axis"><span id="satCompareAxisStart">—</span><span id="satCompareAxisEnd">—</span></div></div><p class="hint" style="margin:8px 0 0">Mueve los dos puntos sobre la línea de tiempo y pulsa Comparar. El deslizador inferior recorre el raster del lote: su posición se conserva aunque muevas o acerques el mapa.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
+            '<div class="card map-card"><div class="sat-search"><div class="sat-search-box"><input id="satLocationSearch" placeholder="Buscar ubicación o coordenadas: -2.1709, -79.9224"><button class="btn ghost" id="satLocationSearchButton">Buscar</button></div><div id="satSearchResults" class="sat-search-results"></div></div><div id="satDateNavigator" class="sat-date-nav"><button class="sat-date-step" id="satDatePrev" type="button" disabled aria-label="Periodo satelital anterior">‹</button><button class="sat-date-current" id="satDateCurrent" type="button" disabled aria-haspopup="dialog" aria-expanded="false"><span>Periodo satelital</span><b id="satDateCurrentText">Selecciona un lote</b><small id="satDateRangeText">Sin periodo disponible</small></button><button class="sat-date-step" id="satDateNext" type="button" disabled aria-label="Periodo satelital siguiente">›</button><div id="satDateQuality" class="sat-date-quality">Sin análisis</div><div id="satCalendarPopover" class="sat-calendar-popover" role="dialog" aria-label="Fechas satelitales disponibles"><div class="sat-calendar-head"><button id="satCalendarPrevMonth" type="button" aria-label="Mes anterior">‹</button><b id="satCalendarMonth">—</b><button id="satCalendarNextMonth" type="button" aria-label="Mes siguiente">›</button></div><div class="sat-calendar-weekdays"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div><div id="satCalendarGrid" class="sat-calendar-grid"></div><div class="sat-calendar-legend"><span><i class="sat-calendar-dot good"></i>Disponible</span><span><i class="sat-calendar-dot limited"></i>Calidad limitada</span><span><i class="sat-calendar-dot poor"></i>No recomendable</span><span>Gris: sin raster utilizable</span></div><div class="sat-calendar-legend" style="border-top:0;margin-top:5px;padding-top:4px"><span><i class="sat-calendar-dot good"></i>Óptico</span><span style="color:#2e67b0">■ Radar</span><span>Fechas reales: consultar abajo</span></div></div></div><div id="satScenesCard" class="sat-scenes-card" aria-live="polite"><div class="sat-scenes-header"><strong>Adquisiciones reales del lote</strong><div style="display:flex;gap:8px;align-items:center"><small id="satScenesCount">Selecciona un lote</small><button class="sat-scenes-reload" id="satScenesReload" type="button" disabled aria-label="Volver a consultar las adquisiciones">↻ Actualizar</button></div></div><div id="satScenesList" class="sat-scenes-list"></div><div id="satScenesDetails" class="sat-scene-details">Aún no hay lote seleccionado.</div><div id="satSceneRasterToolbar" class="sat-scene-raster-toolbar" style="display:none"><label for="satSceneRasterLayer">Índice / capa</label><select id="satSceneRasterLayer" aria-label="Capa de la adquisición"></select><label for="satSceneContrast">Contraste</label><select id="satSceneContrast" aria-label="Contraste del mapa"><option value="fixed">Fijo (comparar fechas)</option><option value="local">Local (detalle del lote)</option></select><button type="button" id="satSceneRasterLoad">Ver colores</button><button type="button" id="satSceneRasterHistoric">Volver a periodo agregado</button><div id="satSceneRasterTitle" class="sat-scene-raster-title">Sin mapa seleccionado</div></div><div id="satSceneRasterLegend" class="sat-scene-raster-legend"><div id="satSceneRasterGradient" class="sat-scene-raster-gradient"></div><div id="satSceneRasterTicks" class="sat-scene-raster-ticks"></div><div id="satSceneRasterGuide" class="sat-scene-raster-guide">Los colores expresan valores relativos de la capa, no un diagnóstico del cultivo.</div></div><p class="sat-scene-notice">Las adquisiciones se agrupan por fecha y, para radar, por órbita. Los índices de vegetación y las capas radar miden propiedades diferentes. «Comparar fechas» utiliza periodos históricos agregados.</p><details class="sat-scene-notice" style="margin-top:5px"><summary style="cursor:pointer">Fuentes y licencias</summary><small>Contains modified Copernicus Sentinel data 2026. Mapas e índices procesados por Amelia Cloud.</small></details></div><details id="satAreaPanel" class="sat-area-panel"><summary>Superficies, hectáreas y zonas a excluir</summary><p>Delimita casas, caminos u otra infraestructura para excluirla del análisis. Los polígonos se guardarán por lote para usuarios autorizados; nunca modificarán las imágenes originales.</p><div class="sat-area-tools"><input id="satAreaName" maxlength="64" placeholder="Nombre: casa, camino..." aria-label="Nombre de exclusión"><button type="button" id="satAreaDraw">Dibujar exclusión</button><button type="button" id="satAreaFinish" disabled>Guardar zona</button><button type="button" id="satAreaCancel" disabled>Cancelar</button><button type="button" id="satAreaRecalc">Calcular hectáreas</button></div><div id="satAreaZones"></div><div id="satAreaResult" class="sat-area-result">Selecciona una adquisición real y calcula sus superficies válidas.</div><p id="satRealSceneCompare">Comparación entre adquisiciones reales: pendiente de escenas compatibles.</p><p>El cuartil inferior contiene valores relativamente menores, no necesariamente cultivo enfermo. Superficies estimadas sobre píxeles válidos de vegetación o radar.</p></details><div class="sat-map-wrap"><div id="satelliteMap" class="sat-map"></div><div id="satCompareBeforeLabel" class="sat-compare-label before" style="display:none">ANTES</div><div id="satCompareAfterLabel" class="sat-compare-label after" style="display:none">DESPUÉS</div><div id="satCompareControl" class="sat-compare-control"><div class="sat-compare-control-head"><span>ANTES</span><span>DESPUÉS</span></div><input id="satCompareRevealRange" type="range" min="0" max="100" step="1" value="50" aria-label="Revelar Antes y Después"></div></div><div class="sat-toolbar"><div class="sat-tool-group"><span class="sat-tool-group-label">Edición</span><button class="btn" id="satDrawStart">Dibujar lote</button><button class="btn ghost" id="satDrawUndo" disabled>Deshacer</button><button class="btn ghost" id="satDrawFinish" disabled>Finalizar</button><button class="btn ghost" id="satDrawClear">Limpiar</button></div><div class="sat-tool-group"><span class="sat-tool-group-label">Visualización</span><button class="btn ghost" id="satSatelliteViewButton" type="button">Satélite</button><button class="btn ghost" id="satNdviMapButton" disabled>NDVI</button><button class="btn ghost" id="satCompareToggle" disabled>Comparar fechas</button><button class="btn ghost" id="satHistoryJump" type="button">Historial</button></div></div><div id="satComparePanel" class="sat-compare-panel"><div class="sat-compare-head"><div class="sat-compare-period"><span>Antes</span><b id="satCompareBeforeText">Sin periodo</b><small id="satCompareBeforeQuality">—</small></div><div class="sat-compare-period"><span>Después</span><b id="satCompareAfterText">Sin periodo</b><small id="satCompareAfterQuality">—</small></div><button class="btn" id="satCompareRun" disabled>Comparar</button></div><div class="sat-compare-timeline"><div class="sat-compare-track"></div><div class="sat-compare-selected" id="satCompareSelected"></div><div class="sat-compare-ticks" id="satCompareTicks"></div><input class="sat-compare-range before" id="satCompareBeforeRange" type="range" min="0" max="1" step="1" value="0" disabled aria-label="Periodo Antes"><input class="sat-compare-range after" id="satCompareAfterRange" type="range" min="0" max="1" step="1" value="1" disabled aria-label="Periodo Después"><div class="sat-compare-axis"><span id="satCompareAxisStart">—</span><span id="satCompareAxisEnd">—</span></div></div><p class="hint" style="margin:8px 0 0">Mueve los dos puntos sobre la línea de tiempo y pulsa Comparar. El deslizador inferior recorre el raster del lote: su posición se conserva aunque muevas o acerques el mapa.</p></div><div id="satFarmLegend" class="sat-farm-legend"><strong>Resumen de finca</strong><span class="item"><i class="dot" style="background:#1b5e20"></i>Alto</span><span class="item"><i class="dot" style="background:#7cb342"></i>Moderado</span><span class="item"><i class="dot" style="background:#fdd835"></i>Bajo</span><span class="item"><i class="dot" style="background:#c62828"></i>Muy bajo</span><span class="item"><i class="dot" style="background:#94a3b8"></i>Sin dato confiable</span></div><div id="satNdviLegend" class="sat-legend"><span>NDVI</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#c62828"></i>Muy bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#ef6c00"></i>Bajo</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#fdd835"></i>Medio</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#7cb342"></i>Bueno</span><span class="sat-legend-item"><i class="sat-legend-swatch" style="background:#1b5e20"></i>Alto</span></div><p class="hint" id="satDrawNote">Busca la ubicación, acerca el mapa y marca al menos 3 puntos para crear el perímetro.</p></div>' +
             '<div class="card" id="satelliteHistoryCard" style="margin-top:18px"><h3 style="margin-top:0">Evolución satelital</h3><div class="sat-chart"><canvas id="satelliteTrendChart"></canvas></div><div class="sat-table-wrap"><table class="table"><thead><tr><th>Periodo</th><th>Calidad</th><th>Válidos</th><th>NDVI</th><th>NDMI</th></tr></thead><tbody id="satelliteObservationsBody"><tr><td colspan="5">Sin datos.</td></tr></tbody></table></div></div>' +
           '</div>' +
           '<div>' +
@@ -778,7 +778,7 @@
       ? 'Sin píxeles ópticos utilizables: no se mostrará una imagen de vigor.'
       : sceneRasterBusy ? 'Cargando imagen de la adquisición seleccionada…'
       : sceneRasterError ? 'Mapa no disponible: ' + sceneRasterError
-      : sceneRasterOverlay ? 'Mapa real: ' + (optical ? 'S2' : 'S1') +
+      : sceneRasterOverlay ? 'Mapa real: ' + (optical ? 'Óptico' : 'Radar') +
         ' · ' + shortDate(row.acquired_at) + ' · ' + (sceneRasterRanges[sceneRasterLayer]?.[0] || sceneRasterLayer) +
         ' · Contraste ' + (sceneContrastMode === 'local' ? 'local P05–P95' : 'fijo')
       : 'Pulsa «Ver colores» para cargar la capa de esta adquisición.';
@@ -1015,7 +1015,7 @@
       const p=z.geometry_geojson?.coordinates?.[0];
       if(!Array.isArray(p))continue;
       satZoneLayers.push(L.polygon(p.map(x=>[x[1],x[0]]),
-        {color:'#a532c0',weight:2,fillOpacity:.12,dashArray:'5 4',interactive:false}).addTo(map));
+        {color:'#a532c0',weight:2,fill:false,dashArray:'5 4',interactive:false}).addTo(map));
     }
   }
   async function satZonesFetch(id){
@@ -1131,7 +1131,7 @@
       (row.collection==='sentinel-2-l2a'||(r.relative_orbit===row.relative_orbit&&r.orbit_direction===row.orbit_direction)));
     host.textContent=valid.length
       ? 'Hay '+valid.length+' adquisición(es) comparable(s) de la misma fuente. Para comparar, utiliza la misma capa y escala fija.'
-      : 'Comparación real todavía no disponible: se necesitan dos S2 utilizables, o dos S1 de la misma órbita y dirección.';
+      : 'Comparación real todavía no disponible: se necesitan dos adquisiciones ópticas válidas o dos adquisiciones radar con la misma órbita y dirección.';
   }
   function renderScenes() {
     const count = document.getElementById('satScenesCount');
@@ -1153,7 +1153,7 @@
     if (scenesLoading) {
       renderSceneRasterToolbar(null);
       list.innerHTML = '';
-      details.textContent = 'Consultando fechas y métricas reales de Sentinel-1 y Sentinel-2…';
+      details.textContent = 'Consultando las adquisiciones reales del lote…';
       return;
     }
     if (scenesError) {
@@ -1175,7 +1175,7 @@
         (radar ? 'radar' : 'optical') + (row.quality === 'no_data' ? ' no_data' : '') +
         (i === sceneSelectedIndex ? ' active' : '') +
         '" data-scene-index="' + i + '" aria-pressed="' + (i === sceneSelectedIndex) + '">' +
-        (radar ? 'S1 radar ' : 'S2 óptico ') + esc(shortDate(row.acquired_at)) +
+        (radar ? 'Radar · ' : 'Óptico · ') + esc(shortDate(row.acquired_at)) +
         (row.quality === 'no_data' ? ' · nublado/sin dato' : '') +
         '</button>';
     }).join('');
@@ -1190,7 +1190,7 @@
          ['NDRE',sceneNum(row.ndre_mean)],['EVI',sceneNum(row.evi_mean)],
          ['Nube local',row.local_cloud_percent == null ? '—' : sceneNum(row.local_cloud_percent,1) + '%'],
          ['Píxeles válidos',row.valid_pixel_percent == null ? '—' : sceneNum(row.valid_pixel_percent,1) + '%']];
-    const type = radar ? 'Sentinel-1 · radar VV/VH' : 'Sentinel-2 · óptico';
+    const type = radar ? 'Radar · VV/VH' : 'Óptico · vegetación';
     renderSceneRasterToolbar(row);
     satRealCompareInfo();
     details.innerHTML =
@@ -1292,7 +1292,7 @@
       const titleText = (row
         ? 'Periodo NDVI: ' + qualityLabel(quality) + (row.valid_pixel_percent == null ? '' : ' · ' + Number(row.valid_pixel_percent).toFixed(1) + '% válido')
         : 'Sin periodo NDVI') +
-        (scenes.length ? ' · Adquisición real: ' + (hasOptical ? 'S2' : '') + (hasRadar ? ' S1 radar' : '') : '');
+        (scenes.length ? ' · Adquisición real: ' + (hasOptical ? 'Óptico' : '') + (hasRadar ? ' Radar' : '') : '');
       cells.push(
         '<button type="button" class="sat-calendar-day ' +
         esc(quality) +
@@ -1304,8 +1304,8 @@
         d.getDate() +
         (mark ? '<span class="mark">' + mark + '</span>' : '') +
         (scenes.length ? '<span class="sat-scene-flags">' +
-          (hasOptical ? '<em class="' + (opticalUsable ? '' : 'no_data') + '">S2</em>' : '') +
-          (hasRadar ? '<em class="radar">S1</em>' : '') +
+          (hasOptical ? '<em class="' + (opticalUsable ? '' : 'no_data') + '">Ópt.</em>' : '') +
+          (hasRadar ? '<em class="radar">Rad.</em>' : '') +
           '</span>' : '') +
         '</button>'
       );
@@ -1432,7 +1432,7 @@
       current.disabled = !sceneRows.length;
       currentText.textContent = sceneRows.length ? 'Ver adquisiciones reales' : 'Sin fechas utilizables';
       rangeText.textContent = sceneRows.length
-        ? 'Escenas reales S1/S2 · sin periodo NDVI seleccionable'
+        ? 'Adquisiciones reales · sin periodo histórico seleccionado'
         : 'Ejecuta “Analizar con satélite”';
       quality.className = 'sat-date-quality no_data';
       quality.textContent = 'Sin raster confiable';
@@ -1563,14 +1563,14 @@
     points = [];
     drawing = true;
     redraw();
-    setStatus('Dibuja el perímetro del lote.', 'ok');
+    setStatus('Dibuja el perímetro con al menos 3 puntos. Finaliza y guarda el lote cuando termines.', 'ok');
   }
 
   function finishDraw() {
     if (points.length < 3) return;
     drawing = false;
     line?.remove(); line = null;
-    polygon = L.polygon(points,{weight:3,fillOpacity:.18}).addTo(map);
+    polygon = L.polygon(points,{weight:3,fill:false,color:'#36aaff',opacity:1}).addTo(map);
     const area = estimateAreaHa(points);
     document.getElementById('satArea').value = area.toFixed(2);
     document.getElementById('satKpiArea').textContent = area.toFixed(2);
@@ -1612,9 +1612,10 @@
 
     return {
       weight: id === selectedFieldId ? 4 : 2,
-      fillOpacity: id === selectedFieldId ? .24 : .16,
-      color: id === selectedFieldId ? '#5BC12F' : baseColor,
-      fillColor: baseColor
+      fill:false,
+      fillOpacity:0,
+      opacity:1,
+      color: id === selectedFieldId ? '#5BC12F' : baseColor
     };
   }
 
@@ -2222,7 +2223,7 @@
 
     if (field?.geometry_geojson && map) {
       clearLayers();
-      polygon = L.geoJSON(field.geometry_geojson,{style:{weight:3,fillOpacity:.18}}).addTo(map);
+      polygon = L.geoJSON(field.geometry_geojson,{style:{weight:3,fill:false,color:'#36aaff',opacity:1}}).addTo(map);
       try { map.fitBounds(polygon.getBounds(),{padding:[24,24]}); } catch (_) {}
     }
     document.getElementById('satKpiArea').textContent = Number(field?.area_hectares||0).toFixed(2);
@@ -2450,7 +2451,7 @@
 
   async function loadObservations(id) {
     // El historial P5D y las escenas reales se consultan en paralelo:
-    // un fallo o interrupción del gráfico NDVI no bloquea el radar/S2.
+    // un fallo o interrupción del gráfico NDVI no bloquea las adquisiciones reales.
     const historicTask = (async () => {
       const rows = await getApi('/satellite/fields/' + encodeURIComponent(id) + '/observations?limit=36');
       if (selectedFieldId !== id) return;
@@ -3308,20 +3309,37 @@
 
 
   const satTourSteps = [
-    ['Bienvenido a Amelia Satellite','#satTutorialOpen','Recorrido paso a paso como un juego. Siguiente o flechas: avanzar; Salir o Esc: cerrar. No se modifican datos automáticamente.'],
-    ['Selecciona una finca','#satSiteSelect','Elige la finca para filtrar sus lotes.'],
-    ['Selecciona el lote','#satelliteFieldList','Elige el lote y verifica su código SAT y superficie. Puede haber nombres repetidos.'],
-    ['Periodo agregado P5D','#satDateNavigator','La fecha superior muestra un periodo histórico, no necesariamente el día de adquisición real.'],
-    ['Adquisiciones reales','#satScenesCard','Sentinel-2 (S2) utiliza luz para NDVI, NDMI, NDRE y EVI. Sentinel-1 (S1) utiliza radar incluso con nubes. S1 NO es NDVI.'],
-    ['Elegir un índice','#satSceneRasterLayer','NDVI indica respuesta de vegetación; NDMI está relacionado con agua de la vegetación; NDRE usa red-edge; EVI es otro índice de vegetación. VV, VH y relación corresponden a radar.'],
-    ['Contraste fijo o local','#satSceneContrast','Fijo conserva colores para comparar fechas. Local expande percentiles P05–P95: un tono azul significa menor valor dentro del lote, NO una enfermedad.'],
-    ['Mapa interactivo','#satelliteMap','Haz clic en una zona coloreada para consultar el valor numérico por píxel y su posición aproximada. Casas, caminos o píxeles inválidos pueden figurar sin valor.'],
-    ['Leer la leyenda','#satSceneRasterLegend','La escala tiene límites numéricos. Un solo color no diagnostica problemas: puede influir el suelo, infraestructura o la cobertura.'],
-    ['Volver al historial','#satSceneRasterHistoric','Regresa al mapa NDVI de periodos agregados.'],
-    ['Exclusiones y hectáreas','#satAreaPanel','Expande el panel para dibujar la casa o caminos que deseas excluir. Calcula cuántas hectáreas válidas caen en el cuartil inferior, central y superior del índice. Los colores bajos no implican enfermedades. Solo los administradores pueden guardar zonas.'],
-    ['Evolución satelital','#satelliteHistoryCard','Este gráfico usa periodos históricos NDVI/NDMI, no fechas individuales. Las tendencias fiables exigen varias observaciones válidas.'],
-    ['Comparar fechas','#satCompareToggle','Antes y Después usa periodos agregados. En S1 deben compararse la misma dirección y órbita para estudiar variaciones.'],
-    ['Terminaste el recorrido','#satTutorialOpen','Ahora prueba S2 NDVI, cambia el contraste y pulsa varios píxeles. La interpretación debe contrastarse con observaciones en campo.']
+    ['Bienvenido a Amelia Cloud','#satTutorialOpen','Esta guía te acompañará por los botones reales. Usa Siguiente y Anterior para avanzar, o Salir para cerrarla. El tutorial no guarda lotes ni modifica datos.'],
+    ['Busca cualquier ubicación','#satLocationSearch','Escribe un lugar o coordenadas (por ejemplo: -2.1709, -79.9224). Puedes buscar terrenos en cualquier zona que tenga cobertura de mapa.'],
+    ['Ubica el terreno','#satLocationSearchButton','Pulsa Buscar y luego ajusta la vista: mueve el mapa y acerca o aleja hasta ver el terreno que deseas delimitar.'],
+    ['Acerca el mapa','#satelliteMap','Usa los botones + y − del mapa o la rueda del ratón para observar los límites con precisión. Puedes desplazarte arrastrando el mapa.'],
+    ['Crear una región o lote','#satDrawStart','Pulsa Dibujar lote. Después haz clic en al menos tres esquinas del terreno para dibujar su contorno. Mientras dibujas, cada clic añade un vértice.'],
+    ['Corregir un vértice','#satDrawUndo','Si colocas un punto equivocado, pulsa Deshacer. Limpiar elimina el dibujo actual para empezar de nuevo.'],
+    ['Cerrar el perímetro','#satDrawFinish','Cuando hayas marcado al menos tres puntos, pulsa Finalizar. Amelia cerrará el polígono automáticamente: solo verás el borde, sin un relleno que opaque el mapa.'],
+    ['Identificar el lote','#satFieldCode','Después de finalizar, completa el código único del lote, su nombre y el cultivo. La finca o sitio debe estar seleccionado y la superficie se estima a partir del polígono.'],
+    ['Guardar el lote','#satSaveField','Pulsa Guardar lote cuando los datos estén completos. El botón se habilita al finalizar un polígono válido. Guardar crea la región; no implica que ya existan datos satelitales.'],
+    ['Seleccionar finca','#satSiteSelect','Elige la finca o sitio al que pertenece el lote. Si ya tienes un lote creado, no necesitas dibujarlo otra vez.'],
+    ['Elegir un lote existente','#satelliteFieldList','Haz clic sobre un lote en la lista de la derecha. Comprueba su código y hectáreas antes de trabajar: varios lotes pueden tener el mismo nombre.'],
+    ['Analizar un lote','#satSync','Pulsa Analizar lote para actualizar el historial óptico agregado. Esta acción no crea automáticamente nuevas adquisiciones reales; esas fechas se incorporan mediante el procesamiento de datos correspondiente.'],
+    ['Analizar varios lotes','#satBatchSync','Marca los lotes en la lista y usa Analizar seleccionados para ejecutar el análisis histórico sobre el grupo, en lugar de uno por uno.'],
+    ['Ver NDVI histórico','#satNdviMapButton','Después del análisis, pulsa NDVI para mostrar el mapa de vigor calculado por periodo. Este botón pertenece al historial agregado, no a una adquisición individual.'],
+    ['Fechas del historial','#satDateNavigator','Las flechas y el calendario superior cambian entre periodos de análisis. Un periodo agregado no representa necesariamente el momento exacto de una fotografía satelital.'],
+    ['Fechas de adquisición reales','#satScenesCard','Aquí encontrarás observaciones Ópticas y Radar, con sus fechas de adquisición y calidad. Elige una fecha válida para visualizar sus capas. Las fechas nubladas pueden carecer de datos ópticos.'],
+    ['¿Qué significa NDVI?','#satSceneRasterLayer','NDVI = Índice de Vegetación de Diferencia Normalizada. Compara la luz infrarroja cercana y roja reflejada: sus valores suelen ir de -1 a 1. En vegetación, valores altos generalmente indican mayor respuesta fotosintética o cobertura, pero no prueban salud por sí solos.'],
+    ['Otros índices de vegetación','#satSceneRasterLayer','NDMI compara infrarrojo cercano y de onda corta; ayuda a estudiar cambios relacionados con el agua en la vegetación. NDRE usa el borde rojo y puede revelar diferencias en coberturas densas. EVI mejora la sensibilidad a la vegetación en ciertas condiciones.'],
+    ['¿Qué son VV y VH?','#satSceneRasterLayer','VV significa transmisión vertical y recepción vertical del radar; VH, transmisión vertical y recepción horizontal. Reflejan cómo la superficie dispersa la señal. VV y VH pueden responder a estructura, humedad y geometría; NO son NDVI ni diagnostican enfermedades.'],
+    ['Elegir la capa a visualizar','#satSceneRasterLayer','Abre Índice / capa. Con una adquisición Óptica puedes escoger NDVI, NDMI, NDRE o EVI; con Radar puedes escoger VV, VH o VV/VH. Cada capa representa una variable distinta.'],
+    ['Pintar los colores','#satSceneRasterLoad','Pulsa Ver colores para cargar la capa escogida sobre el lote. Si la adquisición no tiene píxeles útiles, Amelia no inventará un mapa.'],
+    ['Contraste fijo y local','#satSceneContrast','Fijo utiliza una escala constante al comparar fechas de la misma capa. Local adapta colores al rango P05–P95 del lote para resaltar diferencias internas. Azul en modo local significa relativamente menor, NO cultivo enfermo.'],
+    ['Interpretar la escala de colores','#satSceneRasterLegend','Lee los números debajo de la barra: el extremo izquierdo representa valores más bajos y el derecho valores más altos. La escala local cambia de un lote o fecha a otro; nunca compares colores sin revisar sus rangos numéricos.'],
+    ['Consultar un píxel','#satelliteMap','Haz clic dentro de la imagen coloreada: aparecerán el valor del punto, su ubicación aproximada y la diferencia respecto al promedio del lote. Construcciones, nubes o suelos no clasificados como vegetación pueden aparecer sin valor.'],
+    ['Excluir casas y caminos','#satAreaPanel','Abre Superficies, hectáreas y zonas a excluir. Escribe un nombre para la zona, por ejemplo Casa central. Estas exclusiones no alteran la imagen original.'],
+    ['Dibujar la zona excluida','#satAreaDraw','Pulsa Dibujar exclusión, haz clic en al menos tres puntos rodeando la casa o el camino y luego usa Guardar zona. Si te equivocas, pulsa Cancelar. Solo los usuarios autorizados pueden guardar cambios.'],
+    ['Calcular hectáreas','#satAreaRecalc','Pulsa Calcular hectáreas. Se cuentan los píxeles válidos que quedan fuera de las zonas excluidas y se agrupan en cuartil inferior, zona central y cuartil superior. Son valores relativos, no superficie enferma o sana.'],
+    ['Comparar fechas','#satCompareToggle','Comparar fechas abre Antes y Después del historial agregado. La comparación entre adquisiciones reales aún requiere varias fechas compatibles; en radar se necesita además igual órbita y dirección.'],
+    ['Revisar la evolución','#satelliteHistoryCard','El gráfico de Evolución satelital muestra los índices históricos por periodo y su calidad. Una tendencia confiable requiere varias observaciones útiles y validación en campo.'],
+    ['Volver al modo histórico','#satSceneRasterHistoric','Pulsa Volver a periodo agregado para restaurar el mapa NDVI histórico después de ver una adquisición real.'],
+    ['¡Ya conoces Amelia!','#satTutorialOpen','Ahora puedes dibujar regiones, analizar lotes, interpretar índices, ver mapas y excluir infraestructura. Usa el botón Tutorial siempre que necesites repetir la guía.']
   ];
   let satTourIndex = -1;
   function satTourClose() {
