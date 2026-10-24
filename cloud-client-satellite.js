@@ -254,6 +254,7 @@
       '#satellite .sat-scene-raster-gradient{height:12px;border-radius:5px;background:linear-gradient(to right,#c62828,#ef6c00,#fdd835,#7cb342,#1b5e20)}' +
       '#satellite .sat-scene-raster-gradient.local{background:linear-gradient(to right,#2b5cb4,#40a2c9,#9ed6b7,#5aa973,#196345)}' +
       '#satellite .sat-scene-raster-gradient.radar{background:linear-gradient(to right,#22245a,#3171b5,#47c1db,#f1da68,#de5c2e)}' +
+      '#satellite .sat-scene-raster-gradient.local.radar{background:linear-gradient(to right,#2b5cb4,#40a2c9,#9ed6b7,#5aa973,#196345)}' +
       '#satellite .sat-scene-raster-ticks{display:flex;justify-content:space-between;gap:3px;font-size:10px;color:var(--muted);margin-top:5px}' +
       '#satellite .sat-scene-raster-guide{margin-top:7px;font-size:11px;line-height:1.45;color:var(--muted)}' +
       '#satellite .sat-scene-raster-detail{font-size:11px;color:var(--muted);line-height:1.5;flex-basis:100%}' +
