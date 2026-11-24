@@ -929,7 +929,7 @@
     };
     const field = fields[layer];
     const raw = field ? row?.[field] : null;
-    return raw == null || !Number.isFinite(Number(raw)) ? null : Number(raw);
+    return satNumber(raw);
   }
 
   async function showScenePixel(latlng) {
@@ -1266,7 +1266,7 @@
         if(!count)throw Error('No hay píxeles válidos comunes tras excluir zonas.');
         ctx.putImageData(img,0,0);
         ndviOverlay=L.imageOverlay(c.toDataURL('image/png'),bounds,{opacity:.84,interactive:false}).addTo(map);
-        status.textContent='Δ '+k.toUpperCase()+' = después − antes. Rojo: disminución (−0.30); gris claro: 0; verde: aumento (+0.30). Escala saturada fuera del rango. '+count.toLocaleString('es-EC')+' píxeles comunes · Δ medio '+(mean/count).toFixed(3)+' · '+(100*down/count).toFixed(1)+'% disminuyó >0.05 · '+(100*up/count).toFixed(1)+'% aumentó >0.05. Umbral exploratorio, no diagnóstico; porcentajes de píxeles, no hectáreas.';
+        status.textContent='Δ '+k.toUpperCase()+' = después − antes. Rojo: disminución (−0.30); gris claro: 0; verde: aumento (+0.30). Escala saturada fuera del rango. '+count.toLocaleString('es-EC')+' píxeles comunes · Δ medio '+(mean/count).toFixed(3)+' · '+(100*down/count).toFixed(1)+'% disminuyó >0.05 · '+(100*up/count).toFixed(1)+'% aumentó >0.05. Umbral exploratorio, no diagnóstico; porcentajes de píxeles, no hectáreas. Si cambias exclusiones, vuelve a generar el mapa Δ.';
       }else{
         const br=before.color_range,ar=after.color_range;
         if(Array.isArray(br)&&Array.isArray(ar)&&(br.length!==ar.length||br.some((v,i)=>Math.abs(Number(v)-Number(ar[i]))>1e-9)))throw Error('Las escalas de color no coinciden.');
