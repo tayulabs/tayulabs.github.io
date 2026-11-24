@@ -93,7 +93,7 @@
   }
   function encodePng(w,h,pixels){
     if(typeof require!=='function'||typeof Buffer==='undefined')return null;
-    const {PNG}=require('pngjs');
+    let PNG;try{PNG=require('pngjs').PNG;}catch(e){return null;}
     return 'data:image/png;base64,'+PNG.sync.write({width:w,height:h,data:Buffer.from(pixels)}).toString('base64');
   }
   function areaStats(raster,pixels,zones,encode=encodePng){
@@ -106,7 +106,7 @@
     }}
     if(!points.length)return {total:0,excluded,count:0};
     const sorted=points.map(x=>x[0]).sort((a,b)=>a-b),q1=quantile(sorted,.25),q3=quantile(sorted,.75),sums=[0,0,0],out=new Uint8Array(pixels.length);
-    for(const [v,ha,i] of points){const k=v<q1?0:v>q3?2:1;sums[k]+=ha;out.set([...AREA_COLORS[k],255],i);}
+    for(const [v,ha,i] of points){const k=v<q1?0:v>q3?2:1;sums[k]+=ha;out.set(AREA_COLORS[k],i);out[i+3]=255;}
     return {total,excluded,count:points.length,low:sums[0],mid:sums[1],high:sums[2],q1,q3,image:encode(r.w,r.h,out),bbox:r.bbox};
   }
   function commonChange(a,pa,b,pb,zones,encode=encodePng){
@@ -118,7 +118,7 @@
       const k=(j*x.w+i)*4;if(pa[k+3]<250||pb[k+3]<250)continue;
       const [lon,lat]=x.center(i,j);if(excludedAt(zones,lon,lat))continue;
       const av=x.value(k),bv=y.value(k),d=bv-av,c=d<-.05?0:d>.05?2:1;
-      count++;total+=ha;sa+=av*ha;sb+=bv*ha;sums[c]+=ha;out.set([...CHANGE_COLORS[c],255],k);
+      count++;total+=ha;sa+=av*ha;sb+=bv*ha;sums[c]+=ha;out.set(CHANGE_COLORS[c],k);out[k+3]=255;
     }}
     if(!count||!total)return null;
     return {count,total,before:sa/total,after:sb/total,delta:(sb-sa)/total,low:sums[0],mid:sums[1],high:sums[2],image:encode(x.w,x.h,out),bbox:x.bbox};
@@ -186,7 +186,7 @@
       items.push('Última adquisición óptica utilizable recuperada: '+day(c.acquired_at)+'. NDVI '+F(metric(c,'ndvi'))+'; NDMI '+F(metric(c,'ndmi'))+'. Calidad '+qlabel(c.quality).toLowerCase()+'.');
       if(c.quality==='limited')items.push('La última adquisición tiene calidad limitada; revisar la cobertura y contrastar con observaciones de campo.');
     }
-    if(p){const d=delta(p.before,p.after,'ndvi');if(d!=null)items.push('NDVI: '+signed(d)+' puntos entre '+day(p.before.acquired_at)+' y '+day(p.after.acquired_at)+'. Diferencia de promedios, no necesariamente de los mismos píxeles.');}
+    if(m.comparison?.common){const x=m.comparison.common;items.push('ΔNDVI medio en '+F(x.total,2)+' ha de píxeles comunes: '+signed(x.delta)+' puntos. Interpretación orientativa.');}else if(p){const d=delta(p.before,p.after,'ndvi');if(d!=null)items.push('NDVI: '+signed(d)+' puntos entre '+day(p.before.acquired_at)+' y '+day(p.after.acquired_at)+'. Diferencia de promedios, no necesariamente de los mismos píxeles.');}
     if(m.areas?.count)items.push('Superficie válida tras exclusiones: '+F(m.areas.total,2)+' ha; zona de valores inferiores al P25: '+F(m.areas.low,2)+' ha.');
     return items;
   }
@@ -255,7 +255,7 @@
     const pages=[],on=k=>m.cfg.sections.includes(k),c=m.current,latestH=latest(m.history,'ndvi'),p=m.pair;
     function add(title,body){pages.push({title,body});}
     if(on('summary'))add('Informe técnico satelital','<span class="eyebrow">Agricultura de precisión / informe de lote</span><h1>Monitoreo y evolución<br>del cultivo</h1><span class="pill">'+esc(m.cfg.type==='technical'?'Informe técnico':'Informe ejecutivo')+'</span>'+(m.organizationName?'<p><b>Empresa:</b> '+esc(m.organizationName)+'</p>':'')+'<div class="grid">'+kpi('Finca',m.siteName)+kpi('Lote',m.field.name||'Sin nombre',m.field.code||'Sin código')+kpi('Cultivo',m.field.crop||'No informado')+kpi('Superficie registrada',F(m.field.area,2)+' ha')+'</div><div class="band"><p><b>Periodo solicitado:</b> '+esc(m.range.from)+' al '+esc(m.range.to)+'</p><p><b>Fecha de emisión:</b> '+esc(m.today)+'</p><p><b>Identificador:</b> '+esc(m.id)+'</p></div><h3>Resumen de hallazgos</h3>'+ul(observations(m))+'<p class="disclaimer">Observación remota histórica. Los índices son orientativos y no sustituyen una evaluación agronómica en campo.</p>');
-    if(on('indices'))add('Indicadores agrícolas','<p>Última adquisición óptica utilizable recuperada: <b>'+esc(c?day(c.acquired_at):'Sin dato')+'</b>. Los cuatro indicadores corresponden a la misma escena.</p><div class="grid">'+OPTICAL.map(k=>kpi(k.toUpperCase(),F(metric(c,k)),c?qlabel(c.quality):'No disponible')).join('')+'</div>'+table(['Índice','Qué representa'],[['NDVI','Respuesta relativa de la vegetación y cobertura.'],['NDMI','Cambios relacionados con agua en la vegetación.'],['NDRE','Respuesta del borde rojo; útil en coberturas densas.'],['EVI','Respuesta vegetal con correcciones atmosféricas y de fondo.']])+'<p>Calidad: '+esc(c?qlabel(c.quality):'Sin dato')+' · Píxeles válidos: '+esc(pct(c?.valid_pixel_percent))+' · Nubosidad local: '+esc(pct(c?.local_cloud_percent))+'</p><p class="note">El último periodo histórico agregado utilizable tiene NDVI '+esc(F(metric(latestH,'ndvi')))+'. No se confunde con una adquisición individual.</p>');
+    if(on('indices'))add('Indicadores agrícolas','<p>Última adquisición óptica utilizable recuperada: <b>'+esc(c?day(c.acquired_at):'Sin dato')+'</b>. Los cuatro indicadores corresponden a la misma escena.</p><div class="grid">'+OPTICAL.map(k=>kpi(k.toUpperCase(),F(metric(c,k)),c?qlabel(c.quality):'No disponible')).join('')+'</div>'+table(['Índice','Qué representa'],[['NDVI','Respuesta relativa de la vegetación y cobertura.'],['NDMI','Cambios relacionados con agua en la vegetación.'],['NDRE','Respuesta del borde rojo; útil en coberturas densas.'],['EVI','Respuesta vegetal con correcciones atmosféricas y de fondo.']])+'<p>Calidad: '+esc(c?qlabel(c.quality):'Sin dato')+' · Píxeles válidos: '+esc(pct(c?.valid_pixel_percent))+' · Nubosidad local: '+esc(pct(c?.local_cloud_percent))+'</p><p class="note">'+(latestH?'Última composición utilizable: NDVI '+esc(F(metric(latestH,'ndvi')))+'.':'No hay composiciones con NDVI utilizable en el periodo.')+' No se confunde con una adquisición individual.</p>');
     if(on('maps'))add('Mapas satelitales','<p>Capas ópticas de la adquisición seleccionada automáticamente. Los colores son relativos a la escala de cada índice; no indican enfermedad de forma directa.</p><div class="grid">'+OPTICAL.map(k=>mapCard(k.toUpperCase(),m.maps[k])).join('')+'</div><p class="note">Las imágenes muestran el raster disponible del lote, sin fondo cartográfico. No se presentan imágenes de demostración como datos reales.</p>');
     if(on('areas')){
       const a=m.areas;let body='<p>Superficies estimadas mediante píxeles válidos de NDVI y exclusiones registradas.</p><div class="grid">'+kpi('Área registrada',F(m.field.area,2)+' ha')+kpi('Área válida analizada',a?F(a.total,2)+' ha':'—')+kpi('Píxeles válidos excluidos',a?F(a.excluded,2)+' ha':'—')+kpi('Zonas registradas',m.zones?String(m.zones.length):'—')+'</div>';
