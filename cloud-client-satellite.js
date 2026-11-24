@@ -174,7 +174,7 @@
       '#satellite .sat-action-label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}' +
       '#satellite .sat-action-label b{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}' +
       '#satellite .sat-action-label small{color:var(--muted);font-size:10px}' +
-      '#satellite .sat-lot-actions{display:flex;gap:8px;align-items:center}' +
+      '#satellite .sat-lot-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#satellite .sat-lot-actions #satReportOpen{flex:1 0 100%;min-width:0}' +
       '#satellite .sat-lot-actions .btn{min-height:40px;border-radius:11px;font-weight:900;padding:8px 13px}' +
       '#satellite .sat-lot-actions #satRefresh{flex:0 0 auto;background:transparent}' +
       '#satellite .sat-lot-actions #satSync{flex:1 1 auto;box-shadow:none}' +
