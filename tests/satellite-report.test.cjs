@@ -4,9 +4,9 @@ const assert=require('node:assert/strict');
 const R=require('../cloud-client-satellite-report.js');
 const today='2026-11-24',range=R.rangeFor(90,today);
 const image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==';
-const raster={width:2,height:2,bbox:[-80,-2,-79.999,-1.999],sample_value_range:[-1,1],sample_encoding:'RG16_UNORM_ALPHA_V1',image_data_url:image,sample_data_url:image,color_range:[-1,1]};
+const raster={width:2,height:2,bbox:[-80,-2,-79.999,-1.999],sample_value_range:[-1,1],sample_encoding:'RG16_UNORM_ALPHA_V1',sample_processing_version:'fixture-v1',image_data_url:image,sample_data_url:image,color_range:[-1,1]};
 const pixels=new Uint8Array([10,20,0,255,30,20,0,255,50,20,0,0,80,20,0,255]);
-const zones=[{name:'Casa',geometry_geojson:{coordinates:[[[-80,-2],[-79.9995,-2],[-79.9995,-1.999],[-80,-1.999],[-80,-2]]]}}];
+const zones=[{name:'Casa',geometry_geojson:{type:'Polygon',coordinates:[[[-80,-2],[-79.9995,-2],[-79.9995,-1.999],[-80,-1.999],[-80,-2]]]}}];
 const input=[{interval_from:'2026-11-01',interval_to:'2026-11-05',quality:'poor',ndvi_mean:.8},{interval_from:'2026-11-01',interval_to:'2026-11-05',quality:'good',ndvi_mean:0},{interval_from:'2026-08-20',interval_to:'2026-08-29',quality:'good',ndvi_mean:.8}];
 const scenes=[{id:'a',acquired_at:'2026-10-01',collection:'sentinel-2-l2a',quality:'good',ndvi_mean:.65,ndmi_mean:.32},{id:'b',acquired_at:'2026-11-20',collection:'sentinel-2-l2a',quality:'limited',ndvi_mean:.5,ndmi_mean:null},{id:'c',acquired_at:'2026-11-22',collection:'sentinel-1-grd',quality:'good',s1_vv_db_mean:-12}];
 const field={id:'f',name:'Maíz < & >',code:'SAT-001',area_hectares:12};
@@ -27,3 +27,10 @@ test('incompatible or missing map scale is not shown as comparison',async()=>{
 });
 test('authorization errors are not hidden as empty data',async()=>{await assert.rejects(R.collect({field,today,getApi:async()=>{throw Error('API 403');}}),/403/);});
 test('missing measurements are explicitly unavailable',async()=>{const model=await R.collect({field,today,getApi:async p=>p.includes('observations')?[]:p.includes('scenes?')?{scenes:[]}:p.includes('exclusions')?{zones:[]}:null});const html=R.render(model);assert.ok(html.includes('No hay adquisiciones radar'));assert.ok(model.warnings.length);});
+test('common-mask change rejects incompatible grids and retains only jointly valid pixels',()=>{
+  const encode=()=>image;
+  const after=new Uint8Array(pixels);after[0]+=10;after[7]=0;after[11]=255;
+  const c=R.commonChange(raster,pixels,raster,after,[],encode);
+  assert.equal(c.count,2);assert.ok(c.delta>0);assert.equal(c.image,image);
+  assert.equal(R.commonChange(raster,pixels,{...raster,sample_processing_version:'other'},after,[],encode),null);
+});
