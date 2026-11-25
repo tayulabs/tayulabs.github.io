@@ -174,7 +174,7 @@
       '#satellite .sat-action-label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}' +
       '#satellite .sat-action-label b{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}' +
       '#satellite .sat-action-label small{color:var(--muted);font-size:10px}' +
-      '#satellite .sat-lot-actions{display:flex;gap:8px;align-items:center}' +
+      '#satellite .sat-lot-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#satellite .sat-lot-actions #satReportOpen{flex:1 0 100%;min-width:0}' +
       '#satellite .sat-lot-actions .btn{min-height:40px;border-radius:11px;font-weight:900;padding:8px 13px}' +
       '#satellite .sat-lot-actions #satRefresh{flex:0 0 auto;background:transparent}' +
       '#satellite .sat-lot-actions #satSync{flex:1 1 auto;box-shadow:none}' +
@@ -365,7 +365,7 @@
               '<div id="satLotEmpty" class="sat-empty-lot">Selecciona un lote de la lista o usa <b>Dibujar lote</b> para crear uno nuevo.</div>' +
               '<div id="satLotSummary" class="sat-lot-summary"><div class="sat-lot-summary-top"><div><h4 id="satLotSummaryName">—</h4><div class="sat-lot-summary-meta"><span class="sat-lot-chip" id="satLotSummaryCode">—</span><span class="sat-lot-chip" id="satLotSummaryCrop">—</span><span class="sat-lot-chip" id="satLotSummaryArea">— ha</span></div></div></div></div>' +
               '<div id="satCreateForm" class="sat-form sat-create-form"><div><label>Código</label><input id="satFieldCode" placeholder="SAT-001"></div><div><label>Cultivo</label><input id="satCropType" placeholder="banano, cacao..."></div><div class="full"><label>Nombre</label><input id="satFieldName" placeholder="Lote Norte"></div><div class="full"><label>Área estimada (ha)</label><input id="satArea" type="number" readonly></div><div class="full"><button class="btn" id="satSaveField" disabled>Guardar lote</button></div></div>' +
-              '<div class="sat-action-section"><div class="sat-action-label"><b>Acciones del lote</b><small>Datos y procesamiento</small></div><div class="sat-lot-actions"><button class="btn ghost" id="satRefresh">↻ Actualizar</button><button class="btn" id="satSync" disabled>Analizar lote</button></div></div>' +
+              '<div class="sat-action-section"><div class="sat-action-label"><b>Acciones del lote</b><small>Datos y procesamiento</small></div><div class="sat-lot-actions"><button class="btn ghost" id="satRefresh">↻ Actualizar</button><button class="btn" id="satSync" disabled>Analizar lote</button><button class="btn ghost" id="satReportOpen" type="button" disabled>Generar informe PDF</button></div></div>' +
               '<div id="satelliteStatus" class="sat-status">Esperando datos.</div>' +
             '</div>' +
             '<div class="card sat-farm-fields-card" style="margin-top:18px">' +
@@ -403,6 +403,8 @@
 
   function renderSelectedLotSummary(field) {
     selectedFieldData = field || null;
+    const reportButton=document.getElementById('satReportOpen');
+    if(reportButton)reportButton.disabled=!field?.id;
 
     const name = document.getElementById('satLotSummaryName');
     const code = document.getElementById('satLotSummaryCode');
@@ -3463,6 +3465,15 @@
     satTourMove(0);
   }
   function bind() {
+    document.getElementById('satReportOpen')?.addEventListener('click',()=>{
+      if(!enabled()||!selectedFieldId||!selectedFieldData||String(selectedFieldData.id)!==String(selectedFieldId))return;
+      const field={...selectedFieldData};
+      const siteName=currentSites.find(x=>String(x.id)===String(document.getElementById('satSiteSelect')?.value))?.name||'No informado';
+      try{
+        if(!window.AmeliaSatelliteReportUI)throw Error('El módulo de informes no se cargó. Recarga la página.');
+        window.AmeliaSatelliteReportUI.open({field,siteName,getApi,isCurrent:()=>enabled()&&String(selectedFieldId)===String(field.id)&&String(selectedFieldData?.id)===String(field.id)});
+      }catch(e){fail(e);}
+    });
     document.getElementById('satTutorialOpen')?.addEventListener('click',satTourStart);
     document.getElementById('satRefresh')?.addEventListener('click',()=>loadSites().catch(fail));
     document.getElementById('satLocationSearchButton')?.addEventListener('click',()=>searchLocation().catch(fail));
